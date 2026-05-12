@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "User Profile",
+      "description": "Stores user roles and basic information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "enum": ["owner", "senior_designer", "designer", "project_manager", "client"] }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Project": {
+      "title": "Client Project",
+      "description": "Represents an interior design project.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "clientId": { "type": "string" },
+        "employeeIds": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["active", "completed", "on-hold"] },
+        "phases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "status": { "type": "string", "enum": ["pending", "active", "complete"] },
+              "description": { "type": "string" },
+              "date": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "clientId"]
+    },
+    "ProgressNote": {
+      "title": "Progress Note",
+      "description": "Updates shared between team and client.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "authorId"]
+    },
+    "SiteContent": {
+      "title": "Site Content",
+      "description": "CMS data for the homepage.",
+      "type": "object",
+      "properties": {
+        "hero": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "subheadline": { "type": "string" }
+          }
+        },
+        "services": { "type": "array" },
+        "portfolio": { "type": "array" }
+      }
+    }
+  },
+  "firestore": {
+    "profiles": {
+      "schema": "Profile",
+      "description": "User profile records."
+    },
+    "projects": {
+      "schema": "Project",
+      "description": "Interior design projects."
+    },
+    "projects/{projectId}/progressNotes": {
+      "schema": "ProgressNote",
+      "description": "Chronological updates for a project."
+    },
+    "siteContent": {
+      "schema": "SiteContent",
+      "description": "CMS configurations."
+    }
+  }
+}

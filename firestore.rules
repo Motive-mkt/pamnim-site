@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { 
+      return isSignedIn() && (
+        request.auth.token.email_verified == true || 
+        request.auth.token.firebase.sign_in_provider == 'password'
+      ); 
+    }
+    
+    function getProfile(uid) {
+      return get(/databases/$(database)/documents/profiles/$(uid)).data;
+    }
+    
+    function hasRole(role) {
+      return isSignedIn() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && getProfile(request.auth.uid).role == role;
+    }
+    
+    function isOwner() { return hasRole('owner'); }
+    function isEmployee() {
+      return isSignedIn() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
+             (getProfile(request.auth.uid).role == 'senior_designer' || 
+              getProfile(request.auth.uid).role == 'designer' || 
+              getProfile(request.auth.uid).role == 'project_manager');
+    }
+    function isClient() { return hasRole('client'); }
+
+    // Profiles
+    match /profiles/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      // Protected updates: users can't change their own role
+      allow update: if isOwner() || (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
+    }
+
+    // Projects
+    match /projects/{projectId} {
+      allow read: if isOwner() || isEmployee() || (isClient() && resource.data.clientId == request.auth.uid);
+      allow create: if isOwner();
+      allow update: if isOwner() || (isEmployee() && (request.auth.uid in resource.data.employeeIds));
+      allow delete: if isOwner();
+      
+      match /progressNotes/{noteId} {
+        allow read: if isOwner() || isEmployee() || (isClient() && get(/databases/$(database)/documents/projects/$(projectId)).data.clientId == request.auth.uid);
+        allow create: if isOwner() || isEmployee();
+        allow update, delete: if isOwner();
+      }
+    }
+
+    // Site Content
+    match /siteContent/{docId} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+    
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
