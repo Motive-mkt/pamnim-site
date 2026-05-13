@@ -8,6 +8,12 @@ export interface CMSContent {
     subheadline: string;
     highlightWord: string;
   };
+  contact: {
+    phone: string;
+    whatsapp: string;
+    email: string;
+    address: string;
+  };
   services: any[];
   portfolio: any[];
 }
@@ -17,6 +23,12 @@ const DEFAULT_CONTENT: CMSContent = {
     title: "Spaces designed to feel like home.",
     subheadline: "Pamnim Interiors crafts clean, functional and beautifully styled residential interiors — from layout planning to final finishing.",
     highlightWord: "home."
+  },
+  contact: {
+    phone: "0714 984 268",
+    whatsapp: "254714984268",
+    email: "hello@pamnim.com",
+    address: "Nairobi, Kenya"
   },
   services: [],
   portfolio: []

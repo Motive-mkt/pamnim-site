@@ -1,9 +1,11 @@
 import { Phone, Sparkle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useCMS } from '../hooks/useCMS';
 
 export default function Footer() {
   const { user } = useAuth();
+  const { content } = useCMS();
   return (
     <footer className="pt-24 pb-12 bg-charcoal text-white">
       <div className="max-w-7xl mx-auto px-6 md:px-12">
@@ -18,11 +20,11 @@ export default function Footer() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
             <a
-              href="tel:0714984268"
+              href={`tel:${content.contact.phone.replace(/\s/g, '')}`}
               className="w-full sm:w-auto bg-ochre hover:bg-ochre/90 text-white px-10 py-5 rounded-full font-bold flex items-center justify-center gap-3 transition-all duration-300 transform hover:-translate-y-1"
             >
               <Phone className="w-5 h-5" />
-              Call 0714 984 268
+              Call {content.contact.phone}
             </a>
             <Link 
               to={user ? "/dashboard" : "/login"}
@@ -37,15 +39,15 @@ export default function Footer() {
         <div className="grid md:grid-cols-3 gap-12 py-16 border-y border-white/10">
           <div id="footer-call">
             <p className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase mb-4">CALL US</p>
-            <p className="text-2xl font-serif font-medium">0714 984 268</p>
+            <p className="text-2xl font-serif font-medium">{content.contact.phone}</p>
           </div>
           <div id="footer-hours">
-            <p className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase mb-4">HOURS</p>
-            <p className="text-2xl font-serif font-medium">Opens 7:00 AM Thursday</p>
+            <p className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase mb-4">EMAIL</p>
+            <p className="text-2xl font-serif font-medium truncate">{content.contact.email}</p>
           </div>
           <div id="footer-area">
             <p className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase mb-4">SERVICE AREA</p>
-            <p className="text-2xl font-serif font-medium">Residential — Local & nearby</p>
+            <p className="text-2xl font-serif font-medium">{content.contact.address}</p>
           </div>
         </div>
 

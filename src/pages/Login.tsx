@@ -45,11 +45,11 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   throw new Error(JSON.stringify(errInfo));
 }
 
-export default function Login() {
+export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: boolean }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(isSignUpDefault);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -284,18 +284,22 @@ export default function Login() {
 
         <div className="mt-8 pt-8 border-t border-charcoal/5 text-center">
           <p className="text-sm text-charcoal/60">
-            {isSignUp ? 'Already have an account?' : 'New to Pamnim Interiors?'}
-            <button 
-              onClick={() => {
-                setIsSignUp(!isSignUp);
-                setIsForgotPassword(false);
-                setError(null);
-                setMessage(null);
-              }}
-              className="ml-2 text-ochre font-bold hover:underline"
-            >
-              {isSignUp ? 'Sign In' : 'Create an Account'}
-            </button>
+            {isSignUp ? (
+              <>
+                Already have an account?
+                <button 
+                  onClick={() => {
+                    setIsSignUp(false);
+                    setIsForgotPassword(false);
+                    setError(null);
+                    setMessage(null);
+                  }}
+                  className="ml-2 text-ochre font-bold hover:underline"
+                >
+                  Sign In
+                </button>
+              </>
+            ) : null}
           </p>
         </div>
         

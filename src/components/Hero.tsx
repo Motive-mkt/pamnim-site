@@ -1,10 +1,48 @@
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Star, Check } from 'lucide-react';
+import { Star, Check, Send } from 'lucide-react';
 import { useCMS } from '../hooks/useCMS';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 export default function Hero() {
   const { content } = useCMS();
   const hero = content.hero;
+  const contact = content.contact;
+
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    projectType: 'Residential Design',
+    message: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await addDoc(collection(db, 'inquiries'), {
+        name: formData.name,
+        email: 'Provided via Hero Form',
+        phone: formData.phone,
+        projectType: formData.projectType,
+        message: formData.message || "Consultation requested from Hero form",
+        status: 'new',
+        createdAt: new Date().toISOString()
+      });
+
+      const waMessage = `Hello Pamnim Interiors! I'd like to book a consultation.\n\n*Name:* ${formData.name}\n*Phone:* ${formData.phone}\n*Project:* ${formData.projectType}\n*Message:* ${formData.message || 'Consultation requested'}`;
+      const whatsappUrl = `https://wa.me/${contact.whatsapp}?text=${encodeURIComponent(waMessage)}`;
+      window.open(whatsappUrl, '_blank');
+      setSubmitted(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <section className="relative min-h-screen flex items-center pt-20">
@@ -64,58 +102,79 @@ export default function Hero() {
           transition={{ duration: 0.8, delay: 0.2 }}
           className="bg-white rounded-2xl p-8 shadow-2xl max-w-md mx-auto lg:ml-auto"
         >
-          <h2 className="text-2xl text-charcoal font-bold mb-2">Book your free consultation</h2>
-          <p className="text-charcoal/60 mb-6 text-sm">Tell us about your space — we'll respond within 24 hours.</p>
+          {submitted ? (
+            <div className="py-10 text-center space-y-4">
+              <div className="w-16 h-16 bg-ochre/10 rounded-full flex items-center justify-center mx-auto">
+                <Check className="w-8 h-8 text-ochre" />
+              </div>
+              <h2 className="text-2xl font-bold text-charcoal">Request Sent!</h2>
+              <p className="text-charcoal/60">We'll be in touch soon.</p>
+              <button onClick={() => setSubmitted(false)} className="text-ochre font-bold underline text-sm">Send another request</button>
+            </div>
+          ) : (
+            <>
+              <h2 className="text-2xl text-charcoal font-bold mb-2">Book your free consultation</h2>
+              <p className="text-charcoal/60 mb-6 text-sm">Tell us about your space — we'll respond within 24 hours.</p>
 
-          <form className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Full Name</label>
-              <input
-                type="text"
-                placeholder="Jane Doe"
-                className="w-full px-4 py-3 bg-cream border border-charcoal/10 rounded-lg focus:outline-none focus:border-ochre transition-colors"
-                id="full-name"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Phone Number</label>
-              <input
-                type="tel"
-                placeholder="07XX XXX XXX"
-                className="w-full px-4 py-3 bg-cream border border-charcoal/10 rounded-lg focus:outline-none focus:border-ochre transition-colors"
-                id="phone-number"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Project Type</label>
-              <select className="w-full px-4 py-3 bg-cream border border-charcoal/10 rounded-lg focus:outline-none focus:border-ochre transition-colors appearance-none">
-                <option>Residential Design</option>
-                <option>Space Styling</option>
-                <option>Renovation</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Tell Us More (Optional)</label>
-              <textarea
-                rows={3}
-                placeholder="Briefly describe your vision..."
-                className="w-full px-4 py-3 bg-cream border border-charcoal/10 rounded-lg focus:outline-none focus:border-ochre transition-colors"
-                id="tell-us-more"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full bg-ochre hover:bg-ochre/90 text-white font-bold py-4 rounded-lg transition-all duration-300 shadow-lg shadow-ochle/20 flex items-center justify-center gap-2 group"
-            >
-              Get Started
-              <motion.span
-                animate={{ x: [0, 5, 0] }}
-                transition={{ repeat: Infinity, duration: 1.5 }}
-              >
-                →
-              </motion.span>
-            </button>
-          </form>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Full Name</label>
+                  <input
+                    type="text" required
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    placeholder="Jane Doe"
+                    className="w-full px-4 py-3 bg-cream border border-charcoal/10 rounded-lg focus:outline-none focus:border-ochre transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Phone Number</label>
+                  <input
+                    type="tel" required
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    placeholder="07XX XXX XXX"
+                    className="w-full px-4 py-3 bg-cream border border-charcoal/10 rounded-lg focus:outline-none focus:border-ochre transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Project Type</label>
+                  <select 
+                    value={formData.projectType}
+                    onChange={(e) => setFormData({...formData, projectType: e.target.value})}
+                    className="w-full px-4 py-3 bg-cream border border-charcoal/10 rounded-lg focus:outline-none focus:border-ochre transition-colors appearance-none"
+                  >
+                    <option>Residential Design</option>
+                    <option>Space Styling</option>
+                    <option>Renovation</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Tell Us More (Optional)</label>
+                  <textarea
+                    rows={3}
+                    value={formData.message}
+                    onChange={(e) => setFormData({...formData, message: e.target.value})}
+                    placeholder="Briefly describe your vision..."
+                    className="w-full px-4 py-3 bg-cream border border-charcoal/10 rounded-lg focus:outline-none focus:border-ochre transition-colors"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full bg-ochre disabled:opacity-50 hover:bg-ochre/90 text-white font-bold py-4 rounded-lg transition-all duration-300 shadow-lg shadow-ochre/20 flex items-center justify-center gap-2 group"
+                >
+                  {submitting ? "Sending..." : "Get Started"}
+                  <motion.span
+                    animate={{ x: [0, 5, 0] }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                  >
+                    →
+                  </motion.span>
+                </button>
+              </form>
+            </>
+          )}
         </motion.div>
       </div>
     </section>

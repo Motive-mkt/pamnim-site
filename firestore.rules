@@ -27,6 +27,24 @@ service cloud.firestore {
     }
     function isClient() { return hasRole('client'); }
 
+    // Validation Helpers
+    function isValidMediaItem(data) {
+      return data.keys().hasAll(['title', 'category', 'image', 'createdAt']) &&
+             data.title is string && data.title.size() <= 200 &&
+             data.category is string && data.category.size() <= 100 &&
+             data.image is string && data.image.size() <= 1000 &&
+             data.createdAt is string;
+    }
+
+    function isValidInquiry(data) {
+      return data.keys().hasAll(['name', 'email', 'message', 'status', 'createdAt']) &&
+             data.name is string && data.name.size() <= 200 &&
+             data.email is string && data.email.size() <= 200 &&
+             data.message is string && data.message.size() <= 5000 &&
+             data.status in ['new', 'read', 'responded'] &&
+             data.createdAt is string;
+    }
+
     // Profiles
     match /profiles/{userId} {
       allow read: if isSignedIn();
@@ -53,6 +71,25 @@ service cloud.firestore {
     match /siteContent/{docId} {
       allow read: if true;
       allow write: if isOwner();
+    }
+
+    // Media Collections (Gallery & Portfolio)
+    match /gallery/{itemId} {
+      allow read: if true;
+      allow create, update: if isOwner() && isValidMediaItem(request.resource.data);
+      allow delete: if isOwner();
+    }
+
+    match /portfolio/{itemId} {
+      allow read: if true;
+      allow create, update: if isOwner() && isValidMediaItem(request.resource.data);
+      allow delete: if isOwner();
+    }
+
+    // Inquiries
+    match /inquiries/{inquiryId} {
+      allow create: if isValidInquiry(request.resource.data);
+      allow read, update, delete: if isOwner();
     }
     
     // Default deny catch-all

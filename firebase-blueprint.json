@@ -59,12 +59,48 @@
           "type": "object",
           "properties": {
             "title": { "type": "string" },
-            "subheadline": { "type": "string" }
+            "subheadline": { "type": "string" },
+            "highlightWord": { "type": "string" }
+          }
+        },
+        "contact": {
+          "type": "object",
+          "properties": {
+            "phone": { "type": "string" },
+            "whatsapp": { "type": "string" },
+            "email": { "type": "string" },
+            "address": { "type": "string" }
           }
         },
         "services": { "type": "array" },
         "portfolio": { "type": "array" }
       }
+    },
+    "MediaItem": {
+      "title": "Media Item",
+      "description": "An image item for the gallery or portfolio.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "image": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "category", "image"]
+    },
+    "Inquiry": {
+      "title": "Inquiry",
+      "description": "A customer message from the contact form.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "projectType": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["new", "read", "responded"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "message"]
     }
   },
   "firestore": {
@@ -83,6 +119,18 @@
     "siteContent": {
       "schema": "SiteContent",
       "description": "CMS configurations."
+    },
+    "gallery": {
+      "schema": "MediaItem",
+      "description": "Home page gallery images."
+    },
+    "portfolio": {
+      "schema": "MediaItem",
+      "description": "Full portfolio collection."
+    },
+    "inquiries": {
+      "schema": "Inquiry",
+      "description": "Customer contact form submissions."
     }
   }
 }
