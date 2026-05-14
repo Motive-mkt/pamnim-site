@@ -7,7 +7,7 @@ import {
 } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Sparkle, Mail, Lock, User, ArrowRight, ArrowLeft } from 'lucide-react';
 
 enum OperationType {
@@ -158,9 +158,9 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
   return (
     <div className="min-h-screen bg-cream flex items-center justify-center p-6">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8">
-        <div className="flex flex-col items-center text-center mb-8">
+        <Link to="/" className="flex flex-col items-center text-center mb-8 group cursor-pointer">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <Sparkle className="w-8 h-8 text-ochre" />
+            <Sparkle className="w-8 h-8 text-ochre transition-transform group-hover:rotate-12" />
             <span className="font-serif text-3xl font-bold tracking-tight text-charcoal">Pamnim Interiors</span>
           </div>
           <h1 className="text-2xl font-bold mb-2">
@@ -169,7 +169,7 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
           <p className="text-charcoal/60">
             {isForgotPassword ? 'Enter your email to receive a reset link' : 'Access your personalized design portal'}
           </p>
-        </div>
+        </Link>
         
         {error && (
           <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 text-sm border border-red-100 italic">

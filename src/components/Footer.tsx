@@ -53,10 +53,10 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="pt-12 flex flex-col md:flex-row justify-between items-center gap-6 opacity-40">
-          <div className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Sparkle className="w-5 h-5 text-ochre-light" />
             <span className="font-serif text-lg font-bold">Pamnim Interiors</span>
-          </div>
+          </Link>
           <p className="text-sm">© 2026 Pamnim Interiors. All rights reserved.</p>
         </div>
       </div>

@@ -32,10 +32,10 @@ export default function AdminLayout({ children, activeTab }: AdminLayoutProps) {
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
       <aside className="w-64 bg-charcoal text-white hidden md:flex flex-col sticky top-0 h-screen">
-        <div className="p-8 flex items-center gap-2">
-          <Sparkle className="w-6 h-6 text-ochre" />
+        <Link to="/" className="p-8 flex items-center gap-2 group hover:opacity-80 transition-opacity">
+          <Sparkle className="w-6 h-6 text-ochre transition-transform group-hover:rotate-12" />
           <span className="font-serif text-xl font-bold tracking-tight">Pamnim</span>
-        </div>
+        </Link>
 
         <nav className="flex-1 px-4 py-6 space-y-2">
           {navItems.filter(item => item.roles.includes(profile?.role || '')).map((item) => (
@@ -68,9 +68,9 @@ export default function AdminLayout({ children, activeTab }: AdminLayoutProps) {
       <div className="flex-1 flex flex-col md:ml-0 overflow-x-hidden">
         <header className="bg-white border-b border-charcoal/5 h-20 flex items-center justify-between px-8 sticky top-0 z-40">
           <div className="flex items-center gap-4">
-             <div className="md:hidden">
+             <Link to="/" className="md:hidden flex items-center justify-center">
                 <Sparkle className="w-6 h-6 text-ochre" />
-             </div>
+             </Link>
              <h1 className="text-xl font-bold capitalize">{activeTab.replace('-', ' ')}</h1>
           </div>
           
