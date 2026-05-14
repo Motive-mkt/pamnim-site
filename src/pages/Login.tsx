@@ -115,7 +115,7 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
         }
       }
       
-      navigate('/dashboard');
+      navigate('/');
     } catch (err: any) {
       console.error(err);
       let errorMessage = err.message;
