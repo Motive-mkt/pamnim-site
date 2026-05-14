@@ -65,6 +65,19 @@ export default function Header() {
           >
             {user ? "Portal" : "Sign In"}
           </Link>
+          {!user && (
+            <Link 
+              to="/signup"
+              className={cn(
+                "hidden sm:block px-6 py-2 rounded-full font-bold text-sm border transition-all",
+                isScrolled 
+                  ? "border-charcoal text-charcoal hover:bg-charcoal hover:text-white" 
+                  : "border-white text-white hover:bg-white hover:text-charcoal"
+              )}
+            >
+              Sign Up
+            </Link>
+          )}
         </div>
       </div>
     </header>

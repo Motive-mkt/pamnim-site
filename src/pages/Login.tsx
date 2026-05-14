@@ -126,8 +126,9 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
         // Not a JSON error
       }
 
-      if (err.code === 'auth/user-not-found') errorMessage = 'No account found with this email.';
-      if (err.code === 'auth/wrong-password') errorMessage = 'Incorrect password.';
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        errorMessage = 'wrong email/ password';
+      }
       if (err.code === 'auth/email-already-in-use') errorMessage = 'This email is already registered.';
       setError(errorMessage);
     } finally {
@@ -284,22 +285,18 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
 
         <div className="mt-8 pt-8 border-t border-charcoal/5 text-center">
           <p className="text-sm text-charcoal/60">
-            {isSignUp ? (
-              <>
-                Already have an account?
-                <button 
-                  onClick={() => {
-                    setIsSignUp(false);
-                    setIsForgotPassword(false);
-                    setError(null);
-                    setMessage(null);
-                  }}
-                  className="ml-2 text-ochre font-bold hover:underline"
-                >
-                  Sign In
-                </button>
-              </>
-            ) : null}
+            {isSignUp ? 'Already have an account?' : 'New to Pamnim Interiors?'}
+            <button 
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setIsForgotPassword(false);
+                setError(null);
+                setMessage(null);
+              }}
+              className="ml-2 text-ochre font-bold hover:underline"
+            >
+              {isSignUp ? 'Sign In' : 'Create an Account'}
+            </button>
           </p>
         </div>
         
