@@ -3,8 +3,21 @@ import AdminLayout from '../../components/AdminLayout';
 import { collection, query, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, getDoc, orderBy, where } from 'firebase/firestore';
 import { db, auth } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
-import { Plus, Users, Briefcase, Edit2, Trash2, CheckCircle2, Clock, Globe, UserPlus, Mail } from 'lucide-react';
+import { 
+  Plus, Users, Briefcase, Edit2, Trash2, CheckCircle2, Clock, Globe, UserPlus, Mail,
+  Home, Palette, LayoutGrid, PaintBucket, RefreshCcw, MessageSquare, HelpCircle
+} from 'lucide-react';
 import { useCMS } from '../../hooks/useCMS';
+
+const iconMap: Record<string, any> = {
+  Home,
+  Palette,
+  LayoutGrid,
+  PaintBucket,
+  RefreshCcw,
+  MessageSquare,
+  HelpCircle
+};
 
 enum OperationType {
   CREATE = 'create',
@@ -42,7 +55,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 }
 
 export default function OwnerDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'staff' | 'content' | 'media' | 'inquiries'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'services' | 'staff' | 'content' | 'media' | 'inquiries'>('overview');
   const [projects, setProjects] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
@@ -51,6 +64,16 @@ export default function OwnerDashboard() {
   const [inquiries, setInquiries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { content } = useCMS();
+
+  // Services state
+  const [cmsServices, setCmsServices] = useState<any[]>([]);
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+  const [serviceForm, setServiceForm] = useState({
+    title: '',
+    description: '',
+    iconName: 'Home'
+  });
 
   // Media state
   const [mediaType, setMediaType] = useState<'gallery' | 'portfolio'>('gallery');
@@ -88,6 +111,9 @@ export default function OwnerDashboard() {
   useEffect(() => {
     setCmsHero(content.hero);
     setCmsContact(content.contact);
+    if (content.services) {
+      setCmsServices(content.services);
+    }
   }, [content]);
 
   const fetchData = async () => {
@@ -190,9 +216,23 @@ export default function OwnerDashboard() {
     await setDoc(doc(db, 'siteContent', 'homepage'), {
       ...content,
       hero: cmsHero,
-      contact: cmsContact
+      contact: cmsContact,
+      services: cmsServices
     });
     alert('Homepage and contact info updated!');
+  };
+
+  const handleSaveServices = async (updatedServicesList?: any[]) => {
+    const listToSave = updatedServicesList || cmsServices;
+    try {
+      await setDoc(doc(db, 'siteContent', 'homepage'), {
+        ...content,
+        services: listToSave
+      });
+    } catch (err) {
+      console.error('Error saving services:', err);
+      alert('Failed to save service changes to the database.');
+    }
   };
 
   const handleAddStaff = async (e: React.FormEvent) => {
@@ -219,6 +259,7 @@ export default function OwnerDashboard() {
   const navItems = [
     { id: 'overview', label: 'Dashboard', icon: Briefcase },
     { id: 'projects', label: 'Projects', icon: Briefcase },
+    { id: 'services', label: 'Services', icon: LayoutGrid },
     { id: 'staff', label: 'Team', icon: Users },
     { id: 'inquiries', label: 'Inquiries', icon: Mail },
     { id: 'media', label: 'Media Library', icon: Globe },
@@ -315,6 +356,84 @@ export default function OwnerDashboard() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'services' && (
+        <div className="bg-white rounded-3xl p-8 border border-charcoal/5 shadow-sm">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            <div>
+              <h2 className="text-2xl font-bold">Services Directory</h2>
+              <p className="text-sm text-charcoal/60 mt-1">Configure and customize the services listed on the homepage.</p>
+            </div>
+            <button 
+              onClick={() => {
+                setEditingServiceId(null);
+                setServiceForm({ title: '', description: '', iconName: 'Home' });
+                setShowServiceModal(true);
+              }}
+              className="flex items-center gap-2 bg-ochre text-white px-6 py-2.5 rounded-xl font-bold hover:bg-ochre/90 transition-all shadow-lg shadow-ochre/20"
+            >
+              <Plus className="w-5 h-5" />
+              Add Service
+            </button>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {cmsServices.map((service, index) => {
+              const ServiceIcon = iconMap[service.iconName] || HelpCircle;
+              return (
+                <div key={service.id || index} className="p-6 rounded-2xl bg-cream/30 border border-charcoal/5 flex flex-col justify-between hover:border-ochre/30 transition-all group">
+                  <div>
+                    <div className="w-12 h-12 rounded-xl bg-ochre/10 flex items-center justify-center mb-6 group-hover:bg-ochre transition-all">
+                      <ServiceIcon className="w-6 h-6 text-ochre group-hover:text-white transition-all" />
+                    </div>
+                    <h3 className="font-bold text-lg mb-2">{service.title}</h3>
+                    <p className="text-sm text-charcoal/60 leading-relaxed min-h-[4.5rem]">{service.description}</p>
+                    <span className="inline-block text-[10px] uppercase tracking-widest font-bold text-charcoal/30 bg-cream px-2.5 py-1 rounded-lg mt-4">
+                      ICON: {service.iconName}
+                    </span>
+                  </div>
+                  <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-charcoal/5">
+                    <button 
+                      onClick={() => {
+                        setEditingServiceId(service.id || index.toString());
+                        setServiceForm({
+                          title: service.title,
+                          description: service.description,
+                          iconName: service.iconName || 'Home'
+                        });
+                        setShowServiceModal(true);
+                      }}
+                      className="p-2 text-charcoal/60 hover:text-ochre hover:bg-ochre/10 rounded-lg transition-colors"
+                      title="Edit Service"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={async () => {
+                        if (confirm('Are you sure you want to delete this service?')) {
+                          const updated = cmsServices.filter((_, idx) => (service.id ? _.id !== service.id : idx !== index));
+                          setCmsServices(updated);
+                          await handleSaveServices(updated);
+                        }
+                      }}
+                      className="p-2 text-charcoal/60 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Delete Service"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            {cmsServices.length === 0 && (
+              <div className="col-span-full py-20 text-center border-2 border-dashed border-charcoal/10 rounded-3xl">
+                <p className="text-charcoal/30 font-bold uppercase text-xs tracking-widest">No services found</p>
+                <p className="text-sm text-charcoal/60 mt-2">Add your first custom service using the button above.</p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -539,6 +658,101 @@ export default function OwnerDashboard() {
                 </div>
               </div>
            </div>
+        </div>
+      )}
+
+      {/* Service Modal */}
+      {showServiceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-charcoal/40 backdrop-blur-sm">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-10 shadow-2xl relative">
+            <button 
+              onClick={() => setShowServiceModal(false)} 
+              className="absolute top-8 right-8 text-charcoal/20 hover:text-charcoal transition-colors hover:rotate-90 duration-300"
+            >
+               <Plus className="w-8 h-8 rotate-45" />
+            </button>
+            <h2 className="text-3xl font-bold mb-8">
+              {editingServiceId !== null ? 'Edit Service' : 'Add New Service'}
+            </h2>
+            <form 
+              onSubmit={async (e) => {
+                e.preventDefault();
+                let updatedList;
+                if (editingServiceId !== null) {
+                  // Edit existing
+                  updatedList = cmsServices.map((srv, idx) => {
+                    const lookupId = srv.id || idx.toString();
+                    if (lookupId === editingServiceId) {
+                      return { ...srv, ...serviceForm };
+                    }
+                    return srv;
+                  });
+                } else {
+                  // New service
+                  const newSrv = {
+                    id: Date.now().toString(),
+                    ...serviceForm
+                  };
+                  updatedList = [...cmsServices, newSrv];
+                }
+                setCmsServices(updatedList);
+                setShowServiceModal(false);
+                await handleSaveServices(updatedList);
+              }} 
+              className="space-y-6"
+            >
+               <div>
+                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Service Title</label>
+                  <input 
+                    type="text" required
+                    placeholder="E.g. Residential Interior Design"
+                    value={serviceForm.title}
+                    onChange={(e) => setServiceForm({...serviceForm, title: e.target.value})}
+                    className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-sm font-bold"
+                  />
+               </div>
+               <div>
+                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Description</label>
+                  <textarea 
+                    rows={4} required
+                    placeholder="End-to-end design for homes that balance beauty..."
+                    value={serviceForm.description}
+                    onChange={(e) => setServiceForm({...serviceForm, description: e.target.value})}
+                    className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-sm leading-relaxed"
+                  />
+               </div>
+               <div>
+                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Select Accent Icon</label>
+                  <div className="grid grid-cols-4 gap-3 bg-cream/30 p-3 rounded-2xl border border-charcoal/5 max-h-48 overflow-y-auto">
+                    {Object.keys(iconMap).map((key) => {
+                      const IconOpt = iconMap[key];
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setServiceForm({...serviceForm, iconName: key})}
+                          className={cn(
+                            "flex flex-col items-center justify-center p-3 rounded-xl border transition-all text-xs font-bold gap-1 aspect-square",
+                            serviceForm.iconName === key 
+                              ? "bg-ochre text-white border-ochre scale-105 shadow-md shadow-ochre/10 animate-[pulse_1.5s_infinite]" 
+                              : "bg-white text-charcoal border-charcoal/5 hover:bg-cream"
+                          )}
+                        >
+                          <IconOpt className="w-5 h-5 mb-1" />
+                          <span className="text-[9px] truncate w-full text-center">{key}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+               </div>
+               <button 
+                 type="submit"
+                 className="w-full bg-ochre text-white font-bold py-5 rounded-2xl hover:bg-ochre/90 transition-all shadow-xl shadow-ochre/20 mt-4"
+               >
+                 {editingServiceId !== null ? 'Update Service' : 'Create & Save Service'}
+               </button>
+            </form>
+          </div>
         </div>
       )}
 

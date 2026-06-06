@@ -12,8 +12,8 @@ export default function Home() {
       <main>
         <Hero />
         <Services />
-        <Testimonials />
         <Portfolio />
+        <Testimonials />
       </main>
       <Footer />
     </div>
