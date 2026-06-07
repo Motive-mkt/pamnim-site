@@ -20,17 +20,16 @@ const getEnvValue = (key, fallback = '') => {
 
 const firebaseConfig = {
   apiKey: getEnvValue('API_KEY', firebaseAppletConfig.apiKey),
-  authDomain: getEnvValue('AUTH_DOMAIN', firebaseAppletConfig.authDomain),
-  projectId: getEnvValue('PROJECT_ID', firebaseAppletConfig.projectId),
-  storageBucket: getEnvValue('STORAGE_BUCKET', firebaseAppletConfig.storageBucket),
+  authDomain: getEnvValue('AUTH_DOMAIN', 'gen-lang-client-0597692683.firebaseapp.com'),
+  projectId: 'gen-lang-client-0597692683',
+  storageBucket: getEnvValue('STORAGE_BUCKET', 'gen-lang-client-0597692683.appspot.com'),
   messagingSenderId: getEnvValue('MESSAGING_SENDER_ID', firebaseAppletConfig.messagingSenderId),
   appId: getEnvValue('APP_ID', firebaseAppletConfig.appId)
 };
 
-const databaseId = getEnvValue('DATABASE_ID', firebaseAppletConfig.firestoreDatabaseId);
-
 const app = initializeApp(firebaseConfig);
 
-export const db = getFirestore(app, databaseId);
+// Initialize Firestore explicitly targeting the custom database ID string
+export const db = getFirestore(app, 'ai-studio-396542db-a5b7-4b73-a209-846a866b09ab');
 export const auth = getAuth(app);
 export default app;
