@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore } from 'firebase/firestore';
 import firebaseAppletConfig from '../../firebase-applet-config.json';
 
 // Helper to determine variables in both client (Vite) and server/SSR (Node/Vercel) contexts
@@ -28,7 +28,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore explicitly targeting the custom database ID string
-export const db = getFirestore(app, 'ai-studio-396542db-a5b7-4b73-a209-846a866b09ab');
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true
+}, 'ai-studio-396542db-a5b7-4b73-a209-846a866b09ab');
 export const auth = getAuth(app);
 export default app;
 
