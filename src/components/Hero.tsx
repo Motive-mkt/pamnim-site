@@ -67,7 +67,7 @@ export default function Hero() {
         >
           <div id="badge" className="inline-flex items-center gap-2 bg-ochre/20 backdrop-blur-md border border-white/20 rounded-full px-4 py-1.5 mb-6">
             <Star className="w-4 h-4 fill-ochre text-ochre" />
-            <span className="text-xs font-bold tracking-widest uppercase">★ RATED 5.0 BY CLIENTS</span>
+            <span className="text-xs font-bold tracking-widest uppercase">★ RATED 4.6 BY CLIENTS</span>
           </div>
 
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] mb-6">
@@ -123,7 +123,7 @@ export default function Hero() {
                     type="text" required
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    placeholder="Jane Doe"
+                    placeholder=""
                     className="w-full px-4 py-3 bg-cream border border-charcoal/10 rounded-lg focus:outline-none focus:border-ochre transition-colors"
                   />
                 </div>

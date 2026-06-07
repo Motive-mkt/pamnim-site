@@ -27,7 +27,7 @@ const DEFAULT_CONTENT: CMSContent = {
   contact: {
     phone: "0714 984 268",
     whatsapp: "254714984268",
-    email: "hello@pamnim.com",
+    email: "hinteriors01@gmail.com",
     address: "Nairobi, Kenya"
   },
   services: [

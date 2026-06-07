@@ -52,12 +52,18 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-12 flex flex-col md:flex-row justify-between items-center gap-6 opacity-40">
-          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+        <div className="pt-12 flex flex-col md:flex-row justify-between items-center gap-6">
+          <Link to="/" className="flex items-center gap-2 text-white/40 hover:text-white/60 transition-all duration-300">
             <Sparkle className="w-5 h-5 text-ochre-light" />
             <span className="font-serif text-lg font-bold">Pamnim Interiors</span>
           </Link>
-          <p className="text-sm">© 2026 Pamnim Interiors. All rights reserved.</p>
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 text-sm text-white/40">
+            <p>© 2026 Pamnim Interiors. All rights reserved.</p>
+            <span className="hidden sm:inline h-3 w-[1px] bg-white/10" />
+            <Link to="/login" className="hover:text-white transition-colors duration-300 font-sans tracking-wide">
+              Client Portal
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

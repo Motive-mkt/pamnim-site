@@ -830,7 +830,7 @@ export default function OwnerDashboard() {
                   <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Email Address</label>
                   <input 
                     type="email" required
-                    placeholder="jane@pamnim.com"
+                    placeholder="jane@pamniminteriors.com"
                     value={newStaff.email}
                     onChange={(e) => setNewStaff({...newStaff, email: e.target.value})}
                     className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre"

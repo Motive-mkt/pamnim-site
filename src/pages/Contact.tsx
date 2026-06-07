@@ -120,7 +120,7 @@ export default function ContactPage() {
                           type="text" required
                           value={formData.name}
                           onChange={(e) => setFormData({...formData, name: e.target.value})}
-                          className="w-full bg-cream border-none p-5 rounded-2xl focus:ring-2 focus:ring-ochre outline-none" placeholder="John Doe" 
+                          className="w-full bg-cream border-none p-5 rounded-2xl focus:ring-2 focus:ring-ochre outline-none" placeholder="" 
                         />
                       </div>
                       <div className="space-y-2">

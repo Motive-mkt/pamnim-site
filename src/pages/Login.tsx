@@ -6,7 +6,7 @@ import {
   sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { useNavigate, Link } from 'react-router-dom';
 import { Sparkle, Mail, Lock, User, ArrowRight, ArrowLeft } from 'lucide-react';
 
@@ -64,8 +64,61 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
     
     try {
       let user;
+      let existingInvitedDoc: any = null;
+      let existingDocId: string | null = null;
+      let isFirstUser = false;
+
       if (isSignUp) {
         if (!name) throw new Error('Please enter your name');
+        
+        // Check if database is completely empty (no siteContent/metadata with initialized: true)
+        const metadataPath = 'siteContent/metadata';
+        try {
+          const metadataDoc = await getDoc(doc(db, 'siteContent', 'metadata'));
+          isFirstUser = !metadataDoc.exists() || !metadataDoc.data()?.initialized;
+          
+          if (!isFirstUser) {
+            // As double verification, check if profiles are empty
+            const profilesSnap = await getDocs(collection(db, 'profiles'));
+            if (profilesSnap.empty) {
+              isFirstUser = true;
+            }
+          }
+        } catch (err) {
+          // If metadata doc call fails or permissions are restricted, check if profiles are empty
+          try {
+            const profilesSnap = await getDocs(collection(db, 'profiles'));
+            if (profilesSnap.empty) {
+              isFirstUser = true;
+            }
+          } catch (e) {
+            // Fallback
+          }
+        }
+
+        // If not first user, we MUST authenticate strictly by invitation from owner
+        if (!isFirstUser) {
+          // Check 'profiles' collection for matching email address using a query
+          const q = query(collection(db, 'profiles'), where('email', '==', email.trim()));
+          let querySnap = await getDocs(q);
+          
+          let foundDoc = querySnap.docs[0];
+          if (!foundDoc) {
+            // try matching with lowercase in case of case variance
+            const qLower = query(collection(db, 'profiles'), where('email', '==', email.trim().toLowerCase()));
+            const querySnapLower = await getDocs(qLower);
+            foundDoc = querySnapLower.docs[0];
+          }
+
+          if (!foundDoc) {
+            throw new Error("Registration is restricted. Please contact the administrator for an invitation.");
+          }
+
+          existingInvitedDoc = foundDoc.data();
+          existingDocId = foundDoc.id;
+        }
+
+        // Create the user in Firebase Auth
         const result = await createUserWithEmailAndPassword(auth, email, password);
         user = result.user;
         await updateProfile(user, { displayName: name });
@@ -74,43 +127,103 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
         user = result.user;
       }
 
+      // Now create/update profile doc
       const profilePath = `profiles/${user.uid}`;
       const docRef = doc(db, 'profiles', user.uid);
-      let docSnap;
-      try {
-        docSnap = await getDoc(docRef);
-      } catch (err) {
-        handleFirestoreError(err, OperationType.GET, profilePath);
-      }
 
-      if (!docSnap || !docSnap.exists()) {
-        const metadataPath = 'siteContent/metadata';
-        let isFirstUser = false;
-        try {
-          isFirstUser = (await getDoc(doc(db, 'siteContent', 'metadata'))).exists() === false;
-        } catch (err) {
-          handleFirestoreError(err, OperationType.GET, metadataPath);
-        }
-
-        const role = isFirstUser ? 'owner' : 'client';
-        
-        try {
-          await setDoc(docRef, {
-            uid: user.uid,
-            email: user.email,
-            name: name || user.displayName || 'Client',
-            role: role,
-            createdAt: new Date().toISOString()
-          });
-        } catch (err) {
-          handleFirestoreError(err, OperationType.WRITE, profilePath);
-        }
-        
+      if (isSignUp) {
         if (isFirstUser) {
+          // Creating first owner user
+          try {
+            await setDoc(docRef, {
+              uid: user.uid,
+              email: user.email?.trim().toLowerCase() || email.trim().toLowerCase(),
+              name: name || 'Owner',
+              role: 'owner',
+              status: 'active',
+              createdAt: new Date().toISOString()
+            });
+          } catch (err) {
+            handleFirestoreError(err, OperationType.WRITE, profilePath);
+          }
+
           try {
             await setDoc(doc(db, 'siteContent', 'metadata'), { initialized: true });
           } catch (err) {
-            handleFirestoreError(err, OperationType.WRITE, metadataPath);
+            handleFirestoreError(err, OperationType.WRITE, 'siteContent/metadata');
+          }
+        } else {
+          // Linking invited user's UID to that existing profile document
+          try {
+            await setDoc(docRef, {
+              ...existingInvitedDoc,
+              uid: user.uid,
+              name: name || existingInvitedDoc.name || 'Client',
+              email: user.email || email.trim().toLowerCase(),
+              status: 'active',
+              updatedAt: new Date().toISOString()
+            });
+          } catch (err) {
+            handleFirestoreError(err, OperationType.WRITE, profilePath);
+          }
+
+          // Delete the old placeholder profile document
+          if (existingDocId && existingDocId !== user.uid) {
+            try {
+              await deleteDoc(doc(db, 'profiles', existingDocId));
+            } catch (err) {
+              console.error('Error deleting old profile document:', err);
+            }
+
+            // Update any projects pointing to the old client placeholder ID to live user.uid
+            try {
+              const projectsQuery = query(collection(db, 'projects'), where('clientId', '==', existingDocId));
+              const projectsSnap = await getDocs(projectsQuery);
+              for (const pDoc of projectsSnap.docs) {
+                await setDoc(pDoc.ref, { clientId: user.uid }, { merge: true });
+              }
+            } catch (pe) {
+              console.error('Error updating project client link:', pe);
+            }
+
+            // Update any projects where the old placeholder was in employeeIds
+            try {
+              const projectsQuery = query(collection(db, 'projects'));
+              const projectsSnap = await getDocs(projectsQuery);
+              for (const pDoc of projectsSnap.docs) {
+                const pData = pDoc.data();
+                if (Array.isArray(pData.employeeIds) && pData.employeeIds.includes(existingDocId)) {
+                  const updatedIds = pData.employeeIds.map((id: string) => id === existingDocId ? user.uid : id);
+                  await setDoc(pDoc.ref, { employeeIds: updatedIds }, { merge: true });
+                }
+              }
+            } catch (pe) {
+              console.error('Error updating project employee link:', pe);
+            }
+          }
+        }
+      } else {
+        // Just signing in, make sure profile exists, otherwise load/create if needed as fallback (existing logic)
+        let docSnap;
+        try {
+          docSnap = await getDoc(docRef);
+        } catch (err) {
+          handleFirestoreError(err, OperationType.GET, profilePath);
+        }
+
+        if (!docSnap || !docSnap.exists()) {
+          // Fallback if signin succeeds but no profile exists, create a default client profile
+          try {
+            await setDoc(docRef, {
+              uid: user.uid,
+              email: user.email,
+              name: user.displayName || 'Client',
+              role: 'client',
+              status: 'active',
+              createdAt: new Date().toISOString()
+            });
+          } catch (err) {
+            handleFirestoreError(err, OperationType.WRITE, profilePath);
           }
         }
       }
