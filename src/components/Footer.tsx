@@ -26,28 +26,27 @@ export default function Footer() {
               <Phone className="w-5 h-5" />
               Call {content.contact.phone}
             </a>
-            <Link 
-              to={user ? "/dashboard" : "/login"}
-              className="w-full sm:w-auto bg-transparent border border-white/20 hover:border-white/40 text-white px-10 py-5 rounded-full font-bold transition-all duration-300 flex items-center justify-center gap-2"
-            >
-              {user ? "View My Dashboard" : "Client Portal"} →
-            </Link>
           </div>
         </div>
 
         {/* Info Grid */}
-        <div className="grid md:grid-cols-3 gap-12 py-16 border-y border-white/10">
-          <div id="footer-call">
+        <div className="grid md:grid-cols-12 gap-12 py-16 border-y border-white/10">
+          <div id="footer-call" className="md:col-span-3">
             <p className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase mb-4">CALL US</p>
             <p className="text-2xl font-serif font-medium">{content.contact.phone}</p>
           </div>
-          <div id="footer-hours">
-            <p className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase mb-4">EMAIL</p>
+          <div id="footer-hours" className="md:col-span-3">
+            <p className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase mb-4">EMAIL DIRECT</p>
             <p className="text-2xl font-serif font-medium truncate">{content.contact.email}</p>
           </div>
-          <div id="footer-area">
-            <p className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase mb-4">SERVICE AREA</p>
-            <p className="text-2xl font-serif font-medium">{content.contact.address}</p>
+          <div id="footer-area" className="md:col-span-6">
+            <p className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase mb-4">STUDIO ADDRESS & LANDMARKS</p>
+            <p className="text-lg font-serif font-medium leading-relaxed mb-2">
+              Office No. 229, 2nd Floor, Gera's Imperium Star, EDC Patto Plaza, Panaji, Goa 403001
+            </p>
+            <p className="text-xs text-ochre font-sans tracking-wide">
+              Located right next to the Central Library in the EDC Patto Plaza / Patto Centre commercial hub.
+            </p>
           </div>
         </div>
 

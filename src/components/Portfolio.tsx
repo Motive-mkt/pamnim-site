@@ -4,6 +4,7 @@ import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
+import { optimizeCloudinaryUrl } from '../services/cloudinaryService';
 
 export default function Portfolio() {
   const [gallery, setGallery] = useState<any[]>([]);
@@ -12,9 +13,15 @@ export default function Portfolio() {
   useEffect(() => {
     async function fetchGallery() {
       try {
-        const q = query(collection(db, 'gallery'), orderBy('createdAt', 'desc'), limit(3));
+        const q = query(collection(db, 'gallery'), orderBy('createdAt', 'desc'));
         const snap = await getDocs(q);
-        setGallery(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        // Exclude videos explicitly as per Strict Media Policy
+        const items = snap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }) as any)
+          .filter(item => item.type !== 'video' && !(item.image && item.image.includes('.mp4')));
+        
+        // Show only the 3 most recent curated images
+        setGallery(items.slice(0, 3));
       } catch (err) {
         console.error("Error fetching gallery:", err);
       } finally {
@@ -35,9 +42,6 @@ export default function Portfolio() {
               A glimpse into the homes and spaces we've transformed for clients across the region.
             </p>
           </div>
-          <Link to="/portfolio" className="text-ochre font-bold flex items-center gap-2 group">
-            View all projects <span className="group-hover:translate-x-1 transition-transform">→</span>
-          </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[300px]">
@@ -59,7 +63,7 @@ export default function Portfolio() {
                 )}
               >
                 <img
-                  src={item.image}
+                  src={optimizeCloudinaryUrl(item.image, 'image')}
                   alt={item.title || "Gallery Image"}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                   referrerPolicy="no-referrer"
@@ -75,6 +79,17 @@ export default function Portfolio() {
               <p className="text-charcoal/30 font-bold">No gallery images added yet.</p>
             </div>
           )}
+        </div>
+
+        {/* Sophisticated low-profile Action CTA as requested */}
+        <div className="mt-16 text-center select-none" id="gallery-cta-container">
+          <Link 
+            to="/portfolio" 
+            className="inline-flex items-center gap-2 group border-b border-charcoal/20 hover:border-charcoal pb-1.5 transition-all text-xs font-bold uppercase tracking-[0.2em] text-charcoal"
+          >
+            Explore Full Portfolio
+            <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
+          </Link>
         </div>
       </div>
     </section>

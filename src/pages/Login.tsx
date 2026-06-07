@@ -111,7 +111,7 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
           }
 
           if (!foundDoc) {
-            throw new Error("Registration is restricted. Please contact the administrator for an invitation.");
+            throw new Error("Registration restricted. Please contact the administrator for an invitation.");
           }
 
           existingInvitedDoc = foundDoc.data();

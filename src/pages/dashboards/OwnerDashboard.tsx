@@ -5,9 +5,10 @@ import { db, auth } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
 import { 
   Plus, Users, Briefcase, Edit2, Trash2, CheckCircle2, Clock, Globe, UserPlus, Mail,
-  Home, Palette, LayoutGrid, PaintBucket, RefreshCcw, MessageSquare, HelpCircle
+  Home, Palette, LayoutGrid, PaintBucket, RefreshCcw, MessageSquare, HelpCircle, Film
 } from 'lucide-react';
 import { useCMS } from '../../hooks/useCMS';
+import { refineDraftCopy } from '../../services/geminiService';
 
 const iconMap: Record<string, any> = {
   Home,
@@ -79,6 +80,10 @@ export default function OwnerDashboard() {
   const [mediaType, setMediaType] = useState<'gallery' | 'portfolio'>('gallery');
   const [showMediaModal, setShowMediaModal] = useState(false);
   const [newMedia, setNewMedia] = useState({ title: '', category: '', image: '' });
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [useManualUrl, setUseManualUrl] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, { status: 'pending' | 'uploading' | 'completed' | 'failed'; progress: number; error?: string }>>({});
+  const [isUploading, setIsUploading] = useState(false);
 
   // Create Project Modal State
   const [showProjectModal, setShowProjectModal] = useState(false);
@@ -97,6 +102,78 @@ export default function OwnerDashboard() {
   // CMS Edit State
   const [cmsHero, setCmsHero] = useState(content.hero);
   const [cmsContact, setCmsContact] = useState(content.contact);
+
+  // Gemini Copywriter Assistant State
+  const [refinement, setRefinement] = useState<{
+    field: string | null;
+    originalText: string;
+    refinedText: string;
+    loading: boolean;
+    error: string | null;
+  }>({
+    field: null,
+    originalText: '',
+    refinedText: '',
+    loading: false,
+    error: null,
+  });
+
+  const handleRefineText = async (fieldName: string, text: string, contextDescription: string) => {
+    if (!text || !text.trim()) {
+      alert("Provide some draft text first to run AI Lookbook revision.");
+      return;
+    }
+    setRefinement({
+      field: fieldName,
+      originalText: text,
+      refinedText: '',
+      loading: true,
+      error: null,
+    });
+
+    try {
+      const res = await refineDraftCopy(text, contextDescription);
+      if (res.success) {
+        setRefinement(prev => ({
+          ...prev,
+          refinedText: res.text,
+          loading: false,
+        }));
+      } else {
+        setRefinement(prev => ({
+          ...prev,
+          loading: false,
+          error: res.error || 'Failed to refine copy',
+        }));
+      }
+    } catch (err: any) {
+      setRefinement(prev => ({
+        ...prev,
+        loading: false,
+        error: err.message || 'Error executing AI refinement',
+      }));
+    }
+  };
+
+  const handleApplyRefinement = () => {
+    if (!refinement.field || !refinement.refinedText) return;
+
+    if (refinement.field === 'heroTitle') {
+      setCmsHero(prev => ({ ...prev, title: refinement.refinedText }));
+    } else if (refinement.field === 'heroSub') {
+      setCmsHero(prev => ({ ...prev, subheadline: refinement.refinedText }));
+    } else if (refinement.field === 'serviceDesc') {
+      setServiceForm(prev => ({ ...prev, description: refinement.refinedText }));
+    }
+
+    setRefinement({
+      field: null,
+      originalText: '',
+      refinedText: '',
+      loading: false,
+      error: null,
+    });
+  };
 
   const [stats, setStats] = useState({
     activeProjects: 0,
@@ -143,6 +220,15 @@ export default function OwnerDashboard() {
     }
   };
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
   const fetchMedia = async () => {
     const gallerySnap = await getDocs(query(collection(db, 'gallery'), orderBy('createdAt', 'desc')));
     setGallery(gallerySnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -153,16 +239,117 @@ export default function OwnerDashboard() {
 
   const handleAddMedia = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Option A: Manual URL entry
+    if (useManualUrl) {
+      if (!newMedia.image) return;
+      try {
+        const isVideo = newMedia.image.endsWith('.mp4') || newMedia.image.includes('video');
+        await addDoc(collection(db, mediaType), {
+          title: newMedia.title || 'Curated Space',
+          category: newMedia.category || 'Luxury Design',
+          image: newMedia.image,
+          type: isVideo ? 'video' : 'image',
+          createdAt: new Date().toISOString()
+        });
+        setNewMedia({ title: '', category: '', image: '' });
+        setShowMediaModal(false);
+        fetchMedia();
+      } catch (err) {
+        console.error(err);
+      }
+      return;
+    }
+
+    // Option B: Multiple Files Upload to Cloudinary via Express Backend
+    if (selectedFiles.length === 0) {
+      alert("Please select or drop at least one file to upload.");
+      return;
+    }
+
+    setIsUploading(true);
+    const initialProgress: typeof uploadProgress = {};
+    selectedFiles.forEach(f => {
+      initialProgress[f.name] = { status: 'pending', progress: 0 };
+    });
+    setUploadProgress(initialProgress);
+
     try {
-      await addDoc(collection(db, mediaType), {
-        ...newMedia,
-        createdAt: new Date().toISOString()
-      });
+      // Seq upload loop to guarantee order and avoid parallel overloading
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const isVideo = file.type.startsWith('video/');
+
+        setUploadProgress(prev => ({
+          ...prev,
+          [file.name]: { status: 'uploading', progress: 20 }
+        }));
+
+        const base64Data = await fileToBase64(file);
+
+        setUploadProgress(prev => ({
+          ...prev,
+          [file.name]: { status: 'uploading', progress: 50 }
+        }));
+
+        const preset = ((import.meta as any).env?.VITE_CLOUDINARY_UPLOAD_PRESET as string) || '';
+        const response = await fetch('/api/media/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            file: base64Data,
+            type: isVideo ? 'video' : 'image',
+            uploadPreset: preset
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const resData = await response.json();
+        if (!resData.success) {
+          throw new Error(resData.error || "Processing failed");
+        }
+
+        setUploadProgress(prev => ({
+          ...prev,
+          [file.name]: { status: 'uploading', progress: 90 }
+        }));
+
+        // Determine title
+        const itemTitle = selectedFiles.length > 1
+          ? `${newMedia.title || file.name.split('.')[0]} ${i + 1}`
+          : (newMedia.title || file.name.split('.')[0]);
+
+        await addDoc(collection(db, mediaType), {
+          title: itemTitle,
+          category: newMedia.category || 'Luxury Interiors',
+          image: resData.url,
+          type: isVideo ? 'video' : 'image',
+          createdAt: new Date().toISOString()
+        });
+
+        setUploadProgress(prev => ({
+          ...prev,
+          [file.name]: { status: 'completed', progress: 100 }
+        }));
+      }
+
+      // Cleanup
+      setSelectedFiles([]);
       setNewMedia({ title: '', category: '', image: '' });
-      setShowMediaModal(false);
-      fetchMedia();
-    } catch (err) {
-      console.error(err);
+      setTimeout(() => {
+        setShowMediaModal(false);
+        setIsUploading(false);
+        setUploadProgress({});
+        fetchMedia();
+      }, 800);
+
+    } catch (err: any) {
+      console.error("Bulk upload error details:", err);
+      alert(`Upload action aborted: ${err.message || err}`);
+      setIsUploading(false);
     }
   };
 
@@ -496,25 +683,37 @@ export default function OwnerDashboard() {
            </div>
            
            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {(mediaType === 'gallery' ? gallery : portfolio).map(item => (
-                <div key={item.id} className="group relative aspect-square rounded-2xl overflow-hidden bg-cream border border-charcoal/5">
-                   <img src={item.image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-4">
-                      <div className="flex justify-end">
-                        <button 
-                          onClick={() => handleDeleteMedia(item.id, mediaType)}
-                          className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <div className="text-white">
-                        <p className="text-xs font-bold uppercase text-ochre tracking-widest">{item.category}</p>
-                        <p className="font-bold truncate text-sm">{item.title}</p>
-                      </div>
-                   </div>
-                </div>
-              ))}
+              {(mediaType === 'gallery' ? gallery : portfolio).map(item => {
+                const isVideo = item.type === 'video' || (item.image && item.image.includes('.mp4'));
+                return (
+                  <div key={item.id} className="group relative aspect-square rounded-2xl overflow-hidden bg-cream border border-charcoal/5">
+                     {isVideo ? (
+                       <div className="relative w-full h-full bg-black select-none">
+                         <video src={item.image} className="w-full h-full object-cover pointer-events-none" muted playsInline />
+                         <div className="absolute top-4 left-4 z-10 bg-charcoal/80 text-cream p-1.5 rounded-lg">
+                           <Film className="w-4 h-4" />
+                         </div>
+                       </div>
+                     ) : (
+                       <img src={item.image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                     )}
+                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-4 z-20">
+                        <div className="flex justify-end">
+                          <button 
+                            onClick={() => handleDeleteMedia(item.id, mediaType)}
+                            className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="text-white">
+                          <p className="text-xs font-bold uppercase text-ochre tracking-widest">{item.category}</p>
+                          <p className="font-bold truncate text-sm">{item.title}</p>
+                        </div>
+                     </div>
+                  </div>
+                );
+              })}
               {(mediaType === 'gallery' ? gallery : portfolio).length === 0 && (
                 <div className="col-span-full py-20 text-center border-2 border-dashed border-charcoal/10 rounded-3xl">
                   <p className="text-charcoal/30 font-bold uppercase text-xs tracking-widest">Empty {mediaType}</p>
@@ -590,13 +789,50 @@ export default function OwnerDashboard() {
               <div className="space-y-6">
                 <h3 className="text-lg font-bold text-charcoal/40 uppercase tracking-widest border-b border-charcoal/5 pb-2">Hero Section</h3>
                 <div>
-                   <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Main Headline</label>
+                   <div className="flex justify-between items-center mb-2">
+                      <label className="block text-xs font-bold uppercase text-charcoal/40">Main Headline</label>
+                      <button
+                        type="button"
+                        onClick={() => handleRefineText('heroTitle', cmsHero.title, 'Main header of the warm minimalist interior design landing page')}
+                        className="text-[10px] font-bold text-ochre hover:text-ochre/80 flex items-center gap-1 bg-ochre/5 hover:bg-ochre/10 px-2.5 py-1 rounded-lg transition-all"
+                      >
+                        <span>✦ Refine with AI</span>
+                      </button>
+                   </div>
                    <textarea 
                      rows={3}
                      value={cmsHero.title}
                      onChange={(e) => setCmsHero({...cmsHero, title: e.target.value})}
                      className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre"
                    />
+                   {refinement.field === 'heroTitle' && (
+                     <div className="mt-2 p-4 bg-ochre/5 border border-ochre/20 rounded-xl space-y-3">
+                       <span className="text-[10px] uppercase font-bold text-ochre tracking-widest block">✦ Luxury Lookbook Suggestion</span>
+                       {refinement.loading ? (
+                         <p className="text-xs text-charcoal/50 animate-pulse font-medium">Elevating copywriting aesthetics...</p>
+                       ) : refinement.error ? (
+                         <p className="text-xs text-red-500 font-medium font-mono">{refinement.error}</p>
+                       ) : (
+                         <div className="space-y-3">
+                           <p className="text-sm italic font-medium text-charcoal">{refinement.refinedText}</p>
+                           <div className="flex gap-2">
+                             <button
+                               onClick={handleApplyRefinement}
+                               className="text-xs font-bold px-3 py-1 bg-ochre text-white rounded hover:bg-ochre/90"
+                             >
+                               Apply Draft
+                             </button>
+                             <button
+                               onClick={() => setRefinement({ field: null, originalText: '', refinedText: '', loading: false, error: null })}
+                               className="text-xs font-bold px-3 py-1 bg-charcoal/5 text-charcoal/60 rounded hover:bg-charcoal/10"
+                             >
+                               Discard
+                             </button>
+                           </div>
+                         </div>
+                       )}
+                     </div>
+                   )}
                 </div>
                 <div>
                    <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Highlight Word (ochre color)</label>
@@ -608,13 +844,50 @@ export default function OwnerDashboard() {
                    />
                 </div>
                 <div>
-                   <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Sub-headline Description</label>
+                   <div className="flex justify-between items-center mb-2">
+                      <label className="block text-xs font-bold uppercase text-charcoal/40">Sub-headline Description</label>
+                      <button
+                        type="button"
+                        onClick={() => handleRefineText('heroSub', cmsHero.subheadline, 'Sub-headline / intro copy of high-end interiors firm in Goa')}
+                        className="text-[10px] font-bold text-ochre hover:text-ochre/80 flex items-center gap-1 bg-ochre/5 hover:bg-ochre/10 px-2.5 py-1 rounded-lg transition-all"
+                      >
+                        <span>✦ Refine with AI</span>
+                      </button>
+                   </div>
                    <textarea 
                      rows={4}
                      value={cmsHero.subheadline}
                      onChange={(e) => setCmsHero({...cmsHero, subheadline: e.target.value})}
                      className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre"
                    />
+                   {refinement.field === 'heroSub' && (
+                     <div className="mt-2 p-4 bg-ochre/5 border border-ochre/20 rounded-xl space-y-3">
+                       <span className="text-[10px] uppercase font-bold text-ochre tracking-widest block">✦ Luxury Lookbook Suggestion</span>
+                       {refinement.loading ? (
+                         <p className="text-xs text-charcoal/50 animate-pulse font-medium">Elevating copywriting aesthetics...</p>
+                       ) : refinement.error ? (
+                         <p className="text-xs text-red-500 font-medium font-mono">{refinement.error}</p>
+                       ) : (
+                         <div className="space-y-3">
+                           <p className="text-sm italic font-medium text-charcoal">{refinement.refinedText}</p>
+                           <div className="flex gap-2">
+                             <button
+                               onClick={handleApplyRefinement}
+                               className="text-xs font-bold px-3 py-1 bg-ochre text-white rounded hover:bg-ochre/90"
+                             >
+                               Apply Draft
+                             </button>
+                             <button
+                               onClick={() => setRefinement({ field: null, originalText: '', refinedText: '', loading: false, error: null })}
+                               className="text-xs font-bold px-3 py-1 bg-charcoal/5 text-charcoal/60 rounded hover:bg-charcoal/10"
+                             >
+                               Discard
+                             </button>
+                           </div>
+                         </div>
+                       )}
+                     </div>
+                   )}
                 </div>
               </div>
 
@@ -759,49 +1032,214 @@ export default function OwnerDashboard() {
       {/* Media Modal */}
       {showMediaModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-charcoal/40 backdrop-blur-sm">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-10 shadow-2xl relative">
-            <button onClick={() => setShowMediaModal(false)} className="absolute top-8 right-8 text-charcoal/20 hover:text-charcoal transition-colors">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-xl p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button 
+              onClick={() => {
+                if (!isUploading) {
+                  setShowMediaModal(false);
+                  setSelectedFiles([]);
+                  setUploadProgress({});
+                  setIsUploading(false);
+                }
+              }} 
+              disabled={isUploading}
+              className="absolute top-8 right-8 text-charcoal/20 hover:text-charcoal transition-colors disabled:opacity-20 cursor-pointer"
+            >
                <Plus className="w-8 h-8 rotate-45" />
             </button>
-            <h2 className="text-3xl font-bold mb-8">Add to {mediaType}</h2>
-            <form onSubmit={handleAddMedia} className="space-y-4">
-               <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Title</label>
+            
+            <h2 className="text-3xl font-bold mb-2">Upload to {mediaType === 'gallery' ? 'Home Gallery' : 'Portfolio'}</h2>
+            <p className="text-sm text-charcoal/40 mb-8 font-medium">
+              {mediaType === 'gallery' 
+                ? 'Strict Media Policy: Images only. Automatic high-resolution sizing and web compression matches standards.'
+                : 'Cinematic layout. Upload stunning project photographs (Images) or walk-throughs (Videos).'}
+            </p>
+
+            <form onSubmit={handleAddMedia} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1.5">Collection Title</label>
                   <input 
-                    type="text" required
+                    type="text" required={selectedFiles.length <= 1}
                     placeholder="E.g. Modern Living Room"
                     value={newMedia.title}
                     onChange={(e) => setNewMedia({...newMedia, title: e.target.value})}
-                    className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre"
+                    disabled={isUploading}
+                    className="w-full p-4 bg-cream border border-charcoal/5 rounded-2xl focus:outline-none focus:border-ochre text-sm transition-all disabled:opacity-50"
                   />
-               </div>
-               <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Category</label>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1.5">Style Category</label>
                   <input 
                     type="text" required
-                    placeholder="E.g. Interior Design"
+                    placeholder="E.g. Minimalist / Luxury / Classic"
                     value={newMedia.category}
                     onChange={(e) => setNewMedia({...newMedia, category: e.target.value})}
-                    className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre"
+                    disabled={isUploading}
+                    className="w-full p-4 bg-cream border border-charcoal/5 rounded-2xl focus:outline-none focus:border-ochre text-sm transition-all disabled:opacity-50"
                   />
-               </div>
-               <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Image URL</label>
+                </div>
+              </div>
+
+              {/* Seamless input selection controller toggle */}
+              <div className="flex justify-between items-center bg-cream/50 p-2 rounded-xl text-xs font-bold">
+                <span className="text-charcoal/50 uppercase tracking-widest pl-2">SELECT SOURCE METHOD</span>
+                <button
+                  type="button"
+                  onClick={() => setUseManualUrl(!useManualUrl)}
+                  disabled={isUploading}
+                  className="px-3.5 py-1.5 bg-white border border-charcoal/10 rounded-lg hover:border-charcoal transition-all text-charcoal text-[11px]"
+                >
+                  {useManualUrl ? "Switch to Local File Upload" : "Switch to Manual URL Paste"}
+                </button>
+              </div>
+
+              {useManualUrl ? (
+                /* Manual entry */
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Direct Media URL</label>
                   <input 
                     type="url" required
-                    placeholder="https://..."
+                    placeholder="https://images.unsplash.com/your-image.jpg"
                     value={newMedia.image}
                     onChange={(e) => setNewMedia({...newMedia, image: e.target.value})}
-                    className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre"
+                    disabled={isUploading}
+                    className="w-full p-4 bg-cream border border-charcoal/5 rounded-2xl focus:outline-none focus:border-ochre text-sm disabled:opacity-50"
                   />
-                  <p className="text-[10px] text-charcoal/40 mt-1 uppercase font-bold tracking-tight">Upload your image to a service and paste the direct link here.</p>
-               </div>
-               <button 
-                 type="submit"
-                 className="w-full bg-ochre text-white font-bold py-5 rounded-2xl hover:bg-ochre/90 transition-all shadow-xl shadow-ochre/20 mt-4"
-               >
-                 Add to Library
-               </button>
+                  <p className="text-[10px] text-charcoal/40 uppercase font-bold tracking-tight">
+                    Ensure this link resolves directly to a raw image or .mp4 video asset.
+                  </p>
+                </div>
+              ) : (
+                /* Drag & Drop Bulk Media Upload Area */
+                <div className="space-y-4">
+                  <div 
+                    onDragOver={(e) => { e.preventDefault(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (isUploading) return;
+                      if (e.dataTransfer.files) {
+                        const files = Array.from(e.dataTransfer.files) as File[];
+                        // Filter out videos if collection is Home Gallery as per media policy
+                        const filtered = mediaType === 'gallery' 
+                          ? files.filter(f => f.type.startsWith('image/'))
+                          : files;
+                        setSelectedFiles(prev => [...prev, ...filtered]);
+                      }
+                    }}
+                    className="border-2 border-dashed border-charcoal/15 hover:border-ochre/50 rounded-[2rem] p-8 text-center bg-cream/10 hover:bg-cream/20 transition-all cursor-pointer relative"
+                    onClick={() => {
+                      if (!isUploading) {
+                        document.getElementById('multiple-file-picker')?.click();
+                      }
+                    }}
+                  >
+                    <input 
+                      id="multiple-file-picker"
+                      type="file" 
+                      multiple 
+                      accept={mediaType === 'gallery' ? "image/*" : "image/*,video/*"}
+                      className="hidden" 
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          setSelectedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                        }
+                      }}
+                      disabled={isUploading}
+                    />
+                    <div className="flex flex-col items-center gap-2 select-none">
+                      <div className="w-14 h-14 bg-ochre/10 rounded-full flex items-center justify-center text-ochre mb-2">
+                        <Plus className="w-7 h-7" />
+                      </div>
+                      <h4 className="font-bold text-charcoal">Drag & drop files here, or click to browse</h4>
+                      <p className="text-xs text-charcoal/40 font-medium p-1">
+                        {mediaType === 'gallery' 
+                          ? 'Supports photography assets (JPG, PNG, WebP) up to 50MB'
+                          : 'Supports photographs and cinematic walkthrough MP4 videos up to 50MB'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Queued files list display */}
+                  {selectedFiles.length > 0 && (
+                    <div className="bg-cream/30 border border-charcoal/5 rounded-2xl p-4 max-h-[180px] overflow-y-auto space-y-3">
+                      <div className="flex justify-between items-center text-[10px] font-bold text-charcoal/40 tracking-wider uppercase border-b border-charcoal/5 pb-2">
+                        <span>Queued Assets ({selectedFiles.length})</span>
+                        {!isUploading && (
+                          <button 
+                            type="button" 
+                            onClick={() => setSelectedFiles([])} 
+                            className="text-red-500 hover:underline hover:text-red-600 cursor-pointer"
+                          >
+                            Clear All
+                          </button>
+                        )}
+                      </div>
+                      
+                      {selectedFiles.map((file, idx) => {
+                        const isVideo = file.type.startsWith('video/');
+                        const statusObj = uploadProgress[file.name] || { status: 'pending', progress: 0 };
+                        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+
+                        return (
+                          <div key={idx} className="flex items-center justify-between text-xs bg-white p-3 rounded-xl border border-charcoal/5 shadow-sm">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              {isVideo ? <Film className="w-4 h-4 text-ochre shrink-0 animate-pulse" /> : <Plus className="w-4 h-4 text-zinc-400 shrink-0" />}
+                              <div className="min-w-0 flex-1">
+                                <p className="font-bold text-charcoal truncate pr-2">{file.name}</p>
+                                <span className="text-[10px] text-charcoal/40 uppercase font-bold">{fileSizeMB} MB</span>
+                              </div>
+                            </div>
+
+                            {/* Status controls */}
+                            <div className="flex items-center gap-3 shrink-0 ml-4">
+                              {statusObj.status === 'uploading' && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] text-ochre font-extrabold animate-pulse">UPLOADING...</span>
+                                  <div className="w-12 bg-charcoal/5 h-1.5 rounded-full overflow-hidden">
+                                    <div className="bg-ochre h-full rounded-full transition-all duration-300" style={{ width: `${statusObj.progress}%` }} />
+                                  </div>
+                                </div>
+                              )}
+                              {statusObj.status === 'completed' && (
+                                <span className="text-[10px] text-green-600 font-extrabold bg-green-50 px-2 py-0.5 rounded-md">COMPLETED</span>
+                              )}
+                              {statusObj.status === 'pending' && !isUploading && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))}
+                                  className="text-charcoal/30 hover:text-red-500 text-xs font-bold transition-all cursor-pointer"
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="pt-2 border-t border-charcoal/5">
+                <button 
+                  type="submit"
+                  disabled={isUploading || (!useManualUrl && selectedFiles.length === 0)}
+                  className="w-full bg-ochre disabled:bg-charcoal/10 disabled:text-charcoal/30 text-white font-bold py-5 rounded-3xl hover:bg-ochre/90 transition-all shadow-xl disabled:shadow-none hover:shadow-ochre/15 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {isUploading ? (
+                    <>
+                      <Film className="w-5 h-5 animate-spin mr-1" />
+                      Uploading Queue Library...
+                    </>
+                  ) : (
+                    <>
+                      Add to Collection Library
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
           </div>
         </div>
