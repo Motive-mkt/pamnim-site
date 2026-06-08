@@ -5,6 +5,8 @@ import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
 import { useCMS } from '../hooks/useCMS';
 import { motion, AnimatePresence } from 'motion/react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../lib/firebase';
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -40,6 +42,21 @@ export default function Header() {
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
+
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Monitor live session and check if the user is the administrator
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      const adminEmails = ['jessescaledyou@gmail.com', 'your-admin-email@example.com'];
+      if (currentUser && currentUser.email && adminEmails.includes(currentUser.email.toLowerCase().trim())) {
+        setIsAdmin(true);
+      } else {
+        setIsAdmin(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const headerBg = isScrolled 
     ? 'bg-cream/95 backdrop-blur-md py-4 shadow-sm' 
@@ -77,6 +94,18 @@ export default function Header() {
                 {link.name}
               </Link>
             ))}
+            {isAdmin && (
+              <Link 
+                to="/admin" 
+                id="cmd-dashboard-desktop"
+                className={cn(
+                  "font-bold text-xs uppercase tracking-[0.2em] transition-all relative py-1", 
+                  displayLight ? "text-white/80 hover:text-white" : "text-charcoal/80 hover:text-charcoal"
+                )}
+              >
+                ✦ COMMAND DASHBOARD
+              </Link>
+            )}
           </nav>
 
           {/* Contact Actions Section */}
@@ -173,6 +202,20 @@ export default function Header() {
                       </Link>
                     </motion.div>
                   ))}
+                  {isAdmin && (
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: navLinks.length * 0.08 }}
+                    >
+                      <Link
+                        to="/admin"
+                        className="font-bold text-xs uppercase tracking-[0.2em] text-ochre/80 hover:text-ochre transition-colors block py-2"
+                      >
+                        ✦ COMMAND DASHBOARD
+                      </Link>
+                    </motion.div>
+                  )}
                 </nav>
               </div>
 

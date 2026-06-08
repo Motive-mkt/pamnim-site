@@ -13,10 +13,13 @@ import ContactPage from './pages/Contact';
 import ServicesPage from './pages/Services';
 import { useAuth } from './hooks/useAuth';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
+  const { user, profile, loading } = useAuth();
   if (loading) return null;
   if (!user) return <Navigate to="/login" />;
+  if (adminOnly && profile?.role !== 'owner') {
+    return <Navigate to="/" />;
+  }
   return <>{children}</>;
 }
 
@@ -34,6 +37,14 @@ export default function App() {
           path="/dashboard" 
           element={
             <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin" 
+          element={
+            <ProtectedRoute adminOnly={true}>
               <Dashboard />
             </ProtectedRoute>
           } 

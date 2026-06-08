@@ -228,7 +228,15 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
         }
       }
       
-      navigate('/');
+      // Check if user is the administrator
+      const adminEmails = ['jessescaledyou@gmail.com', 'your-admin-email@example.com'];
+      const isAdminEmail = user && user.email && adminEmails.includes(user.email.toLowerCase().trim());
+      
+      if (isAdminEmail) {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
     } catch (err: any) {
       console.error(err);
       let errorMessage = err.message;
