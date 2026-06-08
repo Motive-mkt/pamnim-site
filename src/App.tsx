@@ -8,6 +8,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import OwnerDashboard from './pages/dashboards/OwnerDashboard';
 import PortfolioPage from './pages/Portfolio';
 import ContactPage from './pages/Contact';
 import ServicesPage from './pages/Services';
@@ -17,7 +18,11 @@ function ProtectedRoute({ children, adminOnly = false }: { children: React.React
   const { user, profile, loading } = useAuth();
   if (loading) return null;
   if (!user) return <Navigate to="/login" />;
-  if (adminOnly && profile?.role !== 'owner') {
+
+  const adminEmails = ['jessescaledyou@gmail.com', 'your-admin-email@example.com'];
+  const isAdminEmail = user.email && adminEmails.includes(user.email.toLowerCase().trim());
+
+  if (adminOnly && profile?.role !== 'owner' && !isAdminEmail) {
     return <Navigate to="/" />;
   }
   return <>{children}</>;
@@ -45,7 +50,7 @@ export default function App() {
           path="/admin" 
           element={
             <ProtectedRoute adminOnly={true}>
-              <Dashboard />
+              <OwnerDashboard />
             </ProtectedRoute>
           } 
         />
