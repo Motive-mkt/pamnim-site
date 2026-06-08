@@ -27,7 +27,7 @@ export default function PortfolioPage() {
   useEffect(() => {
     async function fetchProjects() {
       try {
-        const q = query(collection(db, 'portfolio'), orderBy('createdAt', 'desc'));
+        const q = query(collection(db, 'portfolio_assets'), orderBy('createdAt', 'desc'));
         const snap = await getDocs(q);
         const fetched = snap.docs.map(doc => {
           const data = doc.data();
@@ -129,10 +129,12 @@ export default function PortfolioPage() {
                           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                           referrerPolicy="no-referrer"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent flex flex-col justify-end p-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <span className="text-ochre-light text-xs font-bold uppercase tracking-widest mb-1">{project.category}</span>
-                          <h3 className="text-white text-2xl font-bold tracking-tight">{project.title}</h3>
-                        </div>
+                        {(project.category || project.title) && (
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent flex flex-col justify-end p-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            {project.category && <span className="text-ochre-light text-xs font-bold uppercase tracking-widest mb-1">{project.category}</span>}
+                            {project.title && <h3 className="text-white text-2xl font-bold tracking-tight">{project.title}</h3>}
+                          </div>
+                        )}
                       </motion.div>
                     ))}
                   </div>
@@ -164,10 +166,12 @@ export default function PortfolioPage() {
                               <div className="absolute inset-0 bg-gradient-to-tr from-charcoal to-black/30 mix-blend-multiply z-10" />
                               
                               {/* Overlay Details */}
-                              <div className="absolute bottom-6 left-6 right-6 z-20 text-white pointer-events-none">
-                                <span className="text-ochre-light text-xs font-bold uppercase tracking-widest block mb-1">{project.category}</span>
-                                <h3 className="text-xl md:text-2xl font-bold tracking-tight">{project.title}</h3>
-                              </div>
+                              {(project.category || project.title) && (
+                                <div className="absolute bottom-6 left-6 right-6 z-20 text-white pointer-events-none">
+                                  {project.category && <span className="text-ochre-light text-xs font-bold uppercase tracking-widest block mb-1">{project.category}</span>}
+                                  {project.title && <h3 className="text-xl md:text-2xl font-bold tracking-tight">{project.title}</h3>}
+                                </div>
+                              )}
 
                               {/* Elegant play button overlay */}
                               <button 

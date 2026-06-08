@@ -80,7 +80,7 @@ service cloud.firestore {
       allow delete: if isOwner();
     }
 
-    match /portfolio/{itemId} {
+    match /portfolio_assets/{itemId} {
       allow read: if true;
       allow create, update: if isOwner() && isValidMediaItem(request.resource.data);
       allow delete: if isOwner();

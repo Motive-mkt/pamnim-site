@@ -124,9 +124,9 @@
       "schema": "MediaItem",
       "description": "Home page gallery images."
     },
-    "portfolio": {
+    "portfolio_assets": {
       "schema": "MediaItem",
-      "description": "Full portfolio collection."
+      "description": "Full portfolio assets collection."
     },
     "inquiries": {
       "schema": "Inquiry",

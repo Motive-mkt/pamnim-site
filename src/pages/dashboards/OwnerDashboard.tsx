@@ -77,7 +77,7 @@ export default function OwnerDashboard() {
   });
 
   // Media state
-  const [mediaType, setMediaType] = useState<'gallery' | 'portfolio'>('gallery');
+  const [mediaType, setMediaType] = useState<'gallery' | 'portfolio_assets'>('gallery');
   const [showMediaModal, setShowMediaModal] = useState(false);
   const [newMedia, setNewMedia] = useState({ title: '', category: '', image: '' });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -233,7 +233,7 @@ export default function OwnerDashboard() {
     const gallerySnap = await getDocs(query(collection(db, 'gallery'), orderBy('createdAt', 'desc')));
     setGallery(gallerySnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
-    const portfolioSnap = await getDocs(query(collection(db, 'portfolio'), orderBy('createdAt', 'desc')));
+    const portfolioSnap = await getDocs(query(collection(db, 'portfolio_assets'), orderBy('createdAt', 'desc')));
     setPortfolio(portfolioSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
   };
 
@@ -246,8 +246,8 @@ export default function OwnerDashboard() {
       try {
         const isVideo = newMedia.image.endsWith('.mp4') || newMedia.image.includes('video');
         await addDoc(collection(db, mediaType), {
-          title: newMedia.title || 'Curated Space',
-          category: newMedia.category || 'Luxury Design',
+          title: newMedia.title.trim() || "",
+          category: newMedia.category.trim() || "",
           image: newMedia.image,
           type: isVideo ? 'video' : 'image',
           createdAt: new Date().toISOString()
@@ -261,7 +261,7 @@ export default function OwnerDashboard() {
       return;
     }
 
-    // Option B: Multiple Files Upload to Cloudinary via Express Backend
+    // Option B: Multiple Files Upload to Cloudinary via Direct Endpoint
     if (selectedFiles.length === 0) {
       alert("Please select or drop at least one file to upload.");
       return;
@@ -275,6 +275,16 @@ export default function OwnerDashboard() {
     setUploadProgress(initialProgress);
 
     try {
+      const cloudName = ((import.meta as any).env?.VITE_CLOUDINARY_CLOUD_NAME as string) || '';
+      const preset = ((import.meta as any).env?.VITE_CLOUDINARY_UPLOAD_PRESET as string) || '';
+
+      if (!cloudName) {
+        throw new Error("VITE_CLOUDINARY_CLOUD_NAME is not configured.");
+      }
+      if (!preset) {
+        throw new Error("VITE_CLOUDINARY_UPLOAD_PRESET is not configured.");
+      }
+
       // Seq upload loop to guarantee order and avoid parallel overloading
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
@@ -285,31 +295,36 @@ export default function OwnerDashboard() {
           [file.name]: { status: 'uploading', progress: 20 }
         }));
 
-        const base64Data = await fileToBase64(file);
-
         setUploadProgress(prev => ({
           ...prev,
           [file.name]: { status: 'uploading', progress: 50 }
         }));
 
-        const preset = ((import.meta as any).env?.VITE_CLOUDINARY_UPLOAD_PRESET as string) || '';
-        const response = await fetch('/api/media/upload', {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', preset);
+
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            file: base64Data,
-            type: isVideo ? 'video' : 'image',
-            uploadPreset: preset
-          })
+          body: formData
         });
 
         if (!response.ok) {
-          throw new Error(await response.text());
+          throw new Error(`Cloudinary responded with ${response.status}: ${await response.text()}`);
         }
 
         const resData = await response.json();
-        if (!resData.success) {
-          throw new Error(resData.error || "Processing failed");
+        let secureUrl = resData.secure_url || resData.url;
+        if (!secureUrl) {
+          throw new Error("Cloudinary file upload failed to return a secure URL");
+        }
+
+        // Apply automatic luxury formatting optimization transformations from our standards
+        if (secureUrl.includes('cloudinary.com') && !secureUrl.includes('/q_auto')) {
+          const assetSection = isVideo ? '/video/upload/' : '/image/upload/';
+          if (secureUrl.includes(assetSection)) {
+            secureUrl = secureUrl.replace(assetSection, `${assetSection}q_auto:good,f_auto/`);
+          }
         }
 
         setUploadProgress(prev => ({
@@ -318,14 +333,14 @@ export default function OwnerDashboard() {
         }));
 
         // Determine title
-        const itemTitle = selectedFiles.length > 1
-          ? `${newMedia.title || file.name.split('.')[0]} ${i + 1}`
-          : (newMedia.title || file.name.split('.')[0]);
+        const itemTitle = newMedia.title.trim()
+          ? (selectedFiles.length > 1 ? `${newMedia.title.trim()} ${i + 1}` : newMedia.title.trim())
+          : "";
 
         await addDoc(collection(db, mediaType), {
           title: itemTitle,
-          category: newMedia.category || 'Luxury Interiors',
-          image: resData.url,
+          category: newMedia.category.trim() || "",
+          image: secureUrl,
           type: isVideo ? 'video' : 'image',
           createdAt: new Date().toISOString()
         });
@@ -666,8 +681,8 @@ export default function OwnerDashboard() {
                     Home Gallery
                   </button>
                   <button 
-                    onClick={() => setMediaType('portfolio')}
-                    className={cn("px-4 py-1.5 rounded-lg text-sm font-bold transition-all", mediaType === 'portfolio' ? "bg-ochre text-white" : "bg-cream text-charcoal/40")}
+                    onClick={() => setMediaType('portfolio_assets')}
+                    className={cn("px-4 py-1.5 rounded-lg text-sm font-bold transition-all", mediaType === 'portfolio_assets' ? "bg-ochre text-white" : "bg-cream text-charcoal/40")}
                   >
                     Full Portfolio
                   </button>
@@ -707,8 +722,8 @@ export default function OwnerDashboard() {
                           </button>
                         </div>
                         <div className="text-white">
-                          <p className="text-xs font-bold uppercase text-ochre tracking-widest">{item.category}</p>
-                          <p className="font-bold truncate text-sm">{item.title}</p>
+                          <p className="text-xs font-bold uppercase text-ochre tracking-widest">{item.category || "(No Category)"}</p>
+                          <p className="font-bold truncate text-sm">{item.title || "(No Title)"}</p>
                         </div>
                      </div>
                   </div>
@@ -1056,31 +1071,6 @@ export default function OwnerDashboard() {
             </p>
 
             <form onSubmit={handleAddMedia} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1.5">Collection Title</label>
-                  <input 
-                    type="text" required={selectedFiles.length <= 1}
-                    placeholder="E.g. Modern Living Room"
-                    value={newMedia.title}
-                    onChange={(e) => setNewMedia({...newMedia, title: e.target.value})}
-                    disabled={isUploading}
-                    className="w-full p-4 bg-cream border border-charcoal/5 rounded-2xl focus:outline-none focus:border-ochre text-sm transition-all disabled:opacity-50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1.5">Style Category</label>
-                  <input 
-                    type="text" required
-                    placeholder="E.g. Minimalist / Luxury / Classic"
-                    value={newMedia.category}
-                    onChange={(e) => setNewMedia({...newMedia, category: e.target.value})}
-                    disabled={isUploading}
-                    className="w-full p-4 bg-cream border border-charcoal/5 rounded-2xl focus:outline-none focus:border-ochre text-sm transition-all disabled:opacity-50"
-                  />
-                </div>
-              </div>
-
               {/* Seamless input selection controller toggle */}
               <div className="flex justify-between items-center bg-cream/50 p-2 rounded-xl text-xs font-bold">
                 <span className="text-charcoal/50 uppercase tracking-widest pl-2">SELECT SOURCE METHOD</span>

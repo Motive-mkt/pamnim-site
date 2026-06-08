@@ -75,7 +75,7 @@ export const PortfolioService = {
    * Fetches published portfolio items ordered by newest creation date securely.
    */
   async getPortfolioItems(): Promise<PortfolioItem[]> {
-    const path = 'portfolio';
+    const path = 'portfolio_assets';
     try {
       const portfolioRef = collection(db, path);
       const portfolioQuery = query(portfolioRef, orderBy('createdAt', 'desc'));
@@ -94,7 +94,7 @@ export const PortfolioService = {
    * Real-time subscription to portfolio updates with robust permission-error interception.
    */
   subscribeToPortfolio(onUpdate: (items: PortfolioItem[]) => void, onError?: (err: Error) => void): () => void {
-    const path = 'portfolio';
+    const path = 'portfolio_assets';
     const portfolioRef = collection(db, path);
     const portfolioQuery = query(portfolioRef, orderBy('createdAt', 'desc'));
 

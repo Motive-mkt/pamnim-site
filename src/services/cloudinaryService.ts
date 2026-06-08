@@ -46,30 +46,36 @@ export async function uploadMediaToProxy(
   uploadPreset?: string
 ): Promise<{ success: boolean; url: string; isSimulated: boolean; error?: string }> {
   try {
-    const response = await fetch('/api/media/upload', {
+    const cloudName = (import.meta as any).env?.VITE_CLOUDINARY_CLOUD_NAME;
+    const preset = uploadPreset || (import.meta as any).env?.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+    if (!cloudName) {
+      throw new Error("VITE_CLOUDINARY_CLOUD_NAME is not configured.");
+    }
+
+    const formData = new FormData();
+    formData.append('file', fileData);
+    if (preset) {
+      formData.append('upload_preset', preset);
+    }
+
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        file: fileData,
-        type,
-        uploadPreset,
-      }),
+      body: formData,
     });
 
     if (!response.ok) {
-      throw new Error(`Server responded with state ${response.status}: ${await response.text()}`);
+      throw new Error(`Cloudinary responded with state ${response.status}: ${await response.text()}`);
     }
 
     const data = await response.json();
     return {
-      success: !!data.success,
-      url: optimizeCloudinaryUrl(data.url, type),
-      isSimulated: !!data.isSimulated,
+      success: true,
+      url: optimizeCloudinaryUrl(data.secure_url || data.url, type),
+      isSimulated: false,
     };
   } catch (error: any) {
-    console.error("Cloudinary service proxy upload failure:", error);
+    console.error("Cloudinary service direct upload failure:", error);
     return {
       success: false,
       url: '',
