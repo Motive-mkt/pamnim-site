@@ -3,6 +3,7 @@ import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export interface CMSContent {
+  logoUrl?: string;
   hero: {
     title: string;
     subheadline: string;
@@ -19,6 +20,7 @@ export interface CMSContent {
 }
 
 const DEFAULT_CONTENT: CMSContent = {
+  logoUrl: "",
   hero: {
     title: "Spaces designed to feel like home.",
     subheadline: "Pamnim Interiors crafts clean, functional and beautifully styled residential interiors — from layout planning to final finishing.",
@@ -80,6 +82,7 @@ export function useCMS() {
       if (doc.exists()) {
         const data = doc.data();
         setContent({
+          logoUrl: data.logoUrl || DEFAULT_CONTENT.logoUrl,
           hero: data.hero || DEFAULT_CONTENT.hero,
           contact: data.contact || DEFAULT_CONTENT.contact,
           services: data.services && data.services.length > 0 ? data.services : DEFAULT_CONTENT.services,

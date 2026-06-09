@@ -102,6 +102,7 @@ export default function OwnerDashboard() {
   // CMS Edit State
   const [cmsHero, setCmsHero] = useState(content.hero);
   const [cmsContact, setCmsContact] = useState(content.contact);
+  const [cmsLogoUrl, setCmsLogoUrl] = useState(content.logoUrl || "");
 
   // Gemini Copywriter Assistant State
   const [refinement, setRefinement] = useState<{
@@ -191,6 +192,7 @@ export default function OwnerDashboard() {
     if (content.services) {
       setCmsServices(content.services);
     }
+    setCmsLogoUrl(content.logoUrl || "");
   }, [content]);
 
   const fetchData = async () => {
@@ -218,15 +220,6 @@ export default function OwnerDashboard() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
   };
 
   const fetchMedia = async () => {
@@ -275,8 +268,8 @@ export default function OwnerDashboard() {
     setUploadProgress(initialProgress);
 
     try {
-      const cloudName = ((import.meta as any).env?.VITE_CLOUDINARY_CLOUD_NAME as string) || '';
-      const preset = ((import.meta as any).env?.VITE_CLOUDINARY_UPLOAD_PRESET as string) || '';
+      const cloudName = ((import.meta as any).env?.VITE_CLOUDINARY_CLOUD_NAME as string) || 'djwrpottl';
+      const preset = ((import.meta as any).env?.VITE_CLOUDINARY_UPLOAD_PRESET as string) || 'Em-erald_preset';
 
       if (!cloudName) {
         throw new Error("VITE_CLOUDINARY_CLOUD_NAME is not configured.");
@@ -303,8 +296,9 @@ export default function OwnerDashboard() {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('upload_preset', preset);
+        formData.append('folder', 'Em-erald_assets');
 
-        const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${isVideo ? 'video' : 'image'}/upload`, {
           method: 'POST',
           body: formData
         });
@@ -415,13 +409,19 @@ export default function OwnerDashboard() {
   };
 
   const handleSaveCMS = async () => {
-    await setDoc(doc(db, 'siteContent', 'homepage'), {
-      ...content,
-      hero: cmsHero,
-      contact: cmsContact,
-      services: cmsServices
-    });
-    alert('Homepage and contact info updated!');
+    try {
+      await setDoc(doc(db, 'siteContent', 'homepage'), {
+        ...content,
+        hero: cmsHero,
+        contact: cmsContact,
+        services: cmsServices,
+        logoUrl: cmsLogoUrl.trim()
+      });
+      alert('Homepage, contact, and logo settings updated successfully!');
+    } catch (err: any) {
+      console.error(err);
+      alert('Error updating configuration: ' + (err.message || err));
+    }
   };
 
   const handleSaveServices = async (updatedServicesList?: any[]) => {
@@ -903,6 +903,23 @@ export default function OwnerDashboard() {
                        )}
                      </div>
                    )}
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <h3 className="text-lg font-bold text-charcoal/40 uppercase tracking-widest border-b border-charcoal/5 pb-2">Brand Settings</h3>
+                <div>
+                   <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Unified Logo Image URL</label>
+                   <p className="text-xs text-charcoal/50 mb-2">
+                     Provide a public image/logo URL. Left blank, the site defaults to "Em-erald Interiors" text.
+                   </p>
+                   <input 
+                     type="text"
+                     placeholder="E.g. https://res.cloudinary.com/.../logo.png"
+                     value={cmsLogoUrl}
+                     onChange={(e) => setCmsLogoUrl(e.target.value)}
+                     className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre"
+                   />
                 </div>
               </div>
 
