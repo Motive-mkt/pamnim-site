@@ -46,8 +46,21 @@ export async function uploadMediaToProxy(
   uploadPreset?: string
 ): Promise<{ success: boolean; url: string; isSimulated: boolean; error?: string }> {
   try {
-    const cloudName = (import.meta as any).env?.VITE_CLOUDINARY_CLOUD_NAME;
-    const preset = uploadPreset || (import.meta as any).env?.VITE_CLOUDINARY_UPLOAD_PRESET;
+    let cloudName = (import.meta as any).env?.VITE_CLOUDINARY_CLOUD_NAME;
+    let preset = uploadPreset || (import.meta as any).env?.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+    if (!cloudName || !preset) {
+      try {
+        const configRes = await fetch('/api/config/cloudinary');
+        if (configRes.ok) {
+          const configData = await configRes.json();
+          if (configData.cloudName) cloudName = configData.cloudName;
+          if (configData.uploadPreset) preset = configData.uploadPreset;
+        }
+      } catch (configErr) {
+        console.warn("Failed to fetch runtime backend configuration:", configErr);
+      }
+    }
 
     if (!cloudName) {
       throw new Error("VITE_CLOUDINARY_CLOUD_NAME is not configured.");

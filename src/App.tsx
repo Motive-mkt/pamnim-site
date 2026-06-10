@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -13,6 +13,7 @@ import PortfolioPage from './pages/Portfolio';
 import ContactPage from './pages/Contact';
 import ServicesPage from './pages/Services';
 import { useAuth } from './hooks/useAuth';
+import PortfolioAssistant from './components/PortfolioAssistant';
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
   const { user, profile, loading } = useAuth();
@@ -28,9 +29,15 @@ function ProtectedRoute({ children, adminOnly = false }: { children: React.React
   return <>{children}</>;
 }
 
-export default function App() {
+function AppContent() {
+  const location = useLocation();
+  const isAdminOrDashboard = location.pathname.startsWith('/admin') || 
+                             location.pathname.startsWith('/dashboard') || 
+                             location.pathname === '/login' || 
+                             location.pathname === '/signup';
+
   return (
-    <Router>
+    <>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
@@ -55,6 +62,15 @@ export default function App() {
           } 
         />
       </Routes>
+      {!isAdminOrDashboard && <PortfolioAssistant />}
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }

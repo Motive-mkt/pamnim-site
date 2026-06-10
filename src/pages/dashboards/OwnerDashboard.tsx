@@ -275,14 +275,27 @@ export default function OwnerDashboard() {
     setUploadProgress(initialProgress);
 
     try {
-      const cloudName = ((import.meta as any).env?.VITE_CLOUDINARY_CLOUD_NAME as string) || '';
-      const preset = ((import.meta as any).env?.VITE_CLOUDINARY_UPLOAD_PRESET as string) || '';
+      let cloudName = ((import.meta as any).env?.VITE_CLOUDINARY_CLOUD_NAME as string) || '';
+      let preset = ((import.meta as any).env?.VITE_CLOUDINARY_UPLOAD_PRESET as string) || '';
+
+      if (!cloudName || !preset) {
+        try {
+          const configRes = await fetch('/api/config/cloudinary');
+          if (configRes.ok) {
+            const configData = await configRes.json();
+            if (configData.cloudName) cloudName = configData.cloudName;
+            if (configData.uploadPreset) preset = configData.uploadPreset;
+          }
+        } catch (configErr) {
+          console.warn("Failed to fetch runtime backend configuration:", configErr);
+        }
+      }
 
       if (!cloudName) {
-        throw new Error("VITE_CLOUDINARY_CLOUD_NAME is not configured.");
+        throw new Error("VITE_CLOUDINARY_CLOUD_NAME is not configured. Please define CLOUDINARY_CLOUD_NAME in setting secrets.");
       }
       if (!preset) {
-        throw new Error("VITE_CLOUDINARY_UPLOAD_PRESET is not configured.");
+        throw new Error("VITE_CLOUDINARY_UPLOAD_PRESET is not configured. Please define VITE_CLOUDINARY_UPLOAD_PRESET in setting secrets.");
       }
 
       // Seq upload loop to guarantee order and avoid parallel overloading

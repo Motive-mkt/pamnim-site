@@ -85,6 +85,106 @@ async function startServer() {
     }
   });
 
+  // Dedicated AI Portfolio Assistant Endpoint for Pamnim Interiors
+  app.post("/api/portfolio-chat", async (req, res) => {
+    try {
+      const { message, history } = req.body;
+      if (!message) {
+        return res.status(400).json({ error: "Missing message content" });
+      }
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        console.warn("GEMINI_API_KEY is not configured. Falling back to simulated luxury showroom convo.");
+        const lastUserMessage = message.trim();
+        let simulatedReply = "Welcome to Pamnim Interiors. We design luxury spaces characterized by crisp structural lines and a delicate palette of warm creams. Would you like to connect directly on WhatsApp to learn more?";
+        
+        const lowerMsg = lastUserMessage.toLowerCase();
+        if (lowerMsg.includes("portfolio") || lowerMsg.includes("work") || lowerMsg.includes("project") || lowerMsg.includes("gallery")) {
+          simulatedReply = "Our portfolio features beautifully refined residential assets, modern kitchens, and high-end warm minimalist corporate layouts. You can scroll through our portfolio on this page or chat with us on WhatsApp to discuss custom renderings.";
+         } else if (lowerMsg.includes("price") || lowerMsg.includes("cost") || lowerMsg.includes("hire") || lowerMsg.includes("book") || lowerMsg.includes("consult")) {
+          simulatedReply = "We provide end-to-end bespoke interior architecture. Please use the WhatsApp button on the webpage to connect directly and schedule our custom assessment!";
+        } else if (lowerMsg.includes("service") || lowerMsg.includes("renovat") || lowerMsg.includes("styl")) {
+          simulatedReply = "We offer home spatial planning, color styling, bespoke custom furnishing accessories, and direct renovation updates. Let's design something marvelous; press the WhatsApp button to proceed.";
+        }
+
+        return res.json({
+          success: true,
+          text: simulatedReply,
+          isSimulated: true
+        });
+      }
+
+      const { GoogleGenAI } = await import("@google/genai");
+      const ai = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+
+      const systemInstruction = 
+        "You are the dedicated AI Portfolio Assistant for 'Pamnim Interiors,' a luxury interior design studio specializing in crafting high-end residential and commercial spaces using a refined, warm minimalist aesthetic.\n\n" +
+        "OPERATIONAL CONSTRAINTS (CRITICAL TO PREVENT SYSTEM CONFLICTS):\n" +
+        "1. NO FRONT-END DATA MANIPULATION: You are a pure conversational interface. Never write, modify, or attempt to delete data in Firebase Firestore, and never attempt to handle media files or upload directly to Cloudinary.\n" +
+        "2. CONVERSION FOCUS: Your ultimate goal is to guide qualified leads to click the primary WhatsApp button on the webpage UI. If a user wants to book, purchase, hire, or request pricing, politely guide them to use the WhatsApp link/button provided on the screen. Do not simulate a checkout or payment process.\n" +
+        "3. NO FAKE LINK GENERATION: Never invent URLs or predict image/video paths. If a user asks to see a project, describe it conceptually based on the context provided, and tell them to look at the portfolio section on the page.\n" +
+        "4. BRIEF RESPONSES: Keep answers under 3 sentences where possible to fit neatly inside a standard web chat widget without causing layout shifts.\n\n" +
+        "Tone and Profile:\n" +
+        "- Professional, warm, helpful, concise, and incredibly engaging.\n" +
+        "- Focus on warm minimalism, natural raw textures, creams, charcoals, emerald highlights, spatial luxury.\n" +
+        "- Avoid excessive exclamation marks, cheesy marketing terminology, and AI self-reference.";
+
+      // Structure chat contents
+      const contents: any[] = [];
+      if (Array.isArray(history)) {
+        for (const turn of history) {
+          if (turn.role === "user" || turn.role === "model") {
+            contents.push({
+              role: turn.role,
+              parts: [{ text: turn.text || "" }]
+            });
+          }
+        }
+      }
+      // Add current message
+      contents.push({
+        role: "user",
+        parts: [{ text: message }]
+      });
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents,
+        config: {
+          systemInstruction,
+          temperature: 0.7,
+        }
+      });
+
+      const aiText = response.text?.trim() || "";
+
+      return res.json({
+        success: true,
+        text: aiText,
+        isSimulated: false
+      });
+    } catch (error: any) {
+      console.error("Gemini portfolio chat failure:", error);
+      return res.status(500).json({ error: error.message || "Failed to process chat message" });
+    }
+  });
+
+  // Dynamic Cloudinary Config API fallback
+  app.get("/api/config/cloudinary", (req, res) => {
+    return res.json({
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME || "djwrpottl",
+      uploadPreset: process.env.VITE_CLOUDINARY_UPLOAD_PRESET || "pamnim_preset"
+    });
+  });
+
   // Secure Cloudinary Media Upload Handler
   app.post("/api/media/upload", async (req, res) => {
     try {
