@@ -257,6 +257,7 @@ export default function OwnerDashboard() {
         fetchMedia();
       } catch (err) {
         console.error(err);
+        handleFirestoreError(err, OperationType.WRITE, mediaType);
       }
       return;
     }
@@ -373,8 +374,8 @@ export default function OwnerDashboard() {
 
     } catch (err: any) {
       console.error("Bulk upload error details:", err);
-      alert(`Upload action aborted: ${err.message || err}`);
       setIsUploading(false);
+      handleFirestoreError(err, OperationType.WRITE, mediaType);
     }
   };
 

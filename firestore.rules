@@ -19,7 +19,7 @@ service cloud.firestore {
     }
     
     function isOwner() { 
-      return hasRole('owner') || (isSignedIn() && 'email' in request.auth.token && (request.auth.token.email.matches('(?i)^jessescaledyou@gmail[.]com$') || request.auth.token.email.matches('(?i)^your-admin-email@example[.]com$'))); 
+      return (isSignedIn() && 'email' in request.auth.token && (request.auth.token.email.matches('(?i)^jessescaledyou@gmail[.]com$') || request.auth.token.email.matches('(?i)^your-admin-email@example[.]com$'))) || hasRole('owner'); 
     }
     function isEmployee() {
       return isSignedIn() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
@@ -34,7 +34,7 @@ service cloud.firestore {
       return data.keys().hasAll(['title', 'category', 'image', 'createdAt']) &&
              data.title is string && data.title.size() <= 200 &&
              data.category is string && data.category.size() <= 100 &&
-             data.image is string && data.image.size() <= 1000 &&
+             data.image is string && data.image.size() <= 2000 &&
              data.createdAt is string;
     }
 
