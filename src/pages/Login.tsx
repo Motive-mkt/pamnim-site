@@ -204,26 +204,39 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
         }
       } else {
         // Just signing in, make sure profile exists, otherwise load/create if needed as fallback (existing logic)
-        let docSnap;
+        let docSnap: any;
         try {
           docSnap = await getDoc(docRef);
         } catch (err) {
           handleFirestoreError(err, OperationType.GET, profilePath);
         }
 
+        const adminEmails = ['jessescaledyou@gmail.com', 'your-admin-email@example.com'];
+        const isInitialAdmin = user && user.email && adminEmails.includes(user.email.toLowerCase().trim());
+
         if (!docSnap || !docSnap.exists()) {
-          // Fallback if signin succeeds but no profile exists, create a default client profile
+          // Fallback if signin succeeds but no profile exists, create a default profile / owner profile
           try {
             await setDoc(docRef, {
               uid: user.uid,
               email: user.email,
-              name: user.displayName || 'Client',
-              role: 'client',
+              name: user.displayName || (isInitialAdmin ? 'Owner' : 'Client'),
+              role: isInitialAdmin ? 'owner' : 'client',
               status: 'active',
               createdAt: new Date().toISOString()
             });
           } catch (err) {
             handleFirestoreError(err, OperationType.WRITE, profilePath);
+          }
+        } else if (isInitialAdmin && docSnap.data()?.role !== 'owner') {
+          // Auto-upgrade client role to owner if they are a hardcoded admin
+          try {
+            await setDoc(docRef, {
+              uid: user.uid,
+              role: 'owner'
+            }, { merge: true });
+          } catch (err) {
+            console.warn("Could not auto-upgrade admin profile role in db:", err);
           }
         }
       }

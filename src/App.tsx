@@ -13,7 +13,6 @@ import PortfolioPage from './pages/Portfolio';
 import ContactPage from './pages/Contact';
 import ServicesPage from './pages/Services';
 import { useAuth } from './hooks/useAuth';
-import PortfolioAssistant from './components/PortfolioAssistant';
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
   const { user, profile, loading } = useAuth();
@@ -62,7 +61,6 @@ function AppContent() {
           } 
         />
       </Routes>
-      {!isAdminOrDashboard && <PortfolioAssistant />}
     </>
   );
 }

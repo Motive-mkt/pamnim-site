@@ -18,7 +18,9 @@ service cloud.firestore {
       return isSignedIn() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && getProfile(request.auth.uid).role == role;
     }
     
-    function isOwner() { return hasRole('owner'); }
+    function isOwner() { 
+      return hasRole('owner') || (isSignedIn() && 'email' in request.auth.token && (request.auth.token.email.toLowerCase() == 'jessescaledyou@gmail.com' || request.auth.token.email.toLowerCase() == 'your-admin-email@example.com')); 
+    }
     function isEmployee() {
       return isSignedIn() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
              (getProfile(request.auth.uid).role == 'senior_designer' || 
