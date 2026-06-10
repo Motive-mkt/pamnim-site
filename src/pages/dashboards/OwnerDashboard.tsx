@@ -306,28 +306,39 @@ export default function OwnerDashboard() {
           [file.name]: { status: 'uploading', progress: 20 }
         }));
 
+        // Convert selected file to base64 data URL
+        const base64Data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (err) => reject(err);
+          reader.readAsDataURL(file);
+        });
+
         setUploadProgress(prev => ({
           ...prev,
           [file.name]: { status: 'uploading', progress: 50 }
         }));
 
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', preset);
-
-        const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${isVideo ? 'video' : 'image'}/upload`, {
+        const response = await fetch('/api/media/upload', {
           method: 'POST',
-          body: formData
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            file: base64Data,
+            type: isVideo ? 'video' : 'image',
+            uploadPreset: preset
+          })
         });
 
         if (!response.ok) {
-          throw new Error(`Cloudinary responded with ${response.status}: ${await response.text()}`);
+          throw new Error(`Media upload proxy responded with status ${response.status}: ${await response.text()}`);
         }
 
         const resData = await response.json();
-        let secureUrl = resData.secure_url || resData.url;
+        let secureUrl = resData.url;
         if (!secureUrl) {
-          throw new Error("Cloudinary file upload failed to return a secure URL");
+          throw new Error("Media upload proxy failed to return a secure URL");
         }
 
         // Apply automatic luxury formatting optimization transformations from our standards
@@ -1082,6 +1093,31 @@ export default function OwnerDashboard() {
             </p>
 
             <form onSubmit={handleAddMedia} className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold uppercase text-charcoal/40 tracking-wider">Asset Title (Optional)</label>
+                  <input 
+                    type="text"
+                    placeholder="e.g. Minimalist Master Bed"
+                    value={newMedia.title}
+                    onChange={(e) => setNewMedia({...newMedia, title: e.target.value})}
+                    disabled={isUploading}
+                    className="w-full p-3 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-xs font-semibold disabled:opacity-50"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold uppercase text-charcoal/40 tracking-wider">Category / Tag (Optional)</label>
+                  <input 
+                    type="text"
+                    placeholder="e.g. Living Space, Kitchen"
+                    value={newMedia.category}
+                    onChange={(e) => setNewMedia({...newMedia, category: e.target.value})}
+                    disabled={isUploading}
+                    className="w-full p-3 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-xs font-semibold disabled:opacity-50"
+                  />
+                </div>
+              </div>
+
               {/* Seamless input selection controller toggle */}
               <div className="flex justify-between items-center bg-cream/50 p-2 rounded-xl text-xs font-bold">
                 <span className="text-charcoal/50 uppercase tracking-widest pl-2">SELECT SOURCE METHOD</span>

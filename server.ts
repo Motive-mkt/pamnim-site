@@ -193,7 +193,7 @@ async function startServer() {
         return res.status(400).json({ error: "Missing file data" });
       }
 
-      const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+      const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME;
       const apiKey = process.env.CLOUDINARY_API_KEY;
       const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
@@ -302,6 +302,26 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
+
+    // Explicit catch-all SPA route with Vite HTML transform for dev mode
+    app.get("*", async (req, res, next) => {
+      const url = req.originalUrl;
+      if (url.startsWith("/api") || url.includes(".")) {
+        return next();
+      }
+      try {
+        const fs = await import("fs");
+        let template = fs.readFileSync(
+          path.resolve(process.cwd(), "index.html"),
+          "utf-8"
+        );
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ "Content-Type": "text/html" }).end(template);
+      } catch (e: any) {
+        vite.ssrFixStacktrace(e);
+        next(e);
+      }
+    });
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));

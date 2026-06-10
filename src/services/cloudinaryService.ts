@@ -46,45 +46,29 @@ export async function uploadMediaToProxy(
   uploadPreset?: string
 ): Promise<{ success: boolean; url: string; isSimulated: boolean; error?: string }> {
   try {
-    let cloudName = (import.meta as any).env?.VITE_CLOUDINARY_CLOUD_NAME || 'djwrpottl';
     let preset = uploadPreset || (import.meta as any).env?.VITE_CLOUDINARY_UPLOAD_PRESET || 'pamnim_preset';
 
-    if (cloudName === 'undefined' || !cloudName || preset === 'undefined' || !preset) {
-      try {
-        const configRes = await fetch('/api/config/cloudinary');
-        if (configRes.ok) {
-          const configData = await configRes.json();
-          if (configData.cloudName && configData.cloudName !== 'undefined') cloudName = configData.cloudName;
-          if (configData.uploadPreset && configData.uploadPreset !== 'undefined') preset = configData.uploadPreset;
-        }
-      } catch (configErr) {
-        console.warn("Failed to fetch runtime backend configuration:", configErr);
-      }
-    }
-
-    if (!cloudName || cloudName === 'undefined') cloudName = 'djwrpottl';
-    if (!preset || preset === 'undefined') preset = 'pamnim_preset';
-
-    const formData = new FormData();
-    formData.append('file', fileData);
-    if (preset) {
-      formData.append('upload_preset', preset);
-    }
-
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${type}/upload`, {
-      method: 'POST',
-      body: formData,
+    const response = await fetch('/api/media/upload', {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        file: fileData,
+        type: type,
+        uploadPreset: preset
+      })
     });
 
     if (!response.ok) {
-      throw new Error(`Cloudinary responded with state ${response.status}: ${await response.text()}`);
+      throw new Error(`Proxy upload failed with status ${response.status}: ${await response.text()}`);
     }
 
     const data = await response.json();
     return {
       success: true,
-      url: optimizeCloudinaryUrl(data.secure_url || data.url, type),
-      isSimulated: false,
+      url: optimizeCloudinaryUrl(data.url, type),
+      isSimulated: !!data.isSimulated,
     };
   } catch (error: any) {
     console.error("Cloudinary service direct upload failure:", error);
