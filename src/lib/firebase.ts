@@ -30,7 +30,7 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firestore explicitly targeting the custom database ID string
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true
-}, 'ai-studio-45edddbb-0a7b-4f16-9c51-feb6cf802ddd');
+}, 'ai-studio-396542db-a5b7-4b73-a209-846a866b09ab');
 export const auth = getAuth(app);
 export default app;
 

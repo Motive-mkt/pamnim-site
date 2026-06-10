@@ -59,7 +59,7 @@ export async function uploadMediaToProxy(
       formData.append('upload_preset', preset);
     }
 
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${type}/upload`, {
       method: 'POST',
       body: formData,
     });

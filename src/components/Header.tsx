@@ -75,19 +75,8 @@ export default function Header() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12 flex justify-between items-center text-charcoal transition-colors">
           {/* Logo */}
           <Link to="/" id="logo" className={cn("flex items-center gap-2 group cursor-pointer transition-colors shrink-0", displayLight ? "text-white" : "text-charcoal")}>
-            {content.logoUrl ? (
-              <img 
-                src={content.logoUrl} 
-                alt="Logo" 
-                className="h-8 md:h-10 object-contain max-w-[180px]" 
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <>
-                <Sparkle className={cn("w-5 h-5 md:w-6 md:h-6 transition-transform duration-300 group-hover:rotate-12", displayLight ? "text-ochre-light" : "text-ochre")} />
-                <span className="font-serif text-lg xs:text-xl md:text-2xl font-bold tracking-tight">Em-erald Interiors</span>
-              </>
-            )}
+            <Sparkle className={cn("w-5 h-5 md:w-6 md:h-6 transition-transform duration-300 group-hover:rotate-12", displayLight ? "text-ochre-light" : "text-ochre")} />
+            <span className="font-serif text-lg xs:text-xl md:text-2xl font-bold tracking-tight">Pamnim Interiors</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -105,6 +94,18 @@ export default function Header() {
                 {link.name}
               </Link>
             ))}
+            {isAdmin && (
+              <Link 
+                to="/admin" 
+                id="cmd-dashboard-desktop"
+                className={cn(
+                  "font-bold text-xs uppercase tracking-[0.2em] transition-all relative py-1", 
+                  displayLight ? "text-white/80 hover:text-white" : "text-charcoal/80 hover:text-charcoal"
+                )}
+              >
+                ✦ COMMAND DASHBOARD
+              </Link>
+            )}
           </nav>
 
           {/* Contact Actions Section */}
@@ -168,19 +169,8 @@ export default function Header() {
               <div>
                 <div className="flex justify-between items-center mb-12">
                   <div className="flex items-center gap-2">
-                    {content.logoUrl ? (
-                      <img 
-                        src={content.logoUrl} 
-                        alt="Logo" 
-                        className="h-8 object-contain max-w-[150px]" 
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <>
-                        <Sparkle className="w-5 h-5 text-ochre" />
-                        <span className="font-serif text-xl font-bold text-charcoal">Em-erald</span>
-                      </>
-                    )}
+                    <Sparkle className="w-5 h-5 text-ochre" />
+                    <span className="font-serif text-xl font-bold text-charcoal">Pamnim</span>
                   </div>
                   <button
                     onClick={() => setIsMobileMenuOpen(false)}
@@ -212,7 +202,20 @@ export default function Header() {
                       </Link>
                     </motion.div>
                   ))}
-                  {/* Admin link removed */}
+                  {isAdmin && (
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: navLinks.length * 0.08 }}
+                    >
+                      <Link
+                        to="/admin"
+                        className="font-bold text-xs uppercase tracking-[0.2em] text-ochre/80 hover:text-ochre transition-colors block py-2"
+                      >
+                        ✦ COMMAND DASHBOARD
+                      </Link>
+                    </motion.div>
+                  )}
                 </nav>
               </div>
 

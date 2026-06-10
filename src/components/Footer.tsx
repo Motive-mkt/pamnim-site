@@ -53,29 +53,14 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="pt-12 flex flex-col md:flex-row justify-between items-center gap-6">
           <Link to="/" className="flex items-center gap-2 text-white/40 hover:text-white/60 transition-all duration-300">
-            {content.logoUrl ? (
-              <img 
-                src={content.logoUrl} 
-                alt="Logo" 
-                className="h-6 object-contain opacity-60 hover:opacity-100 transition-opacity max-w-[120px]" 
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <>
-                <Sparkle className="w-5 h-5 text-ochre-light" />
-                <span className="font-serif text-lg font-bold">Em-erald Interiors</span>
-              </>
-            )}
+            <Sparkle className="w-5 h-5 text-ochre-light" />
+            <span className="font-serif text-lg font-bold">Pamnim Interiors</span>
           </Link>
           <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 text-sm text-white/40">
-            <p>© 2026 Em-erald Interiors. All rights reserved.</p>
+            <p>© 2026 Pamnim Interiors. All rights reserved.</p>
             <span className="hidden sm:inline h-3 w-[1px] bg-white/10" />
             <Link to="/login" className="hover:text-white transition-colors duration-300 font-sans tracking-wide">
               Client Portal
-            </Link>
-            <span className="hidden sm:inline h-3 w-[1px] bg-white/10" />
-            <Link to="/admin" className="hover:text-white/60 hover:text-white transition-colors duration-300 font-sans tracking-wide text-xs opacity-60">
-              Studio Dashboard
             </Link>
           </div>
         </div>

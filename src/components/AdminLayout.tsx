@@ -5,7 +5,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { auth } from '../lib/firebase';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { useCMS } from '../hooks/useCMS';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -14,7 +13,6 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({ children, activeTab }: AdminLayoutProps) {
   const { profile, isAdmin, isStaff } = useAuth();
-  const { content } = useCMS();
   const navigate = useNavigate();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
@@ -37,19 +35,8 @@ export default function AdminLayout({ children, activeTab }: AdminLayoutProps) {
       {/* Sidebar */}
       <aside className="w-64 bg-charcoal text-white hidden md:flex flex-col sticky top-0 h-screen">
         <Link to="/" className="p-8 flex items-center gap-2 group hover:opacity-80 transition-opacity">
-          {content.logoUrl ? (
-            <img 
-              src={content.logoUrl} 
-              alt="Logo" 
-              className="h-8 object-contain max-w-[150px]" 
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <>
-              <Sparkle className="w-6 h-6 text-ochre transition-transform group-hover:rotate-12" />
-              <span className="font-serif text-xl font-bold tracking-tight">Em-erald</span>
-            </>
-          )}
+          <Sparkle className="w-6 h-6 text-ochre transition-transform group-hover:rotate-12" />
+          <span className="font-serif text-xl font-bold tracking-tight">Pamnim</span>
         </Link>
 
         <nav className="flex-1 px-4 py-6 space-y-2">
