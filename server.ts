@@ -7,8 +7,9 @@ import crypto from "crypto";
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Handle ES Module and CommonJS compatibility for path resolution safely
+const __filename = typeof import.meta !== "undefined" && (import.meta as any).url ? fileURLToPath((import.meta as any).url) : "";
+const __dirname = path && __filename ? path.dirname(__filename) : "";
 
 async function startServer() {
   const app = express();
