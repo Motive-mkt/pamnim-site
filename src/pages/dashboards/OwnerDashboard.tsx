@@ -303,42 +303,92 @@ export default function OwnerDashboard() {
 
         setUploadProgress(prev => ({
           ...prev,
-          [file.name]: { status: 'uploading', progress: 20 }
+          [file.name]: { status: 'uploading', progress: 10 }
         }));
 
-        // Convert selected file to base64 data URL
-        const base64Data = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = (err) => reject(err);
-          reader.readAsDataURL(file);
-        });
+        let secureUrl = "";
 
-        setUploadProgress(prev => ({
-          ...prev,
-          [file.name]: { status: 'uploading', progress: 50 }
-        }));
+        try {
+          // Attempt High-Performance Direct Streaming Client-to-Cloudinary uploading
+          // This avoids Base64 CPU/RAM bottlenecks, skips double-hop server routing,
+          // and establishes a real-time progress bar.
+          secureUrl = await new Promise<string>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/${isVideo ? 'video' : 'image'}/upload`);
 
-        const response = await fetch('/api/media/upload', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            file: base64Data,
-            type: isVideo ? 'video' : 'image',
-            uploadPreset: preset
-          })
-        });
+            xhr.upload.onprogress = (event) => {
+              if (event.lengthComputable) {
+                // Map the XML upload progress from 10% up to 85% dynamically
+                const percentComplete = 10 + Math.round((event.loaded / event.total) * 75);
+                setUploadProgress(prev => ({
+                  ...prev,
+                  [file.name]: { status: 'uploading', progress: percentComplete }
+                }));
+              }
+            };
 
-        if (!response.ok) {
-          throw new Error(`Media upload proxy responded with status ${response.status}: ${await response.text()}`);
-        }
+            xhr.onload = () => {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                  const resData = JSON.parse(xhr.responseText);
+                  resolve(resData.secure_url || resData.url);
+                } catch (e) {
+                  reject(new Error("Failed to parse Cloudinary response"));
+                }
+              } else {
+                reject(new Error(`Direct upload responded with status ${xhr.status}`));
+              }
+            };
 
-        const resData = await response.json();
-        let secureUrl = resData.url;
-        if (!secureUrl) {
-          throw new Error("Media upload proxy failed to return a secure URL");
+            xhr.onerror = () => reject(new Error("Network connection error during direct upload"));
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', preset);
+            xhr.send(formData);
+          });
+        } catch (directUploadErr) {
+          console.warn("Direct Cloudinary upload failed or was not configured, falling back to secure Express proxy...", directUploadErr);
+
+          setUploadProgress(prev => ({
+            ...prev,
+            [file.name]: { status: 'uploading', progress: 20 }
+          }));
+
+          // Convert selected file to base64 data URL as fallback
+          const base64Data = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = (err) => reject(err);
+            reader.readAsDataURL(file);
+          });
+
+          setUploadProgress(prev => ({
+            ...prev,
+            [file.name]: { status: 'uploading', progress: 50 }
+          }));
+
+          const response = await fetch('/api/media/upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              file: base64Data,
+              type: isVideo ? 'video' : 'image',
+              uploadPreset: preset
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`Media upload proxy responded with status ${response.status}: ${await response.text()}`);
+          }
+
+          const resData = await response.json();
+          secureUrl = resData.url;
+          if (!secureUrl) {
+            throw new Error("Media upload proxy failed to return a secure URL");
+          }
         }
 
         // Apply automatic luxury formatting optimization transformations from our standards
@@ -351,7 +401,7 @@ export default function OwnerDashboard() {
 
         setUploadProgress(prev => ({
           ...prev,
-          [file.name]: { status: 'uploading', progress: 90 }
+          [file.name]: { status: 'uploading', progress: 95 }
         }));
 
         // Determine title
