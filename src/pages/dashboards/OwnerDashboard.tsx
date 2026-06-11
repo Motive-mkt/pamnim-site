@@ -276,25 +276,32 @@ export default function OwnerDashboard() {
     setUploadProgress(initialProgress);
 
     try {
-      let cloudName = ((import.meta as any).env?.VITE_CLOUDINARY_CLOUD_NAME as string) || 'djwrpottl';
-      let preset = ((import.meta as any).env?.VITE_CLOUDINARY_UPLOAD_PRESET as string) || 'pamnim_preset';
+      let cloudName = ((import.meta as any).env?.VITE_CLOUDINARY_CLOUD_NAME as string);
+      let preset = ((import.meta as any).env?.VITE_CLOUDINARY_UPLOAD_PRESET as string);
 
-      if (cloudName === 'undefined' || !cloudName || preset === 'undefined' || !preset) {
-        try {
-          const configRes = await fetch('/api/config/cloudinary');
-          if (configRes.ok) {
-            const configData = await configRes.json();
-            if (configData.cloudName && configData.cloudName !== 'undefined') cloudName = configData.cloudName;
-            if (configData.uploadPreset && configData.uploadPreset !== 'undefined') preset = configData.uploadPreset;
+      // Always retrieve fresh configuration from the API if possible, since actual Cloudinary credentials might be set on the server-side
+      try {
+        const configRes = await fetch('/api/config/cloudinary');
+        if (configRes.ok) {
+          const configData = await configRes.json();
+          if (configData.cloudName && configData.cloudName !== 'undefined') {
+            cloudName = configData.cloudName;
           }
-        } catch (configErr) {
-          console.warn("Failed to fetch runtime backend configuration:", configErr);
+          if (configData.uploadPreset && configData.uploadPreset !== 'undefined') {
+            preset = configData.uploadPreset;
+          }
         }
+      } catch (configErr) {
+        console.warn("Failed to fetch runtime backend configuration:", configErr);
       }
 
-      // Final fallback if still somehow unresolved
-      if (!cloudName || cloudName === 'undefined') cloudName = 'djwrpottl';
-      if (!preset || preset === 'undefined') preset = 'pamnim_preset';
+      // Final fallback if still unresolved
+      if (!cloudName || cloudName === 'undefined') {
+        cloudName = 'djwrpottl';
+      }
+      if (!preset || preset === 'undefined') {
+        preset = 'pamnim_preset';
+      }
 
       // Seq upload loop to guarantee order and avoid parallel overloading
       for (let i = 0; i < selectedFiles.length; i++) {
