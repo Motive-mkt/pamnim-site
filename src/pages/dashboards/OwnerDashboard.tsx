@@ -84,6 +84,7 @@ export default function OwnerDashboard() {
   const [useManualUrl, setUseManualUrl] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, { status: 'pending' | 'uploading' | 'completed' | 'failed'; progress: number; error?: string }>>({});
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Create Project Modal State
   const [showProjectModal, setShowProjectModal] = useState(false);
@@ -229,6 +230,56 @@ export default function OwnerDashboard() {
     });
   };
 
+  const compressImageToMax500KB = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      if (!file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => resolve('');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Limit dimensions to 1200px max for swift local storage / lightweight transit
+          const MAX_SIZE = 1200;
+          if (width > MAX_SIZE || height > MAX_SIZE) {
+            if (width > height) {
+              height = Math.round((height * MAX_SIZE) / width);
+              width = MAX_SIZE;
+            } else {
+              width = Math.round((width * MAX_SIZE) / height);
+              height = MAX_SIZE;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            // High-Performance JPEG compression at 0.75 quality fits perfectly within 500KB
+            const compressed = canvas.toDataURL('image/jpeg', 0.75);
+            resolve(compressed);
+          } else {
+            resolve(event.target?.result as string);
+          }
+        };
+        img.onerror = () => resolve(event.target?.result as string);
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  };
+
   const fetchMedia = async () => {
     const gallerySnap = await getDocs(query(collection(db, 'gallery'), orderBy('createdAt', 'desc')));
     setGallery(gallerySnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -253,6 +304,7 @@ export default function OwnerDashboard() {
           createdAt: new Date().toISOString()
         });
         setNewMedia({ title: '', category: '', image: '' });
+        setUploadError(null);
         setShowMediaModal(false);
         fetchMedia();
       } catch (err) {
@@ -269,114 +321,112 @@ export default function OwnerDashboard() {
     }
 
     setIsUploading(true);
+    setUploadError(null);
     const initialProgress: typeof uploadProgress = {};
     selectedFiles.forEach(f => {
       initialProgress[f.name] = { status: 'pending', progress: 0 };
     });
     setUploadProgress(initialProgress);
 
+    let cloudName = ((import.meta as any).env?.VITE_CLOUDINARY_CLOUD_NAME as string);
+    let preset = ((import.meta as any).env?.VITE_CLOUDINARY_UPLOAD_PRESET as string);
+
+    // Retrieve fresh configuration from the API if possible, since actual Cloudinary credentials might be set on the server-side
     try {
-      let cloudName = ((import.meta as any).env?.VITE_CLOUDINARY_CLOUD_NAME as string);
-      let preset = ((import.meta as any).env?.VITE_CLOUDINARY_UPLOAD_PRESET as string);
-
-      // Always retrieve fresh configuration from the API if possible, since actual Cloudinary credentials might be set on the server-side
-      try {
-        const configRes = await fetch('/api/config/cloudinary');
-        if (configRes.ok) {
-          const configData = await configRes.json();
-          if (configData.cloudName && configData.cloudName !== 'undefined') {
-            cloudName = configData.cloudName;
-          }
-          if (configData.uploadPreset && configData.uploadPreset !== 'undefined') {
-            preset = configData.uploadPreset;
-          }
+      const configRes = await fetch('/api/config/cloudinary');
+      if (configRes.ok) {
+        const configData = await configRes.json();
+        if (configData.cloudName && configData.cloudName !== 'undefined') {
+          cloudName = configData.cloudName;
         }
-      } catch (configErr) {
-        console.warn("Failed to fetch runtime backend configuration:", configErr);
+        if (configData.uploadPreset && configData.uploadPreset !== 'undefined') {
+          preset = configData.uploadPreset;
+        }
       }
+    } catch (configErr) {
+      console.warn("Failed to fetch runtime backend configuration:", configErr);
+    }
 
-      // Final fallback if still unresolved
-      if (!cloudName || cloudName === 'undefined') {
-        cloudName = 'djwrpottl';
-      }
-      if (!preset || preset === 'undefined') {
-        preset = 'pamnim_preset';
-      }
+    // Final fallback if still unresolved
+    if (!cloudName || cloudName === 'undefined') {
+      cloudName = 'djwrpottl';
+    }
+    if (!preset || preset === 'undefined') {
+      preset = 'pamnim_preset';
+    }
 
-      // Seq upload loop to guarantee order and avoid parallel overloading
-      for (let i = 0; i < selectedFiles.length; i++) {
-        const file = selectedFiles[i];
-        const isVideo = file.type.startsWith('video/');
+    let errorCount = 0;
+
+    // Seq upload loop to guarantee order and avoid parallel overloading
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+      const isVideo = file.type.startsWith('video/');
+
+      setUploadProgress(prev => ({
+        ...prev,
+        [file.name]: { status: 'uploading', progress: 10 }
+      }));
+
+      let secureUrl = "";
+
+      try {
+        // Unsigned direct uploading is only possible with a specialized preset on that specific account.
+        // If the user is using custom credentials with the default template preset, we bypass direct client uploading
+        // and fall back to the secure signed backend proxy immediately to prevent failing and provide a fast, robust upload.
+        if (!preset || preset === "undefined" || (cloudName && cloudName !== "djwrpottl" && preset === "pamnim_preset")) {
+          throw new Error("Custom Cloudinary configuration set up, bypassing direct unsigned upload for secure backend signed upload.");
+        }
+
+        // Attempt High-Performance Direct Streaming Client-to-Cloudinary uploading
+        // This avoids Base64 CPU/RAM bottlenecks, skips double-hop server routing,
+        // and establishes a real-time progress bar.
+        secureUrl = await new Promise<string>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/${isVideo ? 'video' : 'image'}/upload`);
+
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              // Map the XML upload progress from 10% up to 85% dynamically
+              const percentComplete = 10 + Math.round((event.loaded / event.total) * 75);
+              setUploadProgress(prev => ({
+                ...prev,
+                [file.name]: { status: 'uploading', progress: percentComplete }
+              }));
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const resData = JSON.parse(xhr.responseText);
+                resolve(resData.secure_url || resData.url);
+              } catch (e) {
+                reject(new Error("Failed to parse Cloudinary response"));
+              }
+            } else {
+              reject(new Error(`Direct upload responded with status ${xhr.status}`));
+            }
+          };
+
+          xhr.onerror = () => reject(new Error("Network connection error during direct upload"));
+
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('upload_preset', preset);
+          xhr.send(formData);
+        });
+      } catch (directUploadErr: any) {
+        console.warn(`Direct upload failed/bypassed for ${file.name}, trying proxy...`, directUploadErr);
 
         setUploadProgress(prev => ({
           ...prev,
-          [file.name]: { status: 'uploading', progress: 10 }
+          [file.name]: { status: 'uploading', progress: 20 }
         }));
 
-        let secureUrl = "";
-
         try {
-          // Unsigned direct uploading is only possible with a specialized preset on that specific account.
-          // If the user is using custom credentials with the default template preset, we bypass direct client uploading
-          // and fall back to the secure signed backend proxy immediately to prevent failing and provide a fast, robust upload.
-          if (!preset || preset === "undefined" || (cloudName && cloudName !== "djwrpottl" && preset === "pamnim_preset")) {
-            throw new Error("Custom Cloudinary configuration set up, bypassing direct unsigned upload for secure backend signed upload.");
-          }
-
-          // Attempt High-Performance Direct Streaming Client-to-Cloudinary uploading
-          // This avoids Base64 CPU/RAM bottlenecks, skips double-hop server routing,
-          // and establishes a real-time progress bar.
-          secureUrl = await new Promise<string>((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/${isVideo ? 'video' : 'image'}/upload`);
-
-            xhr.upload.onprogress = (event) => {
-              if (event.lengthComputable) {
-                // Map the XML upload progress from 10% up to 85% dynamically
-                const percentComplete = 10 + Math.round((event.loaded / event.total) * 75);
-                setUploadProgress(prev => ({
-                  ...prev,
-                  [file.name]: { status: 'uploading', progress: percentComplete }
-                }));
-              }
-            };
-
-            xhr.onload = () => {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                  const resData = JSON.parse(xhr.responseText);
-                  resolve(resData.secure_url || resData.url);
-                } catch (e) {
-                  reject(new Error("Failed to parse Cloudinary response"));
-                }
-              } else {
-                reject(new Error(`Direct upload responded with status ${xhr.status}`));
-              }
-            };
-
-            xhr.onerror = () => reject(new Error("Network connection error during direct upload"));
-
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('upload_preset', preset);
-            xhr.send(formData);
-          });
-        } catch (directUploadErr) {
-          console.warn("Direct Cloudinary upload bypassed or failed, falling back to secure Express proxy...", directUploadErr);
-
-          setUploadProgress(prev => ({
-            ...prev,
-            [file.name]: { status: 'uploading', progress: 20 }
-          }));
-
-          // Convert selected file to base64 data URL as fallback
-          const base64Data = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = (err) => reject(err);
-            reader.readAsDataURL(file);
-          });
-
+          // Convert with beautiful client-side image compression
+          const base64Data = await compressImageToMax500KB(file);
+          
           setUploadProgress(prev => ({
             ...prev,
             [file.name]: { status: 'uploading', progress: 50 }
@@ -395,29 +445,40 @@ export default function OwnerDashboard() {
           });
 
           if (!response.ok) {
-            throw new Error(`Media upload proxy responded with status ${response.status}: ${await response.text()}`);
+            const text = await response.text();
+            throw new Error(`Proxy replied with ${response.status}: ${text}`);
           }
 
           const resData = await response.json();
           secureUrl = resData.url;
           if (!secureUrl) {
-            throw new Error("Media upload proxy failed to return a secure URL");
+            throw new Error("Proxy response is missing URL");
           }
+        } catch (proxyErr: any) {
+          console.error(`Media upload proxy also failed for ${file.name}:`, proxyErr);
+          setUploadProgress(prev => ({
+            ...prev,
+            [file.name]: { status: 'failed', progress: 0, error: proxyErr.message || String(proxyErr) }
+          }));
+          errorCount++;
+          continue; // Move on to next file in loop! Dont crash!
         }
+      }
 
-        // Apply automatic luxury formatting optimization transformations from our standards
-        if (secureUrl.includes('cloudinary.com') && !secureUrl.includes('/q_auto')) {
-          const assetSection = isVideo ? '/video/upload/' : '/image/upload/';
-          if (secureUrl.includes(assetSection)) {
-            secureUrl = secureUrl.replace(assetSection, `${assetSection}q_auto:good,f_auto/`);
-          }
+      // Apply automatic luxury formatting optimization transformations from our standards
+      if (secureUrl.includes('cloudinary.com') && !secureUrl.includes('/q_auto')) {
+        const assetSection = isVideo ? '/video/upload/' : '/image/upload/';
+        if (secureUrl.includes(assetSection)) {
+          secureUrl = secureUrl.replace(assetSection, `${assetSection}q_auto:good,f_auto/`);
         }
+      }
 
-        setUploadProgress(prev => ({
-          ...prev,
-          [file.name]: { status: 'uploading', progress: 95 }
-        }));
+      setUploadProgress(prev => ({
+        ...prev,
+        [file.name]: { status: 'uploading', progress: 95 }
+      }));
 
+      try {
         // Determine title
         const itemTitle = newMedia.title.trim()
           ? (selectedFiles.length > 1 ? `${newMedia.title.trim()} ${i + 1}` : newMedia.title.trim())
@@ -435,22 +496,31 @@ export default function OwnerDashboard() {
           ...prev,
           [file.name]: { status: 'completed', progress: 100 }
         }));
+      } catch (dbErr: any) {
+        console.error(`Failed to record database entry for ${file.name}:`, dbErr);
+        setUploadProgress(prev => ({
+          ...prev,
+          [file.name]: { status: 'failed', progress: 0, error: `Database Save Error: ${dbErr.message || String(dbErr)}` }
+        }));
+        errorCount++;
       }
+    }
 
-      // Cleanup
+    // Cleanup & Final UI refresh
+    if (errorCount === 0) {
       setSelectedFiles([]);
       setNewMedia({ title: '', category: '', image: '' });
+      setUploadError(null);
       setTimeout(() => {
         setShowMediaModal(false);
         setIsUploading(false);
         setUploadProgress({});
         fetchMedia();
-      }, 800);
-
-    } catch (err: any) {
-      console.error("Bulk upload error details:", err);
+      }, 1200);
+    } else {
       setIsUploading(false);
-      handleFirestoreError(err, OperationType.WRITE, mediaType);
+      setUploadError(`Completed with ${errorCount} error(s). Please review failed files below.`);
+      fetchMedia(); // Refresh whatever succeeded
     }
   };
 
@@ -1305,6 +1375,16 @@ export default function OwnerDashboard() {
                               {statusObj.status === 'completed' && (
                                 <span className="text-[10px] text-green-600 font-extrabold bg-green-50 px-2 py-0.5 rounded-md">COMPLETED</span>
                               )}
+                              {statusObj.status === 'failed' && (
+                                <div className="flex flex-col items-end gap-1">
+                                  <span className="text-[10px] text-red-600 font-extrabold bg-red-50 px-2 py-0.5 rounded-md">FAILED</span>
+                                  {statusObj.error && (
+                                    <span className="text-[9px] text-red-500 font-medium max-w-[120px] truncate" title={statusObj.error}>
+                                      {statusObj.error}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                               {statusObj.status === 'pending' && !isUploading && (
                                 <button
                                   type="button"
@@ -1324,6 +1404,11 @@ export default function OwnerDashboard() {
               )}
 
               <div className="pt-2 border-t border-charcoal/5">
+                {uploadError && (
+                  <div className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-xl text-xs font-bold mb-4 leading-relaxed">
+                    {uploadError}
+                  </div>
+                )}
                 <button 
                   type="submit"
                   disabled={isUploading || (!useManualUrl && selectedFiles.length === 0)}

@@ -201,7 +201,7 @@ async function startServer() {
 
       // Lazy configuration check and graceful simulated fallback
       if (!cloudName || !apiKey || !apiSecret) {
-        console.warn("Cloudinary is not fully configured. Using highly curated luxury placeholders for testing.");
+        console.warn("Cloudinary is not fully configured. Using submitted image base64 directly or high-end video placeholders.");
         
         let simulatedUrl = "";
         if (type === "video") {
@@ -211,8 +211,11 @@ async function startServer() {
             "https://assets.mixkit.co/videos/preview/mixkit-interior-of-a-modern-living-room-41549-large.mp4"
           ];
           simulatedUrl = randomVideos[Math.floor(Math.random() * randomVideos.length)];
+        } else if (typeof file === "string" && file.startsWith("data:image/")) {
+          // Robust real-media bypass: return the actual uploaded image as base64 so it displays in real-time!
+          simulatedUrl = file;
         } else {
-          // Curated luxury interior images
+          // Default Unsplash fallbacks
           const randomImages = [
             "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1200&q=80",
             "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1200&q=80",
@@ -252,22 +255,21 @@ async function startServer() {
         .update(sortedString + apiSecret)
         .digest("hex");
 
-      // Construct payload
-      const formData = new FormData();
-      formData.append("file", file); // Supports base64 DataURI natively
-      formData.append("timestamp", String(timestamp));
-      formData.append("api_key", apiKey);
-      formData.append("signature", signature);
-
-      if (actualPreset) {
-        formData.append("upload_preset", actualPreset);
-      }
-
       const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
 
+      // Perform a clean, reliable, modern JSON request to Cloudinary's upload API
       const response = await fetch(uploadUrl, {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          file: file,
+          timestamp: String(timestamp),
+          api_key: apiKey,
+          signature: signature,
+          upload_preset: actualPreset || undefined
+        })
       });
 
       if (!response.ok) {
