@@ -15,26 +15,30 @@ service cloud.firestore {
     }
     
     function hasRole(role) {
-      return isSignedIn() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && getProfile(request.auth.uid).role == role;
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
+             'role' in getProfile(request.auth.uid) &&
+             getProfile(request.auth.uid).role == role;
     }
     
     function isOwner() { 
       return isSignedIn() && (
+        request.auth.token.email == 'jessescaledyou@gmail.com' || 
+        request.auth.token.email == 'your-admin-email@example.com' ||
+        request.auth.token.email.matches('(?i)^jessescaledyou@gmail[.]com$') || 
+        request.auth.token.email.matches('(?i)^your-admin-email@example[.]com$') ||
         (exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && (
-          getProfile(request.auth.uid).role == 'owner' ||
-          getProfile(request.auth.uid).email == 'jessescaledyou@gmail.com' ||
-          getProfile(request.auth.uid).email == 'your-admin-email@example.com'
-        )) ||
-        ('email' in request.auth.token && (
-          request.auth.token.email == 'jessescaledyou@gmail.com' || 
-          request.auth.token.email == 'your-admin-email@example.com' ||
-          request.auth.token.email.matches('(?i)^jessescaledyou@gmail[.]com$') || 
-          request.auth.token.email.matches('(?i)^your-admin-email@example[.]com$')
+          ('role' in getProfile(request.auth.uid) && getProfile(request.auth.uid).role == 'owner') ||
+          ('email' in getProfile(request.auth.uid) && (
+            getProfile(request.auth.uid).email == 'jessescaledyou@gmail.com' ||
+            getProfile(request.auth.uid).email == 'your-admin-email@example.com'
+          ))
         ))
       );
     }
     function isEmployee() {
       return isSignedIn() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
+             'role' in getProfile(request.auth.uid) &&
              (getProfile(request.auth.uid).role == 'senior_designer' || 
               getProfile(request.auth.uid).role == 'designer' || 
               getProfile(request.auth.uid).role == 'project_manager');
