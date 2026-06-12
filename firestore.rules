@@ -5,8 +5,8 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isVerified() { 
       return isSignedIn() && (
-        request.auth.token.email_verified == true || 
-        request.auth.token.firebase.sign_in_provider == 'password'
+        request.auth.token.get('email_verified', false) == true || 
+        request.auth.token.get('firebase', {}).get('sign_in_provider', '') == 'password'
       ); 
     }
     
@@ -17,31 +17,29 @@ service cloud.firestore {
     function hasRole(role) {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
-             'role' in getProfile(request.auth.uid) &&
-             getProfile(request.auth.uid).role == role;
+             getProfile(request.auth.uid).get('role', '') == role;
     }
     
     function isOwner() { 
       return isSignedIn() && (
-        request.auth.token.email == 'jessescaledyou@gmail.com' || 
-        request.auth.token.email == 'your-admin-email@example.com' ||
-        request.auth.token.email.matches('(?i)^jessescaledyou@gmail[.]com$') || 
-        request.auth.token.email.matches('(?i)^your-admin-email@example[.]com$') ||
+        ('email' in request.auth.token && (
+          request.auth.token.email == 'jessescaledyou@gmail.com' || 
+          request.auth.token.email == 'your-admin-email@example.com' ||
+          request.auth.token.email.matches('(?i)^jessescaledyou@gmail[.]com$') || 
+          request.auth.token.email.matches('(?i)^your-admin-email@example[.]com$')
+        )) ||
         (exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && (
-          ('role' in getProfile(request.auth.uid) && getProfile(request.auth.uid).role == 'owner') ||
-          ('email' in getProfile(request.auth.uid) && (
-            getProfile(request.auth.uid).email == 'jessescaledyou@gmail.com' ||
-            getProfile(request.auth.uid).email == 'your-admin-email@example.com'
-          ))
+          getProfile(request.auth.uid).get('role', '') == 'owner' ||
+          getProfile(request.auth.uid).get('email', '') == 'jessescaledyou@gmail.com' ||
+          getProfile(request.auth.uid).get('email', '') == 'your-admin-email@example.com'
         ))
       );
     }
     function isEmployee() {
       return isSignedIn() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
-             'role' in getProfile(request.auth.uid) &&
-             (getProfile(request.auth.uid).role == 'senior_designer' || 
-              getProfile(request.auth.uid).role == 'designer' || 
-              getProfile(request.auth.uid).role == 'project_manager');
+             (getProfile(request.auth.uid).get('role', '') == 'senior_designer' || 
+              getProfile(request.auth.uid).get('role', '') == 'designer' || 
+              getProfile(request.auth.uid).get('role', '') == 'project_manager');
     }
     function isClient() { return hasRole('client'); }
 
@@ -71,8 +69,8 @@ service cloud.firestore {
       allow update: if isOwner() || 
                     (request.auth.uid == userId && (
                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']) ||
-                      resource.data.email == 'jessescaledyou@gmail.com' ||
-                      resource.data.email == 'your-admin-email@example.com' ||
+                      resource.data.get('email', '') == 'jessescaledyou@gmail.com' ||
+                      resource.data.get('email', '') == 'your-admin-email@example.com' ||
                       ('email' in request.auth.token && (
                         request.auth.token.email == 'jessescaledyou@gmail.com' ||
                         request.auth.token.email == 'your-admin-email@example.com' ||
