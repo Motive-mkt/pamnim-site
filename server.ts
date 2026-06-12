@@ -180,9 +180,10 @@ async function startServer() {
 
   // Dynamic Cloudinary Config API fallback
   app.get("/api/config/cloudinary", (req, res) => {
+    const hasCustomCloud = !!(process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME);
     return res.json({
       cloudName: process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME || "djwrpottl",
-      uploadPreset: process.env.VITE_CLOUDINARY_UPLOAD_PRESET || "pamnim_preset"
+      uploadPreset: process.env.VITE_CLOUDINARY_UPLOAD_PRESET || (hasCustomCloud ? "" : "pamnim_preset")
     });
   });
 
@@ -232,13 +233,16 @@ async function startServer() {
       const timestamp = Math.round(new Date().getTime() / 1000);
       const resourceType = type === "video" ? "video" : "image";
 
+      const hasCustomCloud = !!(process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME);
+      const actualPreset = process.env.VITE_CLOUDINARY_UPLOAD_PRESET || (uploadPreset === "pamnim_preset" && hasCustomCloud ? "" : uploadPreset);
+
       // Build parameters for signature
       const paramsToSign: Record<string, any> = {
         timestamp: timestamp,
       };
 
-      if (uploadPreset) {
-        paramsToSign.upload_preset = uploadPreset;
+      if (actualPreset) {
+        paramsToSign.upload_preset = actualPreset;
       }
 
       const sortedKeys = Object.keys(paramsToSign).sort() as Array<keyof typeof paramsToSign>;
@@ -255,8 +259,8 @@ async function startServer() {
       formData.append("api_key", apiKey);
       formData.append("signature", signature);
 
-      if (uploadPreset) {
-        formData.append("upload_preset", uploadPreset);
+      if (actualPreset) {
+        formData.append("upload_preset", actualPreset);
       }
 
       const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;

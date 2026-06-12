@@ -316,6 +316,13 @@ export default function OwnerDashboard() {
         let secureUrl = "";
 
         try {
+          // Unsigned direct uploading is only possible with a specialized preset on that specific account.
+          // If the user is using custom credentials with the default template preset, we bypass direct client uploading
+          // and fall back to the secure signed backend proxy immediately to prevent failing and provide a fast, robust upload.
+          if (!preset || preset === "undefined" || (cloudName && cloudName !== "djwrpottl" && preset === "pamnim_preset")) {
+            throw new Error("Custom Cloudinary configuration set up, bypassing direct unsigned upload for secure backend signed upload.");
+          }
+
           // Attempt High-Performance Direct Streaming Client-to-Cloudinary uploading
           // This avoids Base64 CPU/RAM bottlenecks, skips double-hop server routing,
           // and establishes a real-time progress bar.
@@ -355,7 +362,7 @@ export default function OwnerDashboard() {
             xhr.send(formData);
           });
         } catch (directUploadErr) {
-          console.warn("Direct Cloudinary upload failed or was not configured, falling back to secure Express proxy...", directUploadErr);
+          console.warn("Direct Cloudinary upload bypassed or failed, falling back to secure Express proxy...", directUploadErr);
 
           setUploadProgress(prev => ({
             ...prev,

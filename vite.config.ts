@@ -16,10 +16,8 @@ export default defineConfig(({mode}) => {
       },
     },
     server: {
-    host: true,
-    hmr: {
-      clientPort: 5173,
+      host: true,
+      hmr: false,
     },
-  },
   };
 });
