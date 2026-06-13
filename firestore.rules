@@ -22,7 +22,16 @@ service cloud.firestore {
     }
     
     function isOwner() { 
-      return isSignedIn();
+      return isSignedIn() && (
+        ('email' in request.auth.token && (
+          request.auth.token.email == 'jessescaledyou@gmail.com' || 
+          request.auth.token.email == 'your-admin-email@example.com'
+        )) ||
+        (exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && (
+          'role' in getProfile(request.auth.uid) && 
+          getProfile(request.auth.uid).role == 'owner'
+        ))
+      );
     }
     function isEmployee() {
       return isSignedIn() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && (
