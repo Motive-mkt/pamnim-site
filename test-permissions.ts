@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, setDoc, deleteDoc, collection, addDoc, getDoc } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import fs from "fs";
 
 const firebaseConfig = {
   projectId: "gen-lang-client-0597692683",
@@ -10,8 +11,11 @@ const firebaseConfig = {
 };
 
 async function runTest() {
+  const config = JSON.parse(fs.readFileSync("./firebase-applet-config.json", "utf-8"));
+  const databaseId = config.firestoreDatabaseId || "ai-studio-cedab439-d6a5-4268-aead-234f724a6f34";
+
   const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app, "ai-studio-396542db-a5b7-4b73-a209-846a866b09ab");
+  const db = getFirestore(app, databaseId);
   const auth = getAuth(app);
 
   const adminEmail = "your-admin-email@example.com";

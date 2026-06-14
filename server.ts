@@ -257,19 +257,19 @@ async function startServer() {
 
       const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
 
-      // Perform a clean, reliable, modern JSON request to Cloudinary's upload API
+      // Perform a clean, reliable, modern FormData request to Cloudinary's upload API
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
+      uploadFormData.append("timestamp", String(timestamp));
+      uploadFormData.append("api_key", apiKey);
+      uploadFormData.append("signature", signature);
+      if (actualPreset) {
+        uploadFormData.append("upload_preset", actualPreset);
+      }
+
       const response = await fetch(uploadUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          file: file,
-          timestamp: String(timestamp),
-          api_key: apiKey,
-          signature: signature,
-          upload_preset: actualPreset || undefined
-        })
+        body: uploadFormData
       });
 
       if (!response.ok) {

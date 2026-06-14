@@ -1,8 +1,12 @@
 import { initializeApp } from "firebase-admin/app";
 import { getSecurityRules } from "firebase-admin/security-rules";
+import fs from "fs";
 
 async function run() {
   try {
+    const config = JSON.parse(fs.readFileSync("./firebase-applet-config.json", "utf-8"));
+    const databaseId = config.firestoreDatabaseId || "ai-studio-cedab439-d6a5-4268-aead-234f724a6f34";
+
     const app = initializeApp({
       projectId: "gen-lang-client-0597692683"
     });
@@ -11,13 +15,14 @@ async function run() {
     const rules = getSecurityRules(app);
     
     // Get the active ruleset for our custom database
-    const ruleset = await rules.getFirestoreRuleset("ai-studio-396542db-a5b7-4b73-a209-846a866b09ab");
+    const ruleset = await (rules as any).getFirestoreRuleset(databaseId);
     console.log("\n=============================================");
     console.log("LIVE FIRESTORE RULES FOR DATABASE ID:");
-    console.log("ai-studio-396542db-a5b7-4b73-a209-846a866b09ab");
+    console.log(databaseId);
     console.log("=============================================");
-    if (ruleset && ruleset.files && ruleset.files.length > 0) {
-      console.log(ruleset.files[0].content);
+    const sourceFiles = (ruleset as any)?.source?.files;
+    if (sourceFiles && sourceFiles.length > 0) {
+      console.log(sourceFiles[0].content);
     } else {
       console.log("No rules found or files structure empty.");
     }

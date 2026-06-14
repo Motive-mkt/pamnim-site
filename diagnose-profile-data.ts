@@ -1,6 +1,10 @@
 import { initializeApp, deleteApp } from "firebase/app";
 import { getFirestore, doc, setDoc, deleteDoc, collection, addDoc, getDoc, terminate } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import fs from "fs";
+
+const config = JSON.parse(fs.readFileSync("./firebase-applet-config.json", "utf-8"));
+const targetDatabaseId = config.firestoreDatabaseId || "ai-studio-cedab439-d6a5-4268-aead-234f724a6f34";
 
 const firebaseConfig = {
   projectId: "gen-lang-client-0597692683",
@@ -15,7 +19,7 @@ async function diagnose() {
   console.log("=================================================");
   
   const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app, "ai-studio-396542db-a5b7-4b73-a209-846a866b09ab");
+  const db = getFirestore(app, targetDatabaseId);
   const auth = getAuth(app);
 
   console.log("\n--- Unauthenticated Test ---");
@@ -91,7 +95,7 @@ async function diagnose() {
     // Re-initialize default app for Scenario 2
     const app2 = initializeApp(firebaseConfig);
     const auth2 = getAuth(app2);
-    const db2 = getFirestore(app2, "ai-studio-396542db-a5b7-4b73-a209-846a866b09ab");
+    const db2 = getFirestore(app2, targetDatabaseId);
 
     let user2;
     try {

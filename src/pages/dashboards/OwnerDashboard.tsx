@@ -82,6 +82,7 @@ export default function OwnerDashboard() {
   const [newMedia, setNewMedia] = useState({ title: '', category: '', image: '' });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [useManualUrl, setUseManualUrl] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, { status: 'pending' | 'uploading' | 'completed' | 'failed'; progress: number; error?: string }>>({});
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -221,6 +222,18 @@ export default function OwnerDashboard() {
     }
   };
 
+  const isImageFile = (file: File): boolean => {
+    if (file.type && file.type.startsWith('image/')) return true;
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    return !!ext && ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'bmp', 'tiff'].includes(ext);
+  };
+
+  const isVideoFile = (file: File): boolean => {
+    if (file.type && file.type.startsWith('video/')) return true;
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    return !!ext && ['mp4', 'mov', 'avi', 'mkv', 'webm', 'ogg', 'm4v'].includes(ext);
+  };
+
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -232,50 +245,64 @@ export default function OwnerDashboard() {
 
   const compressImageToMax500KB = (file: File): Promise<string> => {
     return new Promise((resolve) => {
-      if (!file.type.startsWith('image/')) {
+      const fallbackToRawBase64 = () => {
         const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
+        reader.onload = () => resolve(reader.result as string || '');
         reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+      };
+
+      if (!isImageFile(file)) {
+        fallbackToRawBase64();
         return;
       }
 
       const reader = new FileReader();
       reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
+        try {
+          const img = new Image();
+          img.src = event.target?.result as string;
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              let width = img.width;
+              let height = img.height;
 
-          // Limit dimensions to 1200px max for swift local storage / lightweight transit
-          const MAX_SIZE = 1200;
-          if (width > MAX_SIZE || height > MAX_SIZE) {
-            if (width > height) {
-              height = Math.round((height * MAX_SIZE) / width);
-              width = MAX_SIZE;
-            } else {
-              width = Math.round((width * MAX_SIZE) / height);
-              height = MAX_SIZE;
+              // Limit dimensions to 1200px max for swift local storage / lightweight transit
+              const MAX_SIZE = 1200;
+              if (width > MAX_SIZE || height > MAX_SIZE) {
+                if (width > height) {
+                  height = Math.round((height * MAX_SIZE) / width);
+                  width = MAX_SIZE;
+                } else {
+                  width = Math.round((width * MAX_SIZE) / height);
+                  height = MAX_SIZE;
+                }
+              }
+
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(img, 0, 0, width, height);
+                // High-Performance JPEG compression at 0.75 quality fits perfectly within 500KB
+                const compressed = canvas.toDataURL('image/jpeg', 0.75);
+                resolve(compressed);
+              } else {
+                resolve(event.target?.result as string);
+              }
+            } catch (canvasErr) {
+              console.warn("Canvas compression failed, falling back to raw data.", canvasErr);
+              resolve(event.target?.result as string);
             }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, width, height);
-            // High-Performance JPEG compression at 0.75 quality fits perfectly within 500KB
-            const compressed = canvas.toDataURL('image/jpeg', 0.75);
-            resolve(compressed);
-          } else {
-            resolve(event.target?.result as string);
-          }
-        };
-        img.onerror = () => resolve(event.target?.result as string);
+          };
+          img.onerror = () => resolve(event.target?.result as string);
+        } catch (loadErr) {
+          console.warn("Image load failed inside compress, falling back to raw data.", loadErr);
+          fallbackToRawBase64();
+        }
       };
-      reader.onerror = () => resolve('');
+      reader.onerror = () => fallbackToRawBase64();
       reader.readAsDataURL(file);
     });
   };
@@ -360,7 +387,7 @@ export default function OwnerDashboard() {
     // Seq upload loop to guarantee order and avoid parallel overloading
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
-      const isVideo = file.type.startsWith('video/');
+      const isVideo = isVideoFile(file);
 
       setUploadProgress(prev => ({
         ...prev,
@@ -1285,20 +1312,36 @@ export default function OwnerDashboard() {
                 /* Drag & Drop Bulk Media Upload Area */
                 <div className="space-y-4">
                   <div 
-                    onDragOver={(e) => { e.preventDefault(); }}
+                    onDragOver={(e) => { 
+                      e.preventDefault(); 
+                      if (!isUploading) setDragActive(true);
+                    }}
+                    onDragEnter={(e) => {
+                      e.preventDefault();
+                      if (!isUploading) setDragActive(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      setDragActive(false);
+                    }}
                     onDrop={(e) => {
                       e.preventDefault();
+                      setDragActive(false);
                       if (isUploading) return;
                       if (e.dataTransfer.files) {
                         const files = Array.from(e.dataTransfer.files) as File[];
-                        // Filter out videos if collection is Home Gallery as per media policy
+                        // Robust media extension check secondary fallback to prevent browser MIME mismatch
                         const filtered = mediaType === 'gallery' 
-                          ? files.filter(f => f.type.startsWith('image/'))
-                          : files;
+                          ? files.filter(isImageFile)
+                          : files.filter(f => isImageFile(f) || isVideoFile(f));
                         setSelectedFiles(prev => [...prev, ...filtered]);
                       }
                     }}
-                    className="border-2 border-dashed border-charcoal/15 hover:border-ochre/50 rounded-[2rem] p-8 text-center bg-cream/10 hover:bg-cream/20 transition-all cursor-pointer relative"
+                    className={`border-2 border-dashed rounded-[2rem] p-10 text-center transition-all cursor-pointer relative ${
+                      dragActive 
+                        ? 'border-ochre bg-ochre/5 scale-[1.01] shadow-lg ring-4 ring-ochre/15' 
+                        : 'border-charcoal/15 hover:border-ochre/50 bg-cream/10 hover:bg-cream/20'
+                    }`}
                     onClick={() => {
                       if (!isUploading) {
                         document.getElementById('multiple-file-picker')?.click();
@@ -1313,16 +1356,24 @@ export default function OwnerDashboard() {
                       className="hidden" 
                       onChange={(e) => {
                         if (e.target.files) {
-                          setSelectedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                          const files = Array.from(e.target.files) as File[];
+                          const filtered = mediaType === 'gallery'
+                            ? files.filter(isImageFile)
+                            : files.filter(f => isImageFile(f) || isVideoFile(f));
+                          setSelectedFiles(prev => [...prev, ...filtered]);
                         }
                       }}
                       disabled={isUploading}
                     />
                     <div className="flex flex-col items-center gap-2 select-none">
-                      <div className="w-14 h-14 bg-ochre/10 rounded-full flex items-center justify-center text-ochre mb-2">
-                        <Plus className="w-7 h-7" />
+                      <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-2 transition-all duration-300 ${
+                        dragActive ? 'bg-ochre text-white scale-110 animate-pulse' : 'bg-ochre/10 text-ochre'
+                      }`}>
+                        <Plus className={`w-7 h-7 transition-all duration-300 ${dragActive ? 'rotate-90 scale-110' : ''}`} />
                       </div>
-                      <h4 className="font-bold text-charcoal">Drag & drop files here, or click to browse</h4>
+                      <h4 className="font-bold text-charcoal">
+                        {dragActive ? "Drop your cinematic assets now!" : "Drag & drop files here, or click to browse"}
+                      </h4>
                       <p className="text-xs text-charcoal/40 font-medium p-1">
                         {mediaType === 'gallery' 
                           ? 'Supports photography assets (JPG, PNG, WebP) up to 50MB'
