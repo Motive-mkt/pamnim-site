@@ -302,6 +302,325 @@ async function startServer() {
     }
   });
 
+  // Pre-render helper for Services routes (SEO pre-rendering / SSR)
+  function preRenderServices(urlPath: string): string {
+    const pathParts = decodeURIComponent(urlPath).split("/").filter(Boolean);
+    if (pathParts[0] !== "services") {
+      return "";
+    }
+
+    const serverCategories = [
+      {
+        id: "interior-architecture",
+        title: "Interior Architecture & Space Planning",
+        description: "Architectural integrity meets elegant spatial design. We optimize layouts for flawless daily flow, design sculptural gypsum ceiling works, and craft highly efficient culinary kitchens.",
+        accent: "01",
+        items: [
+          {
+            name: "Space Planning",
+            slug: "space-planning",
+            desc: "Intelligent layout plans maximizing usable square footage with premium functional flow, custom furniture positioning, and architectural flow guides."
+          },
+          {
+            name: "Kitchen Planning",
+            slug: "kitchen-planning",
+            desc: "Expert zoning, appliance integration, custom work triangle optimization, and ergonomic casework layout designed for elite homes."
+          },
+          {
+            name: "Gypsum & Ceiling Works",
+            slug: "gypsum-ceiling-works",
+            desc: "Sculpted dry-wall ceilings, shadowline details, dropped acoustic plaster ceiling architectures, and integrated cove lighting pockets."
+          }
+        ]
+      },
+      {
+        id: "bespoke-finishes",
+        title: "Bespoke Finishes & Craftsmanship",
+        description: "The fine surface and structural details that establish character and distinction. Custom architectural wainscoting, perfect joinery, and meticulously applied professional finishes.",
+        accent: "02",
+        items: [
+          {
+            name: "Wainscoting & Wall Paneling",
+            slug: "wainscoting-wall-paneling",
+            desc: "Elegant shaker paneling, classical raised-molding wainscots, modern fluted timber panel accents, and bespoke drywall detailing."
+          },
+          {
+            name: "Cabinet Fittings & Joinery",
+            slug: "cabinet-fittings-joinery",
+            desc: "State-of-the-art kitchen cabinets, bespoke entry consoles, luxury walk-in wardrobes, and heavy wood custom bookcases with soft-close mechanisms."
+          },
+          {
+            name: "Professional Painting",
+            slug: "professional-painting",
+            desc: "Pristine dustless surface preparation, seamless plaster skim coatings, premium eco-friendly matte finishes, and designer feature accent walls."
+          }
+        ]
+      },
+      {
+        id: "premium-flooring",
+        title: "Premium Flooring Solutions",
+        description: "Premium foundations that support refined living. We fit pristine ceramic and porcelain tiling, sound-damped SPC/LVT boards, and seamless architectural epoxy coatings.",
+        accent: "03",
+        items: [
+          {
+            name: "Ceramic & Porcelain",
+            slug: "ceramic-porcelain",
+            desc: "Laser-aligned tile arrangements, custom-cut formats, elegant polished or honed tile surfaces, and masterfully applied uniform epoxy grout."
+          },
+          {
+            name: "SPC & LVT Flooring",
+            slug: "spc-lvt-flooring",
+            desc: "Stone Plastic Composite and Luxury Vinyl Tile boards offering 100% water resistance, premium sound dampening underlays, and hyper-realistic wood designs."
+          },
+          {
+            name: "Epoxy Coating",
+            slug: "epoxy-coating",
+            desc: "Ultra-sleek glossy residential garage coatings, seamless self-leveling industrial floors, and premium flake systems built for maximum wear resistance."
+          }
+        ]
+      },
+      {
+        id: "lighting-textures-styling",
+        title: "Lighting, Textures & Styling",
+        description: "The sensory layering of light, fabric, and ambiance. Curated architectural lighting distributions, luxury drapery and blind systems, and immersive 3D simulations of your future home.",
+        accent: "04",
+        items: [
+          {
+            name: "Architectural Lighting",
+            slug: "architectural-lighting",
+            desc: "Carefully positioned glare-free recessed cans, ambient LED strip placements, focus-accent spot tracks, and statement designer pendants."
+          },
+          {
+            name: "Curtain Works & Blinds",
+            slug: "curtain-works-blinds",
+            desc: "Custom double-track sheer and motorized blackout drapery, textured Roman blinds, and premium architectural roller sunscreen fabrics."
+          },
+          {
+            name: "Consultation & 3D Visualization",
+            slug: "consultation-3d-visualization",
+            desc: "Full-color photorealistic interior walkthroughs, finish selection guides, customized digital mood boards, and live design workshops."
+          }
+        ]
+      }
+    ];
+
+    const staticHeader = `
+      <header class="fixed top-0 left-0 right-0 z-50 bg-cream/80 backdrop-blur-md border-b border-charcoal/5">
+        <div class="max-w-7xl mx-auto px-6 md:px-12 h-24 flex items-center justify-between">
+          <a href="/" class="flex items-center gap-2">
+            <span class="font-serif text-2xl font-semibold tracking-wider text-charcoal">PAMNIM</span>
+          </a>
+          <nav class="hidden md:flex items-center gap-8 text-xs font-bold uppercase tracking-widest text-charcoal/60">
+            <a href="/" class="hover:text-charcoal transition-colors">Home</a>
+            <a href="/portfolio" class="hover:text-charcoal transition-colors">Portfolio</a>
+            <a href="/services" class="text-ochre">Services</a>
+            <a href="/contact" class="hover:text-charcoal transition-colors">Contact</a>
+          </nav>
+        </div>
+      </header>
+    `;
+
+    const staticFooter = `
+      <footer class="bg-charcoal text-white pt-20 pb-10 border-t border-white/5">
+        <div class="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+          <div>
+            <span class="font-serif text-2xl font-bold tracking-wider text-white block mb-6">PAMNIM</span>
+            <p class="text-sm text-white/50 leading-relaxed max-w-xs">
+              Luxury interior architecture and custom finishes crafted with warm minimalism.
+            </p>
+          </div>
+        </div>
+        <div class="max-w-7xl mx-auto px-6 md:px-12 pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-mono text-white/30">
+          <p>&copy; 2026 Pamnim Interiors. All rights reserved.</p>
+        </div>
+      </footer>
+    `;
+
+    // A) /services Page
+    if (pathParts.length === 1) {
+      let cardsHtml = "";
+      for (const cat of serverCategories) {
+        cardsHtml += `
+          <div class="bg-white border border-charcoal/5 rounded-[2.5rem] p-8 md:p-12 shadow-sm flex flex-col justify-between">
+            <div>
+              <div class="flex justify-between items-center mb-8">
+                <span class="font-mono text-sm tracking-widest text-ochre font-extrabold">${cat.accent}</span>
+              </div>
+              <h2 class="text-2xl md:text-3xl font-serif font-medium text-charcoal mb-4">${cat.title}</h2>
+              <p class="text-charcoal/60 text-sm leading-relaxed mb-8">${cat.description}</p>
+            </div>
+            <a href="/services/${cat.id}" class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-charcoal hover:text-ochre transition-colors">
+              View Category →
+            </a>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="min-h-screen bg-cream flex flex-col justify-between">
+          <div>
+            ${staticHeader}
+            <section class="pt-28 sm:pt-36 pb-12 sm:pb-16 relative overflow-hidden bg-cream border-b border-charcoal/5">
+              <div class="max-w-7xl mx-auto px-6 md:px-12 relative z-10 text-center">
+                <span class="text-xs font-bold tracking-[0.2em] text-ochre uppercase mb-4 block">OUR CORE DISCIPLINES</span>
+                <h1 class="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-serif text-charcoal font-medium mb-6 leading-tight max-w-4xl mx-auto">
+                  Refined Services & <span class="italic font-light">Elevated Architecture</span>
+                </h1>
+                <p class="text-sm sm:text-base md:text-lg lg:text-xl text-charcoal/60 max-w-2xl mx-auto leading-relaxed">
+                  Experience our comprehensive design spectrum, carefully structured to assure pristine finish quality and warm minimalist sophistication.
+                </p>
+              </div>
+            </section>
+            <main class="py-20 max-w-7xl mx-auto px-6 md:px-12">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+                ${cardsHtml}
+              </div>
+            </main>
+          </div>
+          ${staticFooter}
+        </div>
+      `;
+    }
+
+    // B) /services/[categoryId] Page
+    if (pathParts.length === 2) {
+      const catId = pathParts[1];
+      const cat = serverCategories.find(c => c.id === catId);
+      if (!cat) return "";
+
+      let subcardsHtml = "";
+      for (const item of cat.items) {
+        subcardsHtml += `
+          <div class="bg-white border border-charcoal/5 rounded-[2rem] p-8 shadow-sm flex flex-col justify-between">
+            <div>
+              <h3 class="text-xl font-bold text-charcoal mb-4">${item.name}</h3>
+              <p class="text-charcoal/50 text-sm leading-relaxed mb-8">${item.desc}</p>
+            </div>
+            <a href="/services/${cat.id}/${item.slug}" class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-charcoal hover:text-ochre transition-colors">
+              Explore Details →
+            </a>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="min-h-screen bg-cream flex flex-col justify-between">
+          <div>
+            ${staticHeader}
+            <div class="pt-32 pb-4 bg-cream border-b border-charcoal/5">
+              <div class="max-w-7xl mx-auto px-6 md:px-12 flex items-center gap-2 text-xs font-mono text-charcoal/40">
+                <a href="/services" class="hover:text-ochre">Services</a>
+                <span>&gt;</span>
+                <span class="text-ochre font-medium">${cat.title}</span>
+              </div>
+            </div>
+            <section class="py-16 relative overflow-hidden bg-cream border-b border-charcoal/5">
+              <div class="max-w-7xl mx-auto px-6 md:px-12 relative z-10">
+                <span class="font-mono text-xs tracking-widest text-ochre font-extrabold uppercase mb-2 block">Category ${cat.accent}</span>
+                <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif text-charcoal font-medium mb-6 leading-tight max-w-4xl">${cat.title}</h1>
+                <p class="text-sm sm:text-base md:text-lg text-charcoal/60 max-w-3xl leading-relaxed">${cat.description}</p>
+              </div>
+            </section>
+            <main class="py-20 max-w-7xl mx-auto px-6 md:px-12">
+              <h2 class="text-xs font-bold tracking-[0.2em] text-charcoal/30 uppercase mb-8 pb-4 border-b border-charcoal/5">DETAILED SERVICE BREAKDOWN</h2>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+                ${subcardsHtml}
+              </div>
+            </main>
+            <section class="py-16 bg-cream border-t border-charcoal/5">
+              <div class="max-w-5xl mx-auto px-6 md:px-12">
+                <div class="bg-charcoal text-white rounded-[2.5rem] p-8 md:p-12 relative overflow-hidden border border-white/5 shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
+                  <div class="relative z-10 space-y-3 text-center md:text-left max-w-2xl">
+                    <span class="text-[10px] font-bold tracking-[0.2em] text-ochre uppercase block">READY TO START?</span>
+                    <h3 class="text-2xl md:text-3xl font-serif font-medium leading-tight text-white">Discuss your <span class="italic font-light text-ochre-light">${cat.title}</span> project</h3>
+                    <p class="text-white/60 text-xs leading-relaxed">Connect with our design advisors today. We'll map out your structural planning and spatial options without any obligation.</p>
+                  </div>
+                  <div class="relative z-10 flex-shrink-0 w-full md:w-auto">
+                    <a href="/contact" class="w-full md:w-auto bg-ochre hover:bg-ochre/90 text-white px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-300 text-sm">
+                      Get a Quote
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+          ${staticFooter}
+        </div>
+      `;
+    }
+
+    // C) /services/[categoryId]/[serviceSlug] Page
+    if (pathParts.length === 3) {
+      const catId = pathParts[1];
+      const serviceSlug = pathParts[2];
+      const cat = serverCategories.find(c => c.id === catId);
+      if (!cat) return "";
+
+      const service = cat.items.find(s => s.slug === serviceSlug);
+      if (!service) return "";
+
+      let placeholderGallery = "";
+      for (let i = 1; i <= 3; i++) {
+        placeholderGallery += `
+          <div class="aspect-[4/3] rounded-[2rem] border-2 border-dashed border-charcoal/10 bg-white/40 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
+            <p class="text-xs font-bold text-charcoal/40 uppercase tracking-widest mb-1">Photos coming soon</p>
+            <p class="text-[11px] text-charcoal/30 max-w-[180px]">Aesthetic portfolio updates and luxury lookbook renders are currently in progress.</p>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="min-h-screen bg-cream flex flex-col justify-between">
+          <div>
+            ${staticHeader}
+            <div class="pt-32 pb-4 bg-cream border-b border-charcoal/5">
+              <div class="max-w-7xl mx-auto px-6 md:px-12 flex items-center gap-2 text-xs font-mono text-charcoal/40">
+                <a href="/services" class="hover:text-ochre">Services</a>
+                <span>&gt;</span>
+                <a href="/services/${cat.id}" class="hover:text-ochre">${cat.title}</a>
+                <span>&gt;</span>
+                <span class="text-ochre font-medium">${service.name}</span>
+              </div>
+            </div>
+            <main class="py-16 max-w-7xl mx-auto px-6 md:px-12">
+              <div class="max-w-4xl">
+                <span class="text-xs font-bold tracking-[0.2em] text-ochre uppercase mb-3 block">DETAILED SERVICE STUDY</span>
+                <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif text-charcoal font-medium mb-6 leading-tight">${service.name}</h1>
+                <p class="text-base sm:text-lg md:text-xl text-charcoal/60 leading-relaxed font-sans mb-12">${service.desc}</p>
+              </div>
+              <div class="mt-12 space-y-6">
+                <h3 class="text-xs font-bold tracking-[0.2em] text-charcoal/30 uppercase pb-3 border-b border-charcoal/5">PROJECT PORTFOLIO LOOKBOOK</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  ${placeholderGallery}
+                </div>
+              </div>
+            </main>
+            <section class="py-20 bg-cream">
+              <div class="max-w-5xl mx-auto px-6 md:px-12 text-center">
+                <div class="bg-charcoal text-white rounded-[3rem] p-10 md:p-16 relative overflow-hidden border border-white/5 shadow-2xl">
+                  <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-ochre to-transparent opacity-50"></div>
+                  <div class="relative z-10 space-y-6">
+                    <span class="text-xs font-bold tracking-[0.2em] text-ochre uppercase block">TAILORED HOME SERVICE</span>
+                    <h2 class="text-3xl md:text-4xl lg:text-5xl font-serif font-medium leading-tight max-w-2xl mx-auto">Bring <span class="italic font-light text-ochre-light">${service.name}</span> to your residence</h2>
+                    <p class="text-white/60 text-sm md:text-base max-w-xl mx-auto leading-relaxed">Every home deserves architectural precision. Speak with our experts to discuss custom scheduling, design coordination, and direct material options.</p>
+                    <div class="pt-6 flex justify-center">
+                      <a href="/contact" class="w-full sm:w-auto bg-ochre hover:bg-ochre/90 text-white px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg shadow-ochre/20">
+                        Get a Quote
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+          ${staticFooter}
+        </div>
+      `;
+    }
+
+    return "";
+  }
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -323,6 +642,13 @@ async function startServer() {
           "utf-8"
         );
         template = await vite.transformIndexHtml(url, template);
+        
+        // Static pre-rendering inject
+        const preRendered = preRenderServices(req.path);
+        if (preRendered) {
+          template = template.replace('<div id="root"></div>', `<div id="root">${preRendered}</div>`);
+        }
+
         res.status(200).set({ "Content-Type": "text/html" }).end(template);
       } catch (e: any) {
         vite.ssrFixStacktrace(e);
@@ -332,8 +658,24 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+    app.get("*", async (req, res) => {
+      try {
+        const fs = await import("fs");
+        let template = fs.readFileSync(
+          path.join(distPath, "index.html"),
+          "utf-8"
+        );
+        
+        // Static pre-rendering inject
+        const preRendered = preRenderServices(req.path);
+        if (preRendered) {
+          template = template.replace('<div id="root"></div>', `<div id="root">${preRendered}</div>`);
+        }
+
+        res.status(200).set({ "Content-Type": "text/html" }).end(template);
+      } catch (e) {
+        res.sendFile(path.join(distPath, "index.html"));
+      }
     });
   }
 

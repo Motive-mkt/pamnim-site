@@ -5,10 +5,12 @@ import { db, auth } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
 import { 
   Plus, Users, Briefcase, Edit2, Trash2, CheckCircle2, Clock, Globe, UserPlus, Mail,
-  Home, Palette, LayoutGrid, PaintBucket, RefreshCcw, MessageSquare, HelpCircle, Film
+  Home, Palette, LayoutGrid, PaintBucket, RefreshCcw, MessageSquare, HelpCircle, Film, Sparkles,
+  Image as ImageIcon
 } from 'lucide-react';
 import { useCMS } from '../../hooks/useCMS';
 import { refineDraftCopy } from '../../services/geminiService';
+import { serviceCategories } from '../../data/servicesData';
 
 const iconMap: Record<string, any> = {
   Home,
@@ -56,7 +58,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 }
 
 export default function OwnerDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'services' | 'staff' | 'content' | 'media' | 'inquiries'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services'>('overview');
   const [projects, setProjects] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
@@ -65,6 +67,17 @@ export default function OwnerDashboard() {
   const [inquiries, setInquiries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { content } = useCMS();
+
+  // Sub-services state
+  const [detailedServices, setDetailedServices] = useState<any[]>([]);
+  const [selectedSubService, setSelectedSubService] = useState<any | null>(null);
+  const [isSavingSubService, setIsSavingSubService] = useState(false);
+  const [subServiceForm, setSubServiceForm] = useState({
+    name: '',
+    desc: '',
+    heroImage: '',
+    images: ['', '', '']
+  });
 
   // Services state
   const [cmsServices, setCmsServices] = useState<any[]>([]);
@@ -104,6 +117,7 @@ export default function OwnerDashboard() {
   // CMS Edit State
   const [cmsHero, setCmsHero] = useState(content.hero);
   const [cmsContact, setCmsContact] = useState(content.contact);
+  const [cmsLuxuryCategories, setCmsLuxuryCategories] = useState<any[]>([]);
 
   // Gemini Copywriter Assistant State
   const [refinement, setRefinement] = useState<{
@@ -193,6 +207,9 @@ export default function OwnerDashboard() {
     if (content.services) {
       setCmsServices(content.services);
     }
+    if (content.luxuryCategories) {
+      setCmsLuxuryCategories(content.luxuryCategories);
+    }
   }, [content]);
 
   const fetchData = async () => {
@@ -215,6 +232,9 @@ export default function OwnerDashboard() {
 
       const inquiriesSnap = await getDocs(query(collection(db, 'inquiries'), orderBy('createdAt', 'desc')));
       setInquiries(inquiriesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+      const detailedSnap = await getDocs(collection(db, 'detailedServices'));
+      setDetailedServices(detailedSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (err) {
       console.error(err);
     } finally {
@@ -602,9 +622,10 @@ export default function OwnerDashboard() {
       ...content,
       hero: cmsHero,
       contact: cmsContact,
-      services: cmsServices
+      services: cmsServices,
+      luxuryCategories: cmsLuxuryCategories
     });
-    alert('Homepage and contact info updated!');
+    alert('Homepage, contact info and luxury categories updated!');
   };
 
   const handleSaveServices = async (updatedServicesList?: any[]) => {
@@ -617,6 +638,101 @@ export default function OwnerDashboard() {
     } catch (err) {
       console.error('Error saving services:', err);
       alert('Failed to save service changes to the database.');
+    }
+  };
+
+  const uploadFileToCloudinary = async (file: File): Promise<string> => {
+    let cloudName = ((import.meta as any).env?.VITE_CLOUDINARY_CLOUD_NAME as string);
+    let preset = ((import.meta as any).env?.VITE_CLOUDINARY_UPLOAD_PRESET as string);
+
+    try {
+      const configRes = await fetch('/api/config/cloudinary');
+      if (configRes.ok) {
+        const configData = await configRes.json();
+        if (configData.cloudName && configData.cloudName !== 'undefined') cloudName = configData.cloudName;
+        if (configData.uploadPreset && configData.uploadPreset !== 'undefined') preset = configData.uploadPreset;
+      }
+    } catch (err) {
+      console.warn("Failed to fetch runtime backend configuration:", err);
+    }
+
+    if (!cloudName || cloudName === 'undefined') cloudName = 'djwrpottl';
+    if (!preset || preset === 'undefined') preset = 'pamnim_preset';
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', preset);
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.secure_url || data.url;
+      }
+      throw new Error(`Direct upload failed with status ${res.status}`);
+    } catch (directErr) {
+      console.warn("Direct upload failed, trying proxy...", directErr);
+      const base64Data = await compressImageToMax500KB(file);
+      const res = await fetch('/api/media/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file: base64Data, type: 'image', uploadPreset: preset })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.url;
+      }
+      throw new Error("Failed to upload image via both direct and proxy methods.");
+    }
+  };
+
+  const handleUploadDetailedImage = async (file: File, type: 'hero' | 'img0' | 'img1' | 'img2') => {
+    try {
+      setIsSavingSubService(true);
+      const url = await uploadFileToCloudinary(file);
+      setSubServiceForm(prev => {
+        if (type === 'hero') {
+          return { ...prev, heroImage: url };
+        } else {
+          const index = parseInt(type.replace('img', ''));
+          const newImgs = [...prev.images];
+          newImgs[index] = url;
+          return { ...prev, images: newImgs };
+        }
+      });
+    } catch (err: any) {
+      alert(`Upload failed: ${err.message || err}`);
+    } finally {
+      setIsSavingSubService(false);
+    }
+  };
+
+  const handleSaveSubService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSubService) return;
+    try {
+      setIsSavingSubService(true);
+      const docId = `${selectedSubService.categoryId}_${selectedSubService.slug}`;
+      await setDoc(doc(db, 'detailedServices', docId), {
+        slug: selectedSubService.slug,
+        categoryId: selectedSubService.categoryId,
+        name: subServiceForm.name,
+        desc: subServiceForm.desc,
+        heroImage: subServiceForm.heroImage,
+        images: subServiceForm.images
+      });
+      alert('Sub-Service updated successfully!');
+      setSelectedSubService(null);
+      
+      const detailedSnap = await getDocs(collection(db, 'detailedServices'));
+      setDetailedServices(detailedSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (err: any) {
+      console.error(err);
+      alert(`Failed to save sub-service: ${err.message || err}`);
+    } finally {
+      setIsSavingSubService(false);
     }
   };
 
@@ -645,6 +761,7 @@ export default function OwnerDashboard() {
     { id: 'overview', label: 'Dashboard', icon: Briefcase },
     { id: 'projects', label: 'Projects', icon: Briefcase },
     { id: 'services', label: 'Services', icon: LayoutGrid },
+    { id: 'detailed-services', label: 'Sub-Services CMS', icon: Sparkles },
     { id: 'staff', label: 'Team', icon: Users },
     { id: 'inquiries', label: 'Inquiries', icon: Mail },
     { id: 'media', label: 'Media Library', icon: Globe },
@@ -818,6 +935,81 @@ export default function OwnerDashboard() {
                 <p className="text-charcoal/30 font-bold uppercase text-xs tracking-widest">No services found</p>
                 <p className="text-sm text-charcoal/60 mt-2">Add your first custom service using the button above.</p>
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'detailed-services' && (
+        <div className="bg-white rounded-3xl p-8 border border-charcoal/5 shadow-sm animate-fade-in">
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold">Detailed Sub-Services CMS</h2>
+            <p className="text-sm text-charcoal/60 mt-1">Configure individual dynamic pages for the 12 "Included Solutions" of your luxury categories.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {serviceCategories.flatMap(category => 
+              category.items.map(item => {
+                const dbItem = detailedServices.find(ds => ds.id === `${category.id}_${item.slug}`);
+                const hasHero = !!(dbItem?.heroImage || item.heroImage);
+                const galleryCount = (dbItem?.images || item.images || ["", "", ""]).filter(Boolean).length;
+
+                return (
+                  <div key={`${category.id}_${item.slug}`} className="p-6 rounded-2xl bg-cream/30 border border-charcoal/5 flex flex-col justify-between hover:border-ochre/30 transition-all group">
+                    <div>
+                      <span className="inline-block text-[9px] font-mono uppercase tracking-widest font-bold text-ochre bg-ochre/10 px-2.5 py-1 rounded-md mb-3">
+                        {category.title}
+                      </span>
+                      <h3 className="font-bold text-lg mb-2">{item.name}</h3>
+                      <p className="text-xs text-charcoal/50 line-clamp-3 mb-6 min-h-[3rem]">{dbItem?.desc || item.desc}</p>
+                      
+                      <div className="space-y-2 mb-6">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-charcoal/40 font-bold uppercase tracking-wider">Hero Image</span>
+                          <span className={hasHero ? "text-green-600 font-bold" : "text-amber-600 font-bold"}>
+                            {hasHero ? "Uploaded" : "No Image"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-charcoal/40 font-bold uppercase tracking-wider">Gallery Images</span>
+                          <span className="font-bold text-charcoal/70">
+                            {galleryCount} / 3 Uploaded
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        const currentHero = dbItem?.heroImage || item.heroImage || "";
+                        const currentImgs = dbItem?.images || item.images || ["", "", ""];
+                        const normalizedImgs = [
+                          currentImgs[0] || "",
+                          currentImgs[1] || "",
+                          currentImgs[2] || ""
+                        ];
+                        
+                        setSelectedSubService({
+                          categoryId: category.id,
+                          categoryTitle: category.title,
+                          slug: item.slug,
+                          name: item.name
+                        });
+                        setSubServiceForm({
+                          name: dbItem?.name || item.name,
+                          desc: dbItem?.desc || item.desc,
+                          heroImage: currentHero,
+                          images: normalizedImgs
+                        });
+                      }}
+                      className="w-full bg-charcoal hover:bg-ochre text-white text-xs font-bold py-3 rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      Edit Page Assets
+                    </button>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
@@ -1129,6 +1321,143 @@ export default function OwnerDashboard() {
                 </div>
               </div>
            </div>
+        </div>
+      )}
+
+      {/* Real Project Previews & Category Settings */}
+      {activeTab === 'content' && (
+        <div className="max-w-6xl mx-auto px-6 lg:px-8 pb-16">
+          <div className="bg-white border border-charcoal/5 rounded-[2.5rem] p-8 md:p-12 shadow-sm space-y-8">
+            <div>
+              <h3 className="text-xl font-bold">Category Project Previews & Settings</h3>
+              <p className="text-sm text-charcoal/60 mt-1">
+                Customize the starting prices, timelines, and the real-world project preview images displayed when users request quotes on the homepage.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8">
+              {cmsLuxuryCategories.map((category, catIdx) => (
+                <div key={category.id || catIdx} className="p-6 rounded-3xl bg-cream/30 border border-charcoal/5 space-y-6 relative group" id={`category-${category.id}`}>
+                  <div className="flex justify-between items-center border-b border-charcoal/5 pb-4">
+                    <div>
+                      <span className="text-[10px] font-mono tracking-widest text-ochre uppercase font-bold">Category {category.accent || catIdx + 1}</span>
+                      <h4 className="font-bold text-lg mt-0.5">{category.title}</h4>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-charcoal/40 mb-1.5">Starting Price</label>
+                      <input
+                        type="text"
+                        value={category.startingPrice || ''}
+                        onChange={(e) => {
+                          const updated = [...cmsLuxuryCategories];
+                          updated[catIdx] = { ...category, startingPrice: e.target.value };
+                          setCmsLuxuryCategories(updated);
+                        }}
+                        className="w-full p-3 bg-white border border-charcoal/5 rounded-xl text-xs focus:outline-none focus:border-ochre font-medium"
+                        placeholder="e.g. From KES 50,000"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-charcoal/40 mb-1.5">Timeline</label>
+                      <input
+                        type="text"
+                        value={category.timeline || ''}
+                        onChange={(e) => {
+                          const updated = [...cmsLuxuryCategories];
+                          updated[catIdx] = { ...category, timeline: e.target.value };
+                          setCmsLuxuryCategories(updated);
+                        }}
+                        className="w-full p-3 bg-white border border-charcoal/5 rounded-xl text-xs focus:outline-none focus:border-ochre font-medium"
+                        placeholder="e.g. 2 - 3 Weeks"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Previews URLs and small thumb displays */}
+                  <div className="space-y-4">
+                    <label className="block text-[10px] font-bold uppercase text-charcoal/40">Real Project Previews (Up to 3 Images)</label>
+                    
+                    {(category.images || []).map((imgUrl: string, imgIdx: number) => (
+                      <div key={imgIdx} className="space-y-1.5">
+                        <div className="flex gap-3 items-center">
+                          {/* Tiny thumbnail preview */}
+                          <div className="w-12 h-12 rounded-xl bg-cream border border-charcoal/5 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                            {imgUrl ? (
+                              <img src={imgUrl} className="w-full h-full object-cover" alt="Preview Thumbnail" onError={(e) => { (e.target as any).src = "https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&q=80&w=120" }} referrerPolicy="no-referrer" />
+                            ) : (
+                              <span className="text-[10px] text-charcoal/20">Empty</span>
+                            )}
+                          </div>
+                          
+                          {/* Input url */}
+                          <div className="flex-1 relative">
+                            <input
+                              type="text"
+                              value={imgUrl}
+                              onChange={(e) => {
+                                const updated = [...cmsLuxuryCategories];
+                                const updatedImages = [...(category.images || [])];
+                                updatedImages[imgIdx] = e.target.value;
+                                updated[catIdx] = { ...category, images: updatedImages };
+                                setCmsLuxuryCategories(updated);
+                              }}
+                              className="w-full pl-3 pr-20 py-3 bg-white border border-charcoal/5 rounded-xl text-[11px] focus:outline-none focus:border-ochre font-mono truncate"
+                              placeholder={`Paste Image URL ${imgIdx + 1}...`}
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] uppercase tracking-wider text-charcoal/30 font-bold font-sans">
+                              Image {imgIdx + 1}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Quick selection from media library */}
+                        <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+                          <span className="text-[9px] font-bold text-charcoal/35 whitespace-nowrap">Media Library:</span>
+                          {gallery.slice(0, 4).map((mItem, mIdx) => (
+                            <button
+                              key={mItem.id || mIdx}
+                              type="button"
+                              onClick={() => {
+                                const updated = [...cmsLuxuryCategories];
+                                const updatedImages = [...(category.images || [])];
+                                updatedImages[imgIdx] = mItem.image;
+                                updated[catIdx] = { ...category, images: updatedImages };
+                                setCmsLuxuryCategories(updated);
+                              }}
+                              className="h-6 w-9 rounded-md overflow-hidden border border-charcoal/5 flex-shrink-0 hover:scale-105 active:scale-95 transition-all focus:outline-none cursor-pointer"
+                              title="Click to apply this image"
+                            >
+                              <img src={mItem.image} className="w-full h-full object-cover" alt="Media Asset" referrerPolicy="no-referrer" />
+                            </button>
+                          ))}
+                          {portfolio.slice(0, 4).map((mItem, mIdx) => (
+                            <button
+                              key={mItem.id || mIdx}
+                              type="button"
+                              onClick={() => {
+                                const updated = [...cmsLuxuryCategories];
+                                const updatedImages = [...(category.images || [])];
+                                updatedImages[imgIdx] = mItem.image;
+                                updated[catIdx] = { ...category, images: updatedImages };
+                                setCmsLuxuryCategories(updated);
+                              }}
+                              className="h-6 w-9 rounded-md overflow-hidden border border-charcoal/5 flex-shrink-0 hover:scale-105 active:scale-95 transition-all focus:outline-none cursor-pointer"
+                              title="Click to apply this image"
+                            >
+                              <img src={mItem.image} className="w-full h-full object-cover" alt="Media Asset" referrerPolicy="no-referrer" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -1591,6 +1920,162 @@ export default function OwnerDashboard() {
                >
                  Create & Notify Team
                </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Sub-Service Edit Modal */}
+      {selectedSubService && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-charcoal/40 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-2xl p-10 shadow-2xl relative my-8 max-h-[90vh] overflow-y-auto">
+            <button 
+              onClick={() => setSelectedSubService(null)} 
+              className="absolute top-8 right-8 text-charcoal/20 hover:text-charcoal transition-colors cursor-pointer"
+            >
+              <Plus className="w-8 h-8 rotate-45" />
+            </button>
+            
+            <div className="mb-6">
+              <span className="text-[10px] font-bold tracking-[0.2em] text-ochre uppercase block">
+                {selectedSubService.categoryTitle}
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-bold text-charcoal mt-1">
+                Edit {selectedSubService.name} Page
+              </h2>
+            </div>
+
+            <form onSubmit={handleSaveSubService} className="space-y-6">
+              <div>
+                <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Service Title</label>
+                <input 
+                  type="text" 
+                  required
+                  value={subServiceForm.name}
+                  onChange={(e) => setSubServiceForm({ ...subServiceForm, name: e.target.value })}
+                  className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Service Description</label>
+                <textarea 
+                  required
+                  rows={3}
+                  value={subServiceForm.desc}
+                  onChange={(e) => setSubServiceForm({ ...subServiceForm, desc: e.target.value })}
+                  className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-sm leading-relaxed"
+                />
+              </div>
+
+              {/* Hero Image Section */}
+              <div className="border-t border-charcoal/5 pt-6">
+                <label className="block text-xs font-bold uppercase text-charcoal/40 mb-3">Hero Image (Full-Width Aspect 21:9)</label>
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                  {subServiceForm.heroImage ? (
+                    <div className="w-40 aspect-[21/9] rounded-xl overflow-hidden border border-charcoal/5 bg-cream relative group">
+                      <img src={subServiceForm.heroImage} alt="Hero Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <button 
+                        type="button"
+                        onClick={() => setSubServiceForm({ ...subServiceForm, heroImage: "" })}
+                        className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-opacity cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-40 aspect-[21/9] rounded-xl border border-dashed border-charcoal/10 bg-cream/40 flex items-center justify-center text-charcoal/30">
+                      <ImageIcon className="w-5 h-5" />
+                    </div>
+                  )}
+                  <input 
+                    type="file"
+                    accept="image/*"
+                    id="hero-image-upload"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUploadDetailedImage(file, 'hero');
+                    }}
+                  />
+                  <label 
+                    htmlFor="hero-image-upload"
+                    className="bg-cream hover:bg-ochre/10 hover:text-ochre text-charcoal/70 border border-charcoal/5 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all"
+                  >
+                    Choose Image File
+                  </label>
+                </div>
+              </div>
+
+              {/* Gallery Images (3 slots) */}
+              <div className="border-t border-charcoal/5 pt-6">
+                <label className="block text-xs font-bold uppercase text-charcoal/40 mb-3">Project Lookbook Gallery (Max 3 Images)</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  {[0, 1, 2].map((idx) => {
+                    const imgUrl = subServiceForm.images[idx];
+                    return (
+                      <div key={idx} className="space-y-2">
+                        <span className="text-[10px] font-bold text-charcoal/30 uppercase">Slot {idx + 1}</span>
+                        <div className="flex flex-col gap-3 items-start">
+                          {imgUrl ? (
+                            <div className="w-full aspect-[4/3] rounded-xl overflow-hidden border border-charcoal/5 bg-cream relative group">
+                              <img src={imgUrl} alt={`Slot ${idx + 1}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  const newImgs = [...subServiceForm.images];
+                                  newImgs[idx] = "";
+                                  setSubServiceForm({ ...subServiceForm, images: newImgs });
+                                }}
+                                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-opacity cursor-pointer"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="w-full aspect-[4/3] rounded-xl border border-dashed border-charcoal/10 bg-cream/40 flex items-center justify-center text-charcoal/30">
+                              <ImageIcon className="w-5 h-5" />
+                            </div>
+                          )}
+                          <input 
+                            type="file"
+                            accept="image/*"
+                            id={`gallery-upload-${idx}`}
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleUploadDetailedImage(file, `img${idx}` as any);
+                            }}
+                          />
+                          <label 
+                            htmlFor={`gallery-upload-${idx}`}
+                            className="w-full text-center bg-cream hover:bg-ochre/10 hover:text-ochre text-charcoal/70 border border-charcoal/5 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all"
+                          >
+                            Upload Photo
+                          </label>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="border-t border-charcoal/5 pt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedSubService(null)}
+                  className="px-6 py-3 border border-charcoal/5 hover:bg-cream text-charcoal text-xs font-bold rounded-xl transition-all uppercase tracking-wider cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingSubService}
+                  className="bg-ochre hover:bg-ochre/90 disabled:bg-charcoal/10 disabled:text-charcoal/30 text-white text-xs font-bold px-8 py-3 rounded-xl transition-all shadow-lg shadow-ochre/20 uppercase tracking-wider flex items-center gap-2 cursor-pointer"
+                >
+                  {isSavingSubService ? "Saving Changes..." : "Save Page Assets"}
+                </button>
+              </div>
             </form>
           </div>
         </div>

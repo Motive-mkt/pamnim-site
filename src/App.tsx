@@ -12,6 +12,8 @@ import OwnerDashboard from './pages/dashboards/OwnerDashboard';
 import PortfolioPage from './pages/Portfolio';
 import ContactPage from './pages/Contact';
 import ServicesPage from './pages/Services';
+import CategoryDetailPage from './pages/CategoryDetail';
+import ServiceDetailPage from './pages/ServiceDetail';
 import { useAuth } from './hooks/useAuth';
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
@@ -43,6 +45,8 @@ function AppContent() {
         <Route path="/signup" element={<Login isSignUpDefault={true} />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/services" element={<ServicesPage />} />
+        <Route path="/services/:categoryId" element={<CategoryDetailPage />} />
+        <Route path="/services/:categoryId/:serviceSlug" element={<ServiceDetailPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route 
           path="/dashboard" 
@@ -60,6 +64,7 @@ function AppContent() {
             </ProtectedRoute>
           } 
         />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
   );

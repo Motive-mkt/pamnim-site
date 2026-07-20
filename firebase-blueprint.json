@@ -101,6 +101,20 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "email", "message"]
+    },
+    "DetailedService": {
+      "title": "Detailed Service",
+      "description": "Information about a sub-service, including hero and gallery images.",
+      "type": "object",
+      "properties": {
+        "slug": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "name": { "type": "string" },
+        "desc": { "type": "string" },
+        "heroImage": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["slug", "categoryId", "name", "desc"]
     }
   },
   "firestore": {
@@ -131,6 +145,10 @@
     "inquiries": {
       "schema": "Inquiry",
       "description": "Customer contact form submissions."
+    },
+    "detailedServices": {
+      "schema": "DetailedService",
+      "description": "CMS content for the 12 dynamic sub-services."
     }
   }
 }

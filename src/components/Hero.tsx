@@ -70,7 +70,7 @@ export default function Hero() {
             <span className="text-xs font-bold tracking-widest uppercase">★ RATED 4.6 BY CLIENTS</span>
           </div>
 
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] mb-6">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] mb-6">
             {hero.title.split(hero.highlightWord || 'home.').map((part, i, arr) => (
               <span key={i}>
                 {part}
@@ -79,17 +79,21 @@ export default function Hero() {
             ))}
           </h1>
 
-          <p className="text-lg md:text-xl text-white/90 mb-8 max-w-lg leading-relaxed">
+          <p className="text-base sm:text-lg md:text-xl text-white/90 mb-8 max-w-lg leading-relaxed">
             {hero.subheadline}
           </p>
 
           <ul className="space-y-4 mb-10">
-            {['Free consultation', 'Bespoke styling', 'On-time delivery'].map((item) => (
+            {[
+              'Free first consultation — no commitment',
+              'Bespoke design for your budget and space',
+              'On-time delivery, fully managed project'
+            ].map((item) => (
               <li key={item} className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-ochre flex items-center justify-center">
+                <div className="w-5 h-5 rounded-full bg-ochre flex items-center justify-center flex-shrink-0">
                   <Check className="w-3.5 h-3.5 text-white" />
                 </div>
-                <span className="font-medium">{item}</span>
+                <span className="font-medium text-sm md:text-base">{item}</span>
               </li>
             ))}
           </ul>
@@ -100,7 +104,7 @@ export default function Hero() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="bg-white rounded-2xl p-8 shadow-2xl max-w-md mx-auto lg:ml-auto"
+          className="bg-white rounded-2xl p-6 sm:p-8 shadow-2xl max-w-md mx-auto lg:ml-auto"
         >
           {submitted ? (
             <div className="py-10 text-center space-y-4">
