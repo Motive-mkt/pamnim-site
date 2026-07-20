@@ -28,6 +28,12 @@ export default function ContactPage() {
         createdAt: new Date().toISOString()
       });
 
+      if (typeof (window as any).fbq === "function") {
+        (window as any).fbq("track", "Lead", {
+          content_name: "Contact Page Form",
+        });
+      }
+
       // Prepare WhatsApp Redirect
       const phoneNumber = content.contact.whatsapp;
       const waMessage = `Hello Pamnim Interiors! I'm interested in a project.\n\n*Name:* ${formData.name}\n*Email:* ${formData.email}\n*Project:* ${formData.projectType}\n*Message:* ${formData.message}`;

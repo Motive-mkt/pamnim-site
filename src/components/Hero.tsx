@@ -33,6 +33,12 @@ export default function Hero() {
         createdAt: new Date().toISOString()
       });
 
+      if (typeof (window as any).fbq === "function") {
+        (window as any).fbq("track", "Lead", {
+          content_name: "Hero Form",
+        });
+      }
+
       const waMessage = `Hello Pamnim Interiors! I'd like to book a consultation.\n\n*Name:* ${formData.name}\n*Phone:* ${formData.phone}\n*Project:* ${formData.projectType}\n*Message:* ${formData.message || 'Consultation requested'}`;
       const whatsappUrl = `https://wa.me/${contact.whatsapp}?text=${encodeURIComponent(waMessage)}`;
       window.open(whatsappUrl, '_blank');

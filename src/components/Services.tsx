@@ -162,6 +162,12 @@ export default function Services() {
         createdAt: new Date().toISOString()
       });
 
+      if (typeof (window as any).fbq === "function") {
+        (window as any).fbq("track", "Lead", {
+          content_name: "Services Quote Form",
+        });
+      }
+
       setIsSubmitted(true);
       
       // Auto-open prefilled WhatsApp as dynamic follow-up
