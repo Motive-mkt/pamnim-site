@@ -7,6 +7,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
+import SignupPage from './pages/SignupPage';
 import Dashboard from './pages/Dashboard';
 import OwnerDashboard from './pages/dashboards/OwnerDashboard';
 import PortfolioPage from './pages/Portfolio';
@@ -42,7 +43,7 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Login isSignUpDefault={true} />} />
+        <Route path="/signup" element={<SignupPage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/services/:categoryId" element={<CategoryDetailPage />} />

@@ -3,15 +3,17 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
-export type UserRole = 'owner' | 'senior_designer' | 'designer' | 'project_manager' | 'client';
+export type UserRole = 'owner' | 'elevated_employee' | 'regular_employee' | 'senior_designer' | 'designer' | 'project_manager' | 'client' | 'pending';
 
-interface Profile {
+export interface Profile {
   uid: string;
   email: string;
   role: UserRole;
   name: string;
   phone?: string;
+  whatsapp?: string;
   assignedProjectIds?: string[];
+  status?: 'active' | 'pending';
 }
 
 interface AuthContextType {
@@ -20,6 +22,10 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   isStaff: boolean;
+  isOwner: boolean;
+  isElevatedEmployee: boolean;
+  isRegularEmployee: boolean;
+  canApproveSignups: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -88,11 +94,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
-  const isAdmin = profile?.role === 'owner';
-  const isStaff = profile?.role !== 'client' && profile?.role !== undefined;
+  const isOwner = profile?.role === 'owner';
+  const isElevatedEmployee = profile?.role === 'elevated_employee';
+  const isRegularEmployee = profile?.role === 'regular_employee' || profile?.role === 'senior_designer' || profile?.role === 'designer' || profile?.role === 'project_manager';
+  const isAdmin = isOwner;
+  const isStaff = isOwner || isElevatedEmployee || isRegularEmployee;
+  const canApproveSignups = isOwner || isElevatedEmployee;
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, isAdmin, isStaff }}>
+    <AuthContext.Provider value={{ user, profile, loading, isAdmin, isStaff, isOwner, isElevatedEmployee, isRegularEmployee, canApproveSignups }}>
       {children}
     </AuthContext.Provider>
   );

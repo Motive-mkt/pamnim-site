@@ -11,6 +11,10 @@ import {
 import { useCMS } from '../../hooks/useCMS';
 import { refineDraftCopy } from '../../services/geminiService';
 import { serviceCategories } from '../../data/servicesData';
+import ProjectTracker from '../../components/ProjectTracker';
+import ProjectChat from '../../components/ProjectChat';
+import StartProjectModal from '../../components/StartProjectModal';
+import UserManagementView from '../../components/UserManagementView';
 
 const iconMap: Record<string, any> = {
   Home,
@@ -58,10 +62,14 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 }
 
 export default function OwnerDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat'>('overview');
   const [projects, setProjects] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
+  const [selectedProject, setSelectedProject] = useState<any | null>(null);
+  const [selectedChatClient, setSelectedChatClient] = useState<any | null>(null);
+  const [showStartProjectModal, setShowStartProjectModal] = useState(false);
+  const [chatTaggedContext, setChatTaggedContext] = useState<string | undefined>();
   const [gallery, setGallery] = useState<any[]>([]);
   const [portfolio, setPortfolio] = useState<any[]>([]);
   const [inquiries, setInquiries] = useState<any[]>([]);
@@ -759,10 +767,11 @@ export default function OwnerDashboard() {
 
   const navItems = [
     { id: 'overview', label: 'Dashboard', icon: Briefcase },
-    { id: 'projects', label: 'Projects', icon: Briefcase },
+    { id: 'projects', label: 'Projects & Tracking', icon: Briefcase },
+    { id: 'chat', label: 'Client Chat', icon: MessageSquare },
+    { id: 'staff', label: 'Team & Approvals', icon: Users },
     { id: 'services', label: 'Services', icon: LayoutGrid },
     { id: 'detailed-services', label: 'Sub-Services CMS', icon: Sparkles },
-    { id: 'staff', label: 'Team', icon: Users },
     { id: 'inquiries', label: 'Inquiries', icon: Mail },
     { id: 'media', label: 'Media Library', icon: Globe },
     { id: 'content', label: 'Homepage Editor', icon: Globe },
@@ -805,60 +814,147 @@ export default function OwnerDashboard() {
       )}
 
       {activeTab === 'projects' && (
-        <div className="bg-white rounded-3xl p-8 shadow-sm border border-charcoal/5">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl font-bold">Project Management</h2>
-            <button 
-              onClick={() => setShowProjectModal(true)}
-              className="flex items-center gap-2 bg-ochre text-white px-6 py-2.5 rounded-xl font-bold hover:bg-ochre/90 transition-all"
-            >
-              <Plus className="w-5 h-5" />
-              New Project
-            </button>
+        <div className="space-y-8">
+          <div className="bg-white rounded-3xl p-8 shadow-sm border border-charcoal/5">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+              <div>
+                <h2 className="text-2xl font-bold">Project Progress Tracking</h2>
+                <p className="text-sm text-charcoal/60 mt-1">Select a project to view or manage its 4-stage tracking progress, media, and notes.</p>
+              </div>
+              <button 
+                onClick={() => setShowStartProjectModal(true)}
+                className="flex items-center gap-2 bg-ochre text-white px-6 py-3 rounded-2xl font-bold hover:bg-ochre-dark transition-all shadow-lg shadow-ochre/20"
+              >
+                <Plus className="w-5 h-5" />
+                Start New Project
+              </button>
+            </div>
+
+            {projects.length === 0 ? (
+              <div className="p-12 text-center text-charcoal/40 bg-cream/30 rounded-3xl border border-dashed border-charcoal/15">
+                No active projects found. Click "Start New Project" above to create one.
+              </div>
+            ) : (
+              <div className="grid lg:grid-cols-3 gap-8">
+                {/* Project Selector List */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-charcoal/40 uppercase tracking-widest px-1">Projects List</h3>
+                  {projects.map((proj) => {
+                    const isSelected = (selectedProject?.id || projects[0]?.id) === proj.id;
+                    return (
+                      <button
+                        key={proj.id}
+                        onClick={() => setSelectedProject(proj)}
+                        className={cn(
+                          "w-full text-left p-5 rounded-2xl border transition-all text-sm",
+                          isSelected 
+                            ? "bg-ochre text-white border-ochre shadow-lg shadow-ochre/20"
+                            : "bg-white border-charcoal/10 hover:border-ochre/50 hover:bg-cream/50"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full uppercase", isSelected ? "bg-white/20 text-white" : "bg-ochre/10 text-ochre")}>
+                            {proj.currentStageName || 'Started'}
+                          </span>
+                          <span className={cn("text-xs font-semibold truncate max-w-[160px]", isSelected ? "text-white/80" : "text-charcoal/50")}>
+                            {proj.selectedServices && proj.selectedServices.length > 0
+                              ? `${proj.selectedServices.length} Included Scopes`
+                              : (proj.serviceName || proj.categoryTitle || 'Service')}
+                          </span>
+                        </div>
+                        <h4 className="font-bold text-base mb-1">{proj.name}</h4>
+                        <p className={cn("text-xs", isSelected ? "text-white/80" : "text-charcoal/60")}>
+                          Client: {proj.clientName}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Selected Project Tracker Interactive View */}
+                <div className="lg:col-span-2">
+                  {(() => {
+                    const activeProj = selectedProject || projects[0];
+                    if (!activeProj) return null;
+                    return (
+                      <ProjectTracker
+                        project={activeProj}
+                        isReadOnly={false}
+                        onOpenChatWithTag={(taggedCtx) => {
+                          setChatTaggedContext(taggedCtx);
+                          const clientMatch = clients.find(c => c.uid === activeProj.clientId || c.id === activeProj.clientId);
+                          if (clientMatch) setSelectedChatClient(clientMatch);
+                          setActiveTab('chat');
+                        }}
+                        onProjectUpdated={fetchData}
+                      />
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-charcoal/5 text-xs font-bold text-charcoal/40 uppercase tracking-widest">
-                  <th className="pb-4 px-4">Project Name</th>
-                  <th className="pb-4 px-4">Client</th>
-                  <th className="pb-4 px-4">Staff Assigned</th>
-                  <th className="pb-4 px-4">Status</th>
-                  <th className="pb-4 px-4">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-charcoal/5">
-                {projects.map((project) => (
-                  <tr key={project.id} className="group hover:bg-cream transition-colors">
-                    <td className="py-5 px-4 font-bold">{project.name}</td>
-                    <td className="py-5 px-4 text-sm text-charcoal/60">
-                      {clients.find(c => c.uid === project.clientId)?.name || 'N/A'}
-                    </td>
-                    <td className="py-5 px-4">
-                      <div className="flex -space-x-2">
-                        {project.employeeIds?.map((eid: string) => (
-                          <div key={eid} className="w-8 h-8 rounded-full bg-ochre/10 border-2 border-white flex items-center justify-center text-[10px] font-bold text-ochre tooltip" title={staff.find(s => s.uid === eid)?.name}>
-                            {staff.find(s => s.uid === eid)?.name?.charAt(0)}
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="py-5 px-4">
-                       <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 font-bold text-xs uppercase">
-                        {project.status || 'Active'}
-                      </span>
-                    </td>
-                    <td className="py-5 px-4">
-                      <button className="p-2 bg-slate-50 rounded-lg hover:bg-ochre/10 hover:text-ochre">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <StartProjectModal
+            isOpen={showStartProjectModal}
+            onClose={() => setShowStartProjectModal(false)}
+            clients={clients}
+            onProjectStarted={() => {
+              fetchData();
+              setShowStartProjectModal(false);
+            }}
+          />
+        </div>
+      )}
+
+      {activeTab === 'chat' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-3xl p-6 border border-charcoal/10 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold">Client Chat Threads</h2>
+              <p className="text-sm text-charcoal/60">Select a client below to converse in real-time or reply to stage comments.</p>
+            </div>
+
+            <div className="w-full md:w-auto">
+              <select
+                value={selectedChatClient?.uid || selectedChatClient?.id || (clients[0]?.uid || '')}
+                onChange={e => {
+                  const match = clients.find(c => c.uid === e.target.value || c.id === e.target.value);
+                  if (match) setSelectedChatClient(match);
+                }}
+                className="w-full md:w-72 px-4 py-2.5 rounded-xl border border-charcoal/15 text-sm font-bold bg-white text-charcoal outline-none focus:border-ochre"
+              >
+                {clients.length === 0 ? (
+                  <option value="">No clients available</option>
+                ) : (
+                  clients.map(c => (
+                    <option key={c.uid || c.id} value={c.uid || c.id}>
+                      {c.name} ({c.email || c.phone || 'Client'})
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
           </div>
+
+          {(() => {
+            const activeChatUser = selectedChatClient || clients[0];
+            if (!activeChatUser) {
+              return (
+                <div className="p-12 text-center text-charcoal/40 bg-white rounded-3xl border border-charcoal/10">
+                  No active clients available for messaging yet.
+                </div>
+              );
+            }
+            return (
+              <ProjectChat
+                clientId={activeChatUser.uid || activeChatUser.id}
+                clientName={activeChatUser.name}
+                initialTaggedContext={chatTaggedContext}
+                onClearTag={() => setChatTaggedContext(undefined)}
+              />
+            );
+          })()}
         </div>
       )}
 

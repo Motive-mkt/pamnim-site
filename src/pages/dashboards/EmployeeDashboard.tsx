@@ -1,172 +1,264 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
-import { collection, query, getDocs, where, doc, getDoc, updateDoc, addDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
+import { collection, query, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
-import { Briefcase, CheckCircle2, Circle, Clock, MessageSquare, Phone, Mail, ChevronRight } from 'lucide-react';
+import { Briefcase, MessageSquare, Plus, Users } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import ProjectTracker from '../../components/ProjectTracker';
+import ProjectChat from '../../components/ProjectChat';
+import StartProjectModal from '../../components/StartProjectModal';
+import UserManagementView from '../../components/UserManagementView';
 
 export default function EmployeeDashboard() {
-  const { profile } = useAuth();
+  const { profile, canApproveSignups } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
-  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [clients, setClients] = useState<any[]>([]);
+  const [selectedProject, setSelectedProject] = useState<any | null>(null);
+  const [selectedChatClient, setSelectedChatClient] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-  const [note, setNote] = useState('');
+  const [activeTab, setActiveTab] = useState<'projects' | 'chat' | 'approvals'>('projects');
+  const [showStartProjectModal, setShowStartProjectModal] = useState(false);
+  const [chatTaggedContext, setChatTaggedContext] = useState<string | undefined>();
 
   useEffect(() => {
     if (profile?.uid) {
-      fetchProjects();
+      fetchData();
     }
   }, [profile]);
 
-  const fetchProjects = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      // For simplicity, we query all projects where employeeId is in array
-      const q = query(collection(db, 'projects'), where('employeeIds', 'array-contains', profile?.uid));
-      const snap = await getDocs(q);
-      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setProjects(list);
-      if (list.length > 0) setSelectedProject(list[0]);
+      // Fetch all projects
+      const projSnap = await getDocs(collection(db, 'projects'));
+      const projList = projSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setProjects(projList);
+      if (projList.length > 0 && !selectedProject) {
+        setSelectedProject(projList[0]);
+      }
+
+      // Fetch clients
+      const clientsSnap = await getDocs(collection(db, 'profiles'));
+      const clientsList = clientsSnap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter((p: any) => p.role === 'client' && p.status !== 'pending');
+      setClients(clientsList);
+      if (clientsList.length > 0 && !selectedChatClient) {
+        setSelectedChatClient(clientsList[0]);
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching employee dashboard data:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const updatePhaseStatus = async (phaseIndex: number, status: 'pending' | 'active' | 'complete') => {
-    if (!selectedProject) return;
-    const newPhases = [...selectedProject.phases];
-    newPhases[phaseIndex].status = status;
-    newPhases[phaseIndex].date = new Date().toLocaleDateString();
-
-    await updateDoc(doc(db, 'projects', selectedProject.id), { phases: newPhases });
-    setSelectedProject({ ...selectedProject, phases: newPhases });
-    setProjects(projects.map(p => p.id === selectedProject.id ? { ...p, phases: newPhases } : p));
-  };
-
-  const addProgressNote = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!note.trim() || !selectedProject) return;
-
-    const noteData = {
-      text: note,
-      authorId: profile?.uid,
-      authorName: profile?.name,
-      createdAt: new Date().toISOString()
-    };
-
-    await addDoc(collection(db, 'projects', selectedProject.id, 'progressNotes'), noteData);
-    setNote('');
-    alert('Note added successfully!');
-  };
+  if (loading) {
+    return (
+      <AdminLayout activeTab="overview">
+        <div className="p-12 text-center text-charcoal/40 animate-pulse">
+          Loading team portal...
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout activeTab="overview">
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* Left: Projects List */}
-        <div className="lg:col-span-1 space-y-4">
-          <h2 className="text-sm font-bold text-charcoal/40 uppercase tracking-widest px-2">Assigned Projects</h2>
-          {projects.map(p => (
+      <div className="space-y-8">
+        {/* Top Header & Navigation Tabs */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-charcoal/10 pb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-charcoal">Employee Workspace</h2>
+            <p className="text-sm text-charcoal/60">
+              Role: <span className="font-bold text-ochre capitalize">{profile?.role?.replace('_', ' ')}</span>
+            </p>
+          </div>
+
+          <div className="flex gap-2">
             <button
-              key={p.id}
-              onClick={() => setSelectedProject(p)}
-              className={cn(
-                "w-full text-left p-6 rounded-3xl transition-all duration-300 border",
-                selectedProject?.id === p.id 
-                  ? "bg-white border-ochre shadow-lg shadow-ochre/10 translate-x-2" 
-                  : "bg-white border-charcoal/5 hover:bg-cream hover:border-charcoal/10"
-              )}
+              onClick={() => setActiveTab('projects')}
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                activeTab === 'projects'
+                  ? 'bg-ochre text-white shadow-md'
+                  : 'bg-white border text-charcoal hover:bg-cream'
+              }`}
             >
-              <h3 className="font-bold text-lg mb-1">{p.name}</h3>
-              <p className="text-sm text-charcoal/40">{p.status} • {p.phases?.filter((ph:any) => ph.status === 'complete').length}/6 Complete</p>
+              <Briefcase className="w-4 h-4" /> Projects & Tracker
             </button>
-          ))}
+            <button
+              onClick={() => setActiveTab('chat')}
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                activeTab === 'chat'
+                  ? 'bg-ochre text-white shadow-md'
+                  : 'bg-white border text-charcoal hover:bg-cream'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" /> Client Chat
+            </button>
+            {canApproveSignups && (
+              <button
+                onClick={() => setActiveTab('approvals')}
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  activeTab === 'approvals'
+                    ? 'bg-ochre text-white shadow-md'
+                    : 'bg-white border text-charcoal hover:bg-cream'
+                }`}
+              >
+                <Users className="w-4 h-4" /> Sign-Up Approvals
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Right: Project Details */}
-        <div className="lg:col-span-2">
-          {selectedProject ? (
-            <div className="space-y-8">
-              {/* Client Info Card */}
-              <div className="bg-white rounded-3xl p-8 border border-charcoal/5 shadow-sm">
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <h2 className="text-3xl font-bold mb-2">{selectedProject.name}</h2>
-                    <p className="text-charcoal/60">Manage project phases and updates for this client.</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs font-bold text-charcoal/40 uppercase mb-2">CLIENT CONTACT</p>
-                    <div className="flex items-center gap-4 text-sm justify-end">
-                       <a href={`tel:${selectedProject.clientPhone}`} className="p-2 bg-ochre/10 text-ochre rounded-lg hover:bg-ochre hover:text-white transition-all">
-                          <Phone className="w-4 h-4" />
-                       </a>
-                       <a href={`mailto:${selectedProject.clientEmail}`} className="p-2 bg-ochre/10 text-ochre rounded-lg hover:bg-ochre hover:text-white transition-all">
-                          <Mail className="w-4 h-4" />
-                       </a>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Timeline Controller */}
-                <div className="space-y-6">
-                  {selectedProject.phases?.map((phase: any, index: number) => (
-                    <div key={phase.name} className="flex items-center gap-6 p-4 rounded-2xl bg-cream/50 border border-charcoal/5">
-                      <div className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
-                        phase.status === 'complete' ? "bg-emerald-100 text-emerald-600" : 
-                        phase.status === 'active' ? "bg-ochre/20 text-ochre animate-pulse" : "bg-slate-200 text-slate-400"
-                      )}>
-                        {phase.status === 'complete' ? <CheckCircle2 className="w-6 h-6" /> : <Clock className="w-6 h-6" />}
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-lg">{phase.name}</h4>
-                        <p className="text-sm text-charcoal/40">{phase.status} {phase.date ? `on ${phase.date}` : ''}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <select 
-                          className="bg-white border rounded-lg px-3 py-1.5 text-xs font-bold focus:outline-none focus:border-ochre"
-                          value={phase.status}
-                          onChange={(e) => updatePhaseStatus(index, e.target.value as any)}
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="active">Active</option>
-                          <option value="complete">Complete</option>
-                        </select>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+        {/* Tab 1: Projects & 4-Stage Progress Tracker */}
+        {activeTab === 'projects' && (
+          <div className="space-y-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-charcoal/10 shadow-sm">
+              <div>
+                <h3 className="font-bold text-lg text-charcoal">Project Management</h3>
+                <p className="text-xs text-charcoal/50">Start projects and manage stage media & status updates.</p>
               </div>
 
-              {/* Progress Note Form */}
-              <div className="bg-white rounded-3xl p-8 border border-charcoal/5 shadow-sm">
-                <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-ochre" />
-                  Add Progress Update
-                </h3>
-                <form onSubmit={addProgressNote} className="space-y-4">
-                  <textarea
-                    rows={4}
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="Share an update with the client..."
-                    className="w-full p-6 bg-cream border border-charcoal/5 rounded-2xl focus:outline-none focus:border-ochre transition-all"
-                  />
-                  <button className="bg-ochre text-white font-bold px-8 py-3 rounded-xl hover:bg-ochre/90 transition-all">
-                    Post Note to Portal
-                  </button>
-                </form>
-              </div>
+              <button
+                onClick={() => setShowStartProjectModal(true)}
+                className="px-5 py-2.5 rounded-2xl bg-ochre text-white text-xs font-bold flex items-center gap-2 shadow-md hover:bg-ochre-dark transition-all"
+              >
+                <Plus className="w-4 h-4" /> Start Project
+              </button>
             </div>
-          ) : (
-             <div className="bg-white rounded-3xl p-12 border border-dashed border-charcoal/20 text-center">
-                <Briefcase className="w-12 h-12 text-charcoal/20 mx-auto mb-4" />
-                <p className="text-charcoal/40">Select a project from the left to view details.</p>
-             </div>
-          )}
-        </div>
+
+            {projects.length === 0 ? (
+              <div className="p-12 text-center text-charcoal/40 bg-white rounded-3xl border border-charcoal/10">
+                No active projects found. Click "Start Project" above to create one.
+              </div>
+            ) : (
+              <div className="grid lg:grid-cols-3 gap-8">
+                {/* Projects Sidebar Selector */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-charcoal/40 uppercase tracking-widest px-1">Projects</h4>
+                  {projects.map((proj) => {
+                    const isSelected = (selectedProject?.id || projects[0]?.id) === proj.id;
+                    return (
+                      <button
+                        key={proj.id}
+                        onClick={() => setSelectedProject(proj)}
+                        className={cn(
+                          "w-full text-left p-5 rounded-2xl border transition-all text-sm",
+                          isSelected
+                            ? "bg-ochre text-white border-ochre shadow-md shadow-ochre/20"
+                            : "bg-white border-charcoal/10 hover:border-ochre/50 hover:bg-cream/50"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full uppercase", isSelected ? "bg-white/20 text-white" : "bg-ochre/10 text-ochre")}>
+                            {proj.currentStageName || 'Started'}
+                          </span>
+                          <span className={cn("text-xs font-semibold truncate max-w-[160px]", isSelected ? "text-white/80" : "text-charcoal/50")}>
+                            {proj.selectedServices && proj.selectedServices.length > 0
+                              ? `${proj.selectedServices.length} Included Scopes`
+                              : (proj.serviceName || proj.categoryTitle || 'Service')}
+                          </span>
+                        </div>
+                        <h5 className="font-bold text-base mb-1">{proj.name}</h5>
+                        <p className={cn("text-xs", isSelected ? "text-white/80" : "text-charcoal/60")}>
+                          Client: {proj.clientName}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Tracker Component */}
+                <div className="lg:col-span-2">
+                  {(() => {
+                    const activeProj = selectedProject || projects[0];
+                    if (!activeProj) return null;
+                    return (
+                      <ProjectTracker
+                        project={activeProj}
+                        isReadOnly={false}
+                        onOpenChatWithTag={(taggedCtx) => {
+                          setChatTaggedContext(taggedCtx);
+                          const clientMatch = clients.find(c => c.uid === activeProj.clientId || c.id === activeProj.clientId);
+                          if (clientMatch) setSelectedChatClient(clientMatch);
+                          setActiveTab('chat');
+                        }}
+                        onProjectUpdated={fetchData}
+                      />
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+
+            <StartProjectModal
+              isOpen={showStartProjectModal}
+              onClose={() => setShowStartProjectModal(false)}
+              clients={clients}
+              onProjectStarted={() => {
+                fetchData();
+                setShowStartProjectModal(false);
+              }}
+            />
+          </div>
+        )}
+
+        {/* Tab 2: Client Chat */}
+        {activeTab === 'chat' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-3xl p-6 border border-charcoal/10 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-bold">Client Chat Threads</h3>
+                <p className="text-xs text-charcoal/50">Select a client below to converse in real-time or address stage comments.</p>
+              </div>
+
+              <select
+                value={selectedChatClient?.uid || selectedChatClient?.id || (clients[0]?.uid || '')}
+                onChange={e => {
+                  const match = clients.find(c => c.uid === e.target.value || c.id === e.target.value);
+                  if (match) setSelectedChatClient(match);
+                }}
+                className="w-full md:w-72 px-4 py-2.5 rounded-xl border border-charcoal/15 text-xs font-bold bg-white text-charcoal outline-none focus:border-ochre"
+              >
+                {clients.length === 0 ? (
+                  <option value="">No clients available</option>
+                ) : (
+                  clients.map(c => (
+                    <option key={c.uid || c.id} value={c.uid || c.id}>
+                      {c.name} ({c.email || c.phone || 'Client'})
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+
+            {(() => {
+              const activeChatUser = selectedChatClient || clients[0];
+              if (!activeChatUser) {
+                return (
+                  <div className="p-12 text-center text-charcoal/40 bg-white rounded-3xl border border-charcoal/10">
+                    No active clients available for messaging yet.
+                  </div>
+                );
+              }
+              return (
+                <ProjectChat
+                  clientId={activeChatUser.uid || activeChatUser.id}
+                  clientName={activeChatUser.name}
+                  initialTaggedContext={chatTaggedContext}
+                  onClearTag={() => setChatTaggedContext(undefined)}
+                />
+              );
+            })()}
+          </div>
+        )}
+
+        {/* Tab 3: Sign-Up Approvals (for Elevated Employees) */}
+        {activeTab === 'approvals' && canApproveSignups && (
+          <UserManagementView onRefreshData={fetchData} />
+        )}
       </div>
     </AdminLayout>
   );
