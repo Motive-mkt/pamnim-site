@@ -1,6 +1,6 @@
 import { ReactNode, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { Sparkle, LogOut, LayoutDashboard, Briefcase, Users, FileText, UserCircle, Menu, X } from 'lucide-react';
+import { Sparkle, LogOut, LayoutDashboard, Briefcase, Users, FileText, UserCircle, Menu, X, Copy, Check, UserPlus } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth } from '../lib/firebase';
 import { cn } from '../lib/utils';
@@ -15,6 +15,14 @@ export default function AdminLayout({ children, activeTab }: AdminLayoutProps) {
   const { profile, isAdmin, isStaff } = useAuth();
   const navigate = useNavigate();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [copiedSignupLink, setCopiedSignupLink] = useState(false);
+
+  const handleCopySignupLink = () => {
+    const signupUrl = `${window.location.origin}/signup`;
+    navigator.clipboard.writeText(signupUrl);
+    setCopiedSignupLink(true);
+    setTimeout(() => setCopiedSignupLink(false), 3000);
+  };
 
   const handleLogout = () => {
     auth.signOut();
@@ -83,7 +91,27 @@ export default function AdminLayout({ children, activeTab }: AdminLayoutProps) {
              <h1 className="text-lg sm:text-xl font-bold capitalize truncate max-w-[120px] xs:max-w-none">{activeTab.replace('-', ' ')}</h1>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            {profile?.role !== 'client' && (
+              <button
+                onClick={handleCopySignupLink}
+                className="px-3 py-2 sm:px-4 sm:py-2 bg-ochre/10 text-ochre hover:bg-ochre hover:text-white transition-all rounded-xl font-bold text-xs flex items-center gap-2 border border-ochre/20 shadow-sm cursor-pointer"
+                title="Copy Sign-Up Page Link to Clipboard"
+              >
+                {copiedSignupLink ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-600 stroke-[3]" />
+                    <span>Link Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span className="hidden xs:inline">Copy Sign-Up Link</span>
+                  </>
+                )}
+              </button>
+            )}
+
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold">{profile?.name}</p>
               <p className="text-xs text-charcoal/40 font-medium px-2 py-0.5 bg-cream rounded-full inline-block mt-1">

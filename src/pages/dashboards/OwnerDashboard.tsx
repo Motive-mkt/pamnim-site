@@ -6,7 +6,7 @@ import { cn } from '../../lib/utils';
 import { 
   Plus, Users, Briefcase, Edit2, Trash2, CheckCircle2, Clock, Globe, UserPlus, Mail,
   Home, Palette, LayoutGrid, PaintBucket, RefreshCcw, MessageSquare, HelpCircle, Film, Sparkles,
-  Image as ImageIcon
+  Image as ImageIcon, Copy, Check
 } from 'lucide-react';
 import { useCMS } from '../../hooks/useCMS';
 import { refineDraftCopy } from '../../services/geminiService';
@@ -70,6 +70,14 @@ export default function OwnerDashboard() {
   const [selectedChatClient, setSelectedChatClient] = useState<any | null>(null);
   const [showStartProjectModal, setShowStartProjectModal] = useState(false);
   const [chatTaggedContext, setChatTaggedContext] = useState<string | undefined>();
+  const [copiedSignupOverview, setCopiedSignupOverview] = useState(false);
+
+  const handleCopySignupLink = () => {
+    const signupUrl = `${window.location.origin}/signup`;
+    navigator.clipboard.writeText(signupUrl);
+    setCopiedSignupOverview(true);
+    setTimeout(() => setCopiedSignupOverview(false), 3000);
+  };
   const [gallery, setGallery] = useState<any[]>([]);
   const [portfolio, setPortfolio] = useState<any[]>([]);
   const [inquiries, setInquiries] = useState<any[]>([]);
@@ -797,8 +805,39 @@ export default function OwnerDashboard() {
       </div>
 
       {activeTab === 'overview' && (
-        <div className="space-y-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-8">
+          {/* Quick Sign-Up Link Banner */}
+          <div className="bg-ochre text-white p-6 sm:p-8 rounded-3xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="w-4 h-4 text-white/80" />
+                <span className="text-xs font-bold uppercase tracking-widest text-white/90">Portal Onboarding</span>
+              </div>
+              <h3 className="text-2xl font-bold">Copy Client & Employee Sign-Up Link</h3>
+              <p className="text-white/80 text-sm mt-1 max-w-xl">
+                Send this link to clients or team members to register. You can approve their requests & assign roles under the "Team & Approvals" tab.
+              </p>
+            </div>
+
+            <button
+              onClick={handleCopySignupLink}
+              className="px-6 py-3.5 bg-white text-ochre font-bold text-sm rounded-2xl shadow-md hover:bg-cream transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+            >
+              {copiedSignupOverview ? (
+                <>
+                  <Check className="w-4 h-4 text-emerald-600 stroke-[3]" />
+                  <span>Link Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  <span>Copy Sign-Up Link</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <StatCard label="Active Projects" value={stats.activeProjects.toString()} icon={Briefcase} color="bg-blue-50 text-blue-600" />
             <StatCard label="Total Staff" value={staff.length.toString()} icon={Users} color="bg-ochre/10 text-ochre" />
             <StatCard label="New Inquiries" value={inquiries.filter(i => i.status === 'new').length.toString()} icon={Mail} color="bg-green-50 text-green-600" />
@@ -1112,31 +1151,7 @@ export default function OwnerDashboard() {
       )}
 
       {activeTab === 'staff' && (
-        <div className="bg-white rounded-3xl p-8 border border-charcoal/5 shadow-sm">
-           <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-bold">Team Members</h2>
-              <button 
-                onClick={() => setShowStaffModal(true)}
-                className="flex items-center gap-2 bg-charcoal text-white px-6 py-2.5 rounded-xl font-bold hover:bg-black transition-all"
-              >
-                <UserPlus className="w-5 h-5" />
-                Add Member
-              </button>
-           </div>
-           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {staff.map(member => (
-                <div key={member.id} className="p-6 rounded-2xl bg-cream/50 border border-charcoal/5 flex items-center gap-4">
-                   <div className="w-12 h-12 bg-ochre/20 rounded-full flex items-center justify-center font-bold text-ochre">
-                      {member.name?.charAt(0)}
-                   </div>
-                   <div>
-                      <p className="font-bold">{member.name}</p>
-                      <p className="text-xs text-charcoal/40 font-medium uppercase tracking-tight">{member.role.replace('_', ' ')}</p>
-                   </div>
-                </div>
-              ))}
-           </div>
-        </div>
+        <UserManagementView onRefreshData={fetchData} />
       )}
 
       {activeTab === 'media' && (
