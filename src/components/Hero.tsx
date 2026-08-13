@@ -1,14 +1,35 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { Star, Check, Send } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Star, Check } from 'lucide-react';
 import { useCMS } from '../hooks/useCMS';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+
+const FALLBACK_SLIDES = [
+  "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=80&w=2000",
+  "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&q=80&w=2000",
+  "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&q=80&w=2000",
+  "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&q=80&w=2000"
+];
 
 export default function Hero() {
   const { content } = useCMS();
   const hero = content.hero;
   const contact = content.contact;
+
+  const slides = hero.heroSlideshow && hero.heroSlideshow.length > 0
+    ? hero.heroSlideshow
+    : FALLBACK_SLIDES;
+
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [slides.length]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -52,18 +73,25 @@ export default function Hero() {
 
   return (
     <section className="relative min-h-screen flex items-center pt-32 pb-20 lg:py-0">
-      {/* Background Image */}
-      <div className="absolute inset-0 z-0">
-        <img
-          src="https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=80&w=2000"
-          alt="Modern luxury interior by Pamnim Interiors"
-          className="w-full h-full object-cover"
-          referrerPolicy="no-referrer"
-        />
-        <div className="absolute inset-0 bg-black/50" />
+      {/* Background Slideshow */}
+      <div className="absolute inset-0 z-0 bg-charcoal overflow-hidden">
+        <AnimatePresence mode="sync">
+          <motion.img
+            key={currentSlide}
+            src={slides[currentSlide]}
+            alt="Modern luxury interior by Pamnim Interiors"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.5, ease: 'easeInOut' }}
+            className="absolute inset-0 w-full h-full object-contain md:object-cover object-[center_30%]"
+            referrerPolicy="no-referrer"
+          />
+        </AnimatePresence>
+        <div className="absolute inset-0 bg-black/50 z-10 pointer-events-none" />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 grid lg:grid-cols-2 gap-12 items-center w-full">
+      <div className="relative z-20 max-w-7xl mx-auto px-6 md:px-12 grid lg:grid-cols-2 gap-12 items-center w-full">
         {/* Main Content */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -110,7 +138,7 @@ export default function Hero() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="bg-white rounded-2xl p-6 sm:p-8 shadow-2xl max-w-md mx-auto lg:ml-auto"
+          className="bg-white/80 backdrop-blur-xl border border-white/30 rounded-2xl p-6 sm:p-8 shadow-2xl max-w-md mx-auto lg:ml-auto"
         >
           {submitted ? (
             <div className="py-10 text-center space-y-4">
@@ -128,31 +156,31 @@ export default function Hero() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Full Name</label>
+                  <label className="block text-xs font-bold uppercase text-charcoal/50 mb-1">Full Name</label>
                   <input
                     type="text" required
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                     placeholder=""
-                    className="w-full px-4 py-3 bg-cream border border-charcoal/10 rounded-lg focus:outline-none focus:border-ochre transition-colors"
+                    className="w-full px-4 py-3 bg-cream/90 border border-charcoal/10 rounded-lg focus:outline-none focus:border-ochre transition-colors text-charcoal"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Phone Number</label>
+                  <label className="block text-xs font-bold uppercase text-charcoal/50 mb-1">Phone Number</label>
                   <input
                     type="tel" required
                     value={formData.phone}
                     onChange={(e) => setFormData({...formData, phone: e.target.value})}
                     placeholder="07XX XXX XXX"
-                    className="w-full px-4 py-3 bg-cream border border-charcoal/10 rounded-lg focus:outline-none focus:border-ochre transition-colors"
+                    className="w-full px-4 py-3 bg-cream/90 border border-charcoal/10 rounded-lg focus:outline-none focus:border-ochre transition-colors text-charcoal"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Project Type</label>
+                  <label className="block text-xs font-bold uppercase text-charcoal/50 mb-1">Project Type</label>
                   <select 
                     value={formData.projectType}
                     onChange={(e) => setFormData({...formData, projectType: e.target.value})}
-                    className="w-full px-4 py-3 bg-cream border border-charcoal/10 rounded-lg focus:outline-none focus:border-ochre transition-colors appearance-none"
+                    className="w-full px-4 py-3 bg-cream/90 border border-charcoal/10 rounded-lg focus:outline-none focus:border-ochre transition-colors appearance-none text-charcoal"
                   >
                     <option>Residential Design</option>
                     <option>Space Styling</option>
@@ -160,13 +188,13 @@ export default function Hero() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Tell Us More (Optional)</label>
+                  <label className="block text-xs font-bold uppercase text-charcoal/50 mb-1">Tell Us More (Optional)</label>
                   <textarea
                     rows={3}
                     value={formData.message}
                     onChange={(e) => setFormData({...formData, message: e.target.value})}
                     placeholder="Briefly describe your vision..."
-                    className="w-full px-4 py-3 bg-cream border border-charcoal/10 rounded-lg focus:outline-none focus:border-ochre transition-colors"
+                    className="w-full px-4 py-3 bg-cream/90 border border-charcoal/10 rounded-lg focus:outline-none focus:border-ochre transition-colors text-charcoal"
                   />
                 </div>
                 <button

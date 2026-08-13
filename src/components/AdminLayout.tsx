@@ -1,5 +1,6 @@
 import { ReactNode, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useCMS } from '../hooks/useCMS';
 import { Sparkle, LogOut, LayoutDashboard, Briefcase, Users, FileText, UserCircle, Menu, X, Copy, Check, UserPlus } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth } from '../lib/firebase';
@@ -13,6 +14,7 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({ children, activeTab }: AdminLayoutProps) {
   const { profile, isAdmin, isStaff } = useAuth();
+  const { content } = useCMS();
   const navigate = useNavigate();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [copiedSignupLink, setCopiedSignupLink] = useState(false);
@@ -42,9 +44,22 @@ export default function AdminLayout({ children, activeTab }: AdminLayoutProps) {
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
       <aside className="w-64 bg-charcoal text-white hidden md:flex flex-col sticky top-0 h-screen">
-        <Link to="/" className="p-8 flex items-center gap-2 group hover:opacity-80 transition-opacity">
-          <Sparkle className="w-6 h-6 text-ochre transition-transform group-hover:rotate-12" />
-          <span className="font-serif text-xl font-bold tracking-tight">Pamnim</span>
+        <Link to="/" className="p-6 flex items-center group transition-opacity">
+          {content?.logoUrl ? (
+            <div className="bg-white/95 px-3 py-1.5 rounded-xl shadow-sm backdrop-blur-sm flex items-center justify-center group-hover:bg-white transition-colors">
+              <img 
+                src={content.logoUrl} 
+                alt="Company Logo" 
+                className="h-9 w-auto object-contain transition-transform duration-300 group-hover:scale-105" 
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          ) : (
+            <div className="h-9 px-3 rounded-xl border border-dashed border-white/20 bg-white/5 flex items-center gap-2 text-xs font-medium text-white/50 group-hover:border-ochre/50 group-hover:text-ochre transition-all">
+              <Sparkle className="w-4 h-4 text-ochre/70" />
+              <span>Logo Placeholder</span>
+            </div>
+          )}
         </Link>
 
         <nav className="flex-1 px-4 py-6 space-y-2">
@@ -86,7 +101,19 @@ export default function AdminLayout({ children, activeTab }: AdminLayoutProps) {
                <Menu className="w-5 h-5" />
              </button>
              <Link to="/" className="md:hidden flex items-center justify-center">
-                <Sparkle className="w-5 h-5 text-ochre" />
+                {content?.logoUrl ? (
+                  <img 
+                    src={content.logoUrl} 
+                    alt="Company Logo" 
+                    className="h-8 w-auto object-contain" 
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="h-8 px-2.5 rounded-lg border border-dashed border-charcoal/20 bg-charcoal/5 flex items-center gap-1.5 text-xs text-charcoal/60 font-medium">
+                    <Sparkle className="w-3.5 h-3.5 text-ochre/70" />
+                    <span>Logo Placeholder</span>
+                  </div>
+                )}
              </Link>
              <h1 className="text-lg sm:text-xl font-bold capitalize truncate max-w-[120px] xs:max-w-none">{activeTab.replace('-', ' ')}</h1>
           </div>
@@ -152,10 +179,23 @@ export default function AdminLayout({ children, activeTab }: AdminLayoutProps) {
             >
               <div>
                 <div className="flex justify-between items-center mb-10">
-                  <div className="flex items-center gap-2">
-                    <Sparkle className="w-5 h-5 text-ochre" />
-                    <span className="font-serif text-xl font-bold tracking-tight text-white">Pamnim Admin</span>
-                  </div>
+                  <Link to="/" onClick={() => setIsMobileOpen(false)} className="flex items-center gap-2">
+                    {content?.logoUrl ? (
+                      <div className="bg-white/95 px-3 py-1.5 rounded-xl shadow-sm backdrop-blur-sm flex items-center justify-center">
+                        <img 
+                          src={content.logoUrl} 
+                          alt="Company Logo" 
+                          className="h-9 w-auto object-contain" 
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-9 px-3 rounded-xl border border-dashed border-white/20 bg-white/5 flex items-center gap-2 text-xs font-medium text-white/50">
+                        <Sparkle className="w-4 h-4 text-ochre/70" />
+                        <span>Logo Placeholder</span>
+                      </div>
+                    )}
+                  </Link>
                   <button
                     onClick={() => setIsMobileOpen(false)}
                     className="flex items-center justify-center w-11 h-11 text-white/60 hover:text-white border border-white/5 hover:bg-white/5 rounded-full transition-all"

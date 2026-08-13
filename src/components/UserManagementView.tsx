@@ -4,7 +4,7 @@ import { collection, query, getDocs, doc, setDoc, deleteDoc, onSnapshot, where, 
 import { useAuth } from '../hooks/useAuth';
 import { 
   Users, UserPlus, CheckCircle2, Copy, Shield, Phone, Mail, 
-  ExternalLink, Sparkles, Check, Clock, UserCheck, AlertCircle, ArrowUpRight
+  ExternalLink, Sparkles, Check, Clock, UserCheck, AlertCircle, ArrowUpRight, Trash2
 } from 'lucide-react';
 
 interface UserManagementViewProps {
@@ -123,9 +123,9 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
     }
   };
 
-  const handleUpdateEmployeeRole = async (staffUid: string, newRole: 'regular_employee' | 'elevated_employee') => {
+  const handleUpdateEmployeeRole = async (staffUid: string, newRole: 'regular_employee' | 'elevated_employee' | 'client') => {
     if (!isOwner) {
-      alert('Only the Owner can promote or modify employee access levels.');
+      alert('Only the Owner can promote or modify user access levels.');
       return;
     }
 
@@ -134,17 +134,46 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
         role: newRole,
         updatedAt: new Date().toISOString()
       });
-      alert(`Employee role updated to ${newRole === 'elevated_employee' ? 'Elevated Employee' : 'Regular Employee'}.`);
+      alert(`User role updated to ${newRole === 'elevated_employee' ? 'Elevated Employee' : newRole === 'regular_employee' ? 'Regular Employee' : 'Client'}.`);
     } catch (err: any) {
-      console.error('Error updating employee role:', err);
-      alert('Failed to update employee role.');
+      console.error('Error updating user role:', err);
+      alert('Failed to update user role: ' + (err.message || 'Unknown error'));
+    }
+  };
+
+  // Note: Deleting a profile document from Firestore revokes their application role and data access in the app.
+  // However, it does not delete their Firebase Authentication account. Fully revoking their login credentials
+  // requires a Firebase Admin SDK call from a backend server, not just a client-side Firestore delete.
+  const handleRemoveMember = async (memberId: string, memberName: string) => {
+    if (!isOwner) {
+      alert('Only the Owner can remove team members.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to remove "${memberName}"? This will revoke their access permanently.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteDoc(doc(db, 'profiles', memberId));
+      try {
+        await deleteDoc(doc(db, 'pending_signups', memberId));
+      } catch (e) {
+        // Document might not exist in pending_signups
+      }
+      alert(`"${memberName}" has been successfully removed.`);
+      if (onRefreshData) onRefreshData();
+    } catch (err: any) {
+      console.error('Error removing member:', err);
+      alert('Failed to remove member: ' + (err.message || 'Unknown error'));
     }
   };
 
   return (
     <div className="space-y-8">
       {/* Share Link Banner */}
-      <div className="bg-ochre text-white p-8 rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="bg-ochre text-white p-5 sm:p-8 rounded-3xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 flex-wrap">
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="w-5 h-5 text-white/80" />
@@ -174,8 +203,8 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
 
       {/* Pending Approval Requests Section */}
       {canApproveSignups && (
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-charcoal/10 shadow-sm space-y-6">
-          <div className="flex items-center justify-between border-b border-charcoal/10 pb-4">
+        <div className="bg-white p-5 sm:p-8 rounded-3xl border border-charcoal/10 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 border-b border-charcoal/10 pb-4 flex-wrap">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
                 <Clock className="w-5 h-5" />
@@ -268,6 +297,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
           {activeStaff.map(member => {
             const isMemberOwner = member.role === 'owner';
             const isElevated = member.role === 'elevated_employee';
+            const isSelf = member.id === profile?.uid;
 
             return (
               <div 
@@ -286,33 +316,109 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                     }`}>
                       {isMemberOwner ? 'Owner' : isElevated ? 'Elevated Employee' : 'Regular Employee'}
                     </span>
+                    {isSelf && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-charcoal/10 text-charcoal">
+                        You
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-charcoal/50 mt-0.5">{member.email}</p>
                 </div>
 
-                {/* Owner controls to promote / demote staff */}
-                {isOwner && !isMemberOwner && (
-                  <div className="flex items-center gap-2">
+                {/* Owner controls to promote / demote staff & remove staff */}
+                {isOwner && !isSelf && (
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
                     {isElevated ? (
                       <button
                         onClick={() => handleUpdateEmployeeRole(member.id, 'regular_employee')}
-                        className="px-3 py-1.5 rounded-xl border border-charcoal/15 text-xs font-bold text-charcoal/70 hover:bg-cream"
+                        className="px-3 py-1.5 rounded-xl border border-charcoal/15 text-xs font-bold text-charcoal/70 hover:bg-cream cursor-pointer"
                       >
                         Set to Regular
                       </button>
                     ) : (
                       <button
                         onClick={() => handleUpdateEmployeeRole(member.id, 'elevated_employee')}
-                        className="px-3 py-1.5 rounded-xl bg-ochre text-white text-xs font-bold shadow-sm hover:bg-ochre-dark"
+                        className="px-3 py-1.5 rounded-xl bg-ochre text-white text-xs font-bold shadow-sm hover:bg-ochre-dark cursor-pointer"
                       >
                         Promote to Elevated
                       </button>
                     )}
+
+                    <button
+                      onClick={() => handleUpdateEmployeeRole(member.id, 'client')}
+                      className="px-3 py-1.5 rounded-xl border border-charcoal/15 text-xs font-bold text-charcoal/70 hover:bg-cream cursor-pointer"
+                    >
+                      Make Client
+                    </button>
+
+                    <button
+                      onClick={() => handleRemoveMember(member.id, member.name || member.email)}
+                      className="px-3 py-1.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                      title="Remove Member"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Remove</span>
+                    </button>
                   </div>
                 )}
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* Active Clients Section */}
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-charcoal/10 shadow-sm space-y-6">
+        <div className="flex items-center justify-between border-b border-charcoal/10 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg text-charcoal">Active Clients</h3>
+              <p className="text-xs text-charcoal/50">Manage registered client accounts and access.</p>
+            </div>
+          </div>
+          <span className="text-xs font-bold px-3 py-1 bg-blue-50 text-blue-800 rounded-full">
+            {activeClients.length} Clients
+          </span>
+        </div>
+
+        <div className="space-y-3">
+          {activeClients.length === 0 ? (
+            <div className="py-6 text-center text-charcoal/40 text-sm">
+              No active clients registered yet.
+            </div>
+          ) : (
+            activeClients.map(client => (
+              <div 
+                key={client.id}
+                className="p-4 rounded-2xl border border-charcoal/10 flex items-center justify-between gap-4 bg-white"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-sm text-charcoal">{client.name || 'Unnamed Client'}</h4>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                      Client
+                    </span>
+                  </div>
+                  <p className="text-xs text-charcoal/50 mt-0.5">{client.email || 'No email provided'}</p>
+                </div>
+
+                {/* Owner controls to remove client */}
+                {isOwner && client.role !== 'owner' && (
+                  <button
+                    onClick={() => handleRemoveMember(client.id, client.name || client.email)}
+                    className="px-3 py-1.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                    title="Remove Client"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Remove</span>
+                  </button>
+                )}
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

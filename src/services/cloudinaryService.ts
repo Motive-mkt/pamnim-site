@@ -37,6 +37,65 @@ export function optimizeCloudinaryUrl(url: string, type: 'image' | 'video' = 'im
 }
 
 /**
+ * Generates a thumbnail image poster URL for a Cloudinary video asset.
+ * Injects `so_0` (seek offset 0s) and changes the file extension to `.jpg`.
+ * Returns an empty string if the URL is invalid or doesn't contain `/video/upload/`.
+ */
+export function getCloudinaryVideoPoster(url: string): string {
+  if (!url || typeof url !== 'string' || !url.includes('/video/upload/')) {
+    return '';
+  }
+
+  try {
+    let posterUrl = url.replace('/video/upload/', '/video/upload/so_0/');
+
+    // Replace file extension with .jpg or append .jpg
+    if (/\.[a-zA-Z0-9]+(?=\?|$)/.test(posterUrl)) {
+      posterUrl = posterUrl.replace(/\.[a-zA-Z0-9]+(?=\?|$)/, '.jpg');
+    } else {
+      const queryIndex = posterUrl.indexOf('?');
+      if (queryIndex !== -1) {
+        posterUrl = posterUrl.slice(0, queryIndex) + '.jpg' + posterUrl.slice(queryIndex);
+      } else {
+        posterUrl += '.jpg';
+      }
+    }
+
+    return posterUrl;
+  } catch (error) {
+    console.warn("Could not generate Cloudinary video poster URL:", error);
+    return '';
+  }
+}
+
+/**
+ * Applies low-bandwidth optimization transformations (q_auto:eco,w_600) specifically for
+ * small gallery tile previews on the homepage.
+ */
+export function getCloudinaryGalleryPreview(url: string): string {
+  if (!url || typeof url !== 'string' || !url.includes('cloudinary.com')) {
+    return url || '';
+  }
+
+  if (url.includes('q_auto:eco') || url.includes('w_600')) {
+    return url;
+  }
+
+  try {
+    if (url.includes('/video/upload/')) {
+      return url.replace('/video/upload/', '/video/upload/q_auto:eco,w_600/');
+    }
+    if (url.includes('/image/upload/')) {
+      return url.replace('/image/upload/', '/image/upload/q_auto:eco,w_600/');
+    }
+  } catch (error) {
+    console.warn("Could not apply Cloudinary gallery preview transformation:", error);
+  }
+
+  return url;
+}
+
+/**
  * Handles uploading a media file (Base64 string or File object) to the application's secure Express API proxy.
  * Avoids client-side API secret leakage. Allows bulk pipeline uploads.
  */

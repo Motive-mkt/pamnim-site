@@ -1,10 +1,63 @@
 import { motion } from 'motion/react';
-import { useState, useEffect } from 'react';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { useState, useEffect, useRef } from 'react';
+import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { optimizeCloudinaryUrl } from '../services/cloudinaryService';
+import {
+  getCloudinaryGalleryPreview,
+  getCloudinaryVideoPoster
+} from '../services/cloudinaryService';
+
+function GalleryVideoItem({ item, className }: { item: any; className?: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isInView, setIsInView] = useState(false);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          setIsInView(entry.isIntersecting);
+        });
+      },
+      { threshold: 0.25 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (isInView && videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    } else if (!isInView && videoRef.current) {
+      videoRef.current.pause();
+    }
+  }, [isInView]);
+
+  const videoSrc = getCloudinaryGalleryPreview(item.image);
+  const posterUrl = getCloudinaryVideoPoster(item.image);
+
+  return (
+    <div ref={containerRef} className="w-full h-full">
+      <video
+        ref={videoRef}
+        src={isInView ? videoSrc : undefined}
+        poster={posterUrl}
+        autoPlay={isInView}
+        muted
+        loop
+        playsInline
+        preload="none"
+        className={className}
+      />
+    </div>
+  );
+}
 
 export default function Portfolio() {
   const [gallery, setGallery] = useState<any[]>([]);
@@ -15,12 +68,9 @@ export default function Portfolio() {
       try {
         const q = query(collection(db, 'gallery'), orderBy('createdAt', 'desc'));
         const snap = await getDocs(q);
-        // Exclude videos explicitly as per Strict Media Policy
-        const items = snap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }) as any)
-          .filter(item => item.type !== 'video' && !(item.image && item.image.includes('.mp4')));
+        const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any);
         
-        // Show only the 3 most recent curated images
+        // Show only the 3 most recent curated items
         setGallery(items.slice(0, 3));
       } catch (err) {
         console.error("Error fetching gallery:", err);
@@ -50,35 +100,45 @@ export default function Portfolio() {
               <div key={i} className="bg-charcoal/5 animate-pulse rounded-3xl" />
             ))
           ) : gallery.length > 0 ? (
-            gallery.map((item, index) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                className={cn(
-                  "relative overflow-hidden rounded-3xl group cursor-pointer",
-                  index === 0 ? "md:col-span-2 md:row-span-2" : "md:col-span-1 md:row-span-1"
-                )}
-              >
-                <img
-                  src={optimizeCloudinaryUrl(item.image, 'image')}
-                  alt={item.title || "Gallery Image"}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  referrerPolicy="no-referrer"
-                />
-                {(item.category || item.title) && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-8">
-                    {item.category && <span className="text-ochre-light text-xs font-bold uppercase tracking-widest mb-2">{item.category}</span>}
-                    {item.title && <h3 className="text-white text-2xl font-bold">{item.title}</h3>}
-                  </div>
-                )}
-              </motion.div>
-            ))
+            gallery.map((item, index) => {
+              const isVideo = item.type === 'video' || (item.image && (item.image.includes('.mp4') || item.image.includes('/video/upload/')));
+              return (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                  className={cn(
+                    "relative overflow-hidden rounded-3xl group cursor-pointer",
+                    index === 0 ? "md:col-span-2 md:row-span-2" : "md:col-span-1 md:row-span-1"
+                  )}
+                >
+                  {isVideo ? (
+                    <GalleryVideoItem
+                      item={item}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
+                  ) : (
+                    <img
+                      src={getCloudinaryGalleryPreview(item.image)}
+                      alt={item.title || "Gallery Image"}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      referrerPolicy="no-referrer"
+                    />
+                  )}
+                  {(item.category || item.title) && (
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-8 pointer-events-none">
+                      {item.category && <span className="text-ochre-light text-xs font-bold uppercase tracking-widest mb-2">{item.category}</span>}
+                      {item.title && <h3 className="text-white text-2xl font-bold">{item.title}</h3>}
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })
           ) : (
             <div className="col-span-full py-20 text-center border-2 border-dashed border-charcoal/10 rounded-3xl">
-              <p className="text-charcoal/30 font-bold">No gallery images added yet.</p>
+              <p className="text-charcoal/30 font-bold">No gallery items added yet.</p>
             </div>
           )}
         </div>

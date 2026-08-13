@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 160" width="100%" height="100%">
+  <g id="house-sofa-icon" transform="translate(10, 5)">
+    <!-- House Roof Gable Outline -->
+    <path d="M 75 12 L 140 68 L 128 78 L 75 32 L 22 78 L 10 68 Z" fill="#B88E39" />
+    
+    <!-- Chimney -->
+    <rect x="30" y="20" width="18" height="32" rx="2" fill="#B88E39" />
+    <rect x="26" y="16" width="26" height="8" rx="2" fill="#B88E39" />
+    
+    <!-- 4-Pane Window in Peak -->
+    <g transform="translate(63, 44)">
+      <rect x="0" y="0" width="11" height="11" rx="1" fill="#FFFFFF" stroke="#B88E39" stroke-width="1.5" />
+      <rect x="13" y="0" width="11" height="11" rx="1" fill="#FFFFFF" stroke="#B88E39" stroke-width="1.5" />
+      <rect x="0" y="13" width="11" height="11" rx="1" fill="#FFFFFF" stroke="#B88E39" stroke-width="1.5" />
+      <rect x="13" y="13" width="11" height="11" rx="1" fill="#FFFFFF" stroke="#B88E39" stroke-width="1.5" />
+    </g>
+    
+    <!-- Sofa Outer Shell & Armrests -->
+    <!-- Left Armrest -->
+    <path d="M 22 72 C 0 72 0 118 22 118 L 38 118 L 38 72 Z" fill="#B88E39" />
+    <!-- Right Armrest -->
+    <path d="M 128 72 C 150 72 150 118 128 118 L 112 118 L 112 72 Z" fill="#B88E39" />
+    
+    <!-- Sofa Base & Cushion Frame -->
+    <path d="M 32 78 L 118 78 L 118 126 C 118 132 112 136 104 136 L 46 136 C 38 136 32 132 32 126 Z" fill="#B88E39" />
+    <!-- Cushion Cutout Inner Line -->
+    <path d="M 38 84 L 112 84 L 112 112 L 38 112 Z" fill="#FFFFFF" />
+    
+    <!-- Sofa Legs -->
+    <path d="M 42 136 L 38 150 L 48 150 L 52 136 Z" fill="#B88E39" />
+    <path d="M 108 136 L 102 150 L 112 150 L 116 136 Z" fill="#B88E39" />
+  </g>
+
+  <!-- Typography Right Side -->
+  <g id="logo-text" transform="translate(170, 0)">
+    <!-- pamnim text with custom red dot on 'i' -->
+    <text x="0" y="92" font-family="'Trebuchet MS', 'Segoe UI', sans-serif" font-weight="900" font-size="78" fill="#381B11" letter-spacing="-1">
+      pamn<tspan fill="#381B11">ı</tspan>m
+    </text>
+    <!-- Bright Red Dot over i -->
+    <circle cx="177" cy="40" r="8.5" fill="#E30613" />
+
+    <!-- INTERIOR DESIGNERS -->
+    <text x="2" y="120" font-family="'Century Gothic', 'Futura', sans-serif" font-weight="700" font-size="19" fill="#A37E30" letter-spacing="4.5">
+      INTERIOR DESIGNERS
+    </text>
+
+    <!-- Tagline: Shinning outside, beautiful inside -->
+    <text x="2" y="144" font-family="'Georgia', serif" font-style="italic" font-weight="600" font-size="16" fill="#23120A" letter-spacing="0.2">
+      Shinning outside, beautiful inside
+    </text>
+  </g>
+</svg>

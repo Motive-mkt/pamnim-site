@@ -5,13 +5,11 @@ import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
 import { useCMS } from '../hooks/useCMS';
 import { motion, AnimatePresence } from 'motion/react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../lib/firebase';
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { content } = useCMS();
   const location = useLocation();
 
@@ -43,21 +41,6 @@ export default function Header() {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  // Monitor live session and check if the user is the administrator
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      const adminEmails = ['jessescaledyou@gmail.com', 'your-admin-email@example.com'];
-      if (currentUser && currentUser.email && adminEmails.includes(currentUser.email.toLowerCase().trim())) {
-        setIsAdmin(true);
-      } else {
-        setIsAdmin(false);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
   const headerBg = isScrolled 
     ? 'bg-cream/95 backdrop-blur-md py-4 shadow-sm' 
     : (isHomePage ? 'bg-transparent py-6' : 'bg-cream/50 backdrop-blur-sm py-6 border-b border-charcoal/5');
@@ -75,8 +58,29 @@ export default function Header() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12 flex justify-between items-center text-charcoal transition-colors">
           {/* Logo */}
           <Link to="/" id="logo" className={cn("flex items-center gap-2 group cursor-pointer transition-colors shrink-0", displayLight ? "text-white" : "text-charcoal")}>
-            <Sparkle className={cn("w-5 h-5 md:w-6 md:h-6 transition-transform duration-300 group-hover:rotate-12", displayLight ? "text-ochre-light" : "text-ochre")} />
-            <span className="font-serif text-lg xs:text-xl md:text-2xl font-bold tracking-tight">Pamnim Interiors</span>
+            {content?.logoUrl ? (
+              <div className={cn(
+                "transition-all duration-300 rounded-xl flex items-center justify-center",
+                displayLight ? "bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur-sm" : "p-0.5"
+              )}>
+                <img 
+                  src={content.logoUrl} 
+                  alt="Company Logo" 
+                  className="h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105" 
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            ) : (
+              <div className={cn(
+                "h-10 px-3.5 rounded-xl border-2 border-dashed flex items-center gap-2 text-xs font-bold transition-all",
+                displayLight 
+                  ? "border-white/30 text-white/80 bg-white/10 hover:bg-white/20 hover:border-white/50" 
+                  : "border-charcoal/20 text-charcoal/60 bg-charcoal/5 hover:bg-charcoal/10 hover:border-ochre/50 hover:text-ochre"
+              )}>
+                <Sparkle className="w-4 h-4 text-ochre/70 shrink-0" />
+                <span className="tracking-wide">Logo Placeholder</span>
+              </div>
+            )}
           </Link>
 
           {/* Desktop Navigation */}
@@ -168,10 +172,21 @@ export default function Header() {
               {/* Drawer Top Header with Branding & Close */}
               <div>
                 <div className="flex justify-between items-center mb-12">
-                  <div className="flex items-center gap-2">
-                    <Sparkle className="w-5 h-5 text-ochre" />
-                    <span className="font-serif text-xl font-bold text-charcoal">Pamnim</span>
-                  </div>
+                  <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2">
+                    {content?.logoUrl ? (
+                      <img 
+                        src={content.logoUrl} 
+                        alt="Company Logo" 
+                        className="h-10 w-auto object-contain" 
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="h-10 px-3 rounded-xl border-2 border-dashed border-charcoal/20 bg-charcoal/5 flex items-center gap-2 text-xs font-bold text-charcoal/60">
+                        <Sparkle className="w-4 h-4 text-ochre/70" />
+                        <span>Logo Placeholder</span>
+                      </div>
+                    )}
+                  </Link>
                   <button
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="flex items-center justify-center w-11 h-11 text-charcoal/60 hover:text-charcoal border border-charcoal/5 hover:bg-charcoal/5 rounded-full transition-all"

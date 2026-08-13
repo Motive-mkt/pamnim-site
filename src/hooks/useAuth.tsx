@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
 export type UserRole = 'owner' | 'elevated_employee' | 'regular_employee' | 'senior_designer' | 'designer' | 'project_manager' | 'client' | 'pending';
@@ -34,6 +34,10 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   isAdmin: false,
   isStaff: false,
+  isOwner: false,
+  isElevatedEmployee: false,
+  isRegularEmployee: false,
+  canApproveSignups: false,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -50,29 +54,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             const data = docSnap.data();
-            const adminEmails = ['jessescaledyou@gmail.com', 'your-admin-email@example.com'];
-            const isInitialAdmin = user.email && adminEmails.includes(user.email.toLowerCase().trim());
-            
-            if (isInitialAdmin && data.role !== 'owner') {
-              try {
-                await setDoc(docRef, { role: 'owner' }, { merge: true });
-                setProfile({ uid: user.uid, ...data, role: 'owner' } as Profile);
-              } catch (upgradeErr) {
-                console.warn("Failed to auto-upgrade in useAuth:", upgradeErr);
-                setProfile({ uid: user.uid, ...data } as Profile);
-              }
-            } else {
-              setProfile({ uid: user.uid, ...data } as Profile);
-            }
+            setProfile({ uid: user.uid, ...data } as Profile);
           } else {
-            const adminEmails = ['jessescaledyou@gmail.com', 'your-admin-email@example.com'];
-            const isInitialAdmin = user.email && adminEmails.includes(user.email.toLowerCase().trim());
             try {
+              const ownerQuery = query(collection(db, 'profiles'), where('role', '==', 'owner'));
+              const ownerSnap = await getDocs(ownerQuery);
+              const isFirstOwner = ownerSnap.empty;
+
+              const newRole: UserRole = isFirstOwner ? 'owner' : 'client';
+              const newName = user.displayName || (isFirstOwner ? 'Owner' : 'Client');
+
               const newProfileData = {
                 uid: user.uid,
                 email: user.email || '',
-                name: user.displayName || (isInitialAdmin ? 'Owner' : 'Client'),
-                role: (isInitialAdmin ? 'owner' : 'client') as UserRole,
+                name: newName,
+                role: newRole,
                 status: 'active',
                 createdAt: new Date().toISOString()
               };

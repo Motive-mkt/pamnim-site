@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Play, Image as ImageIcon, Film } from 'lucide-react';
-import { optimizeCloudinaryUrl } from '../services/cloudinaryService';
+import { optimizeCloudinaryUrl, getCloudinaryVideoPoster } from '../services/cloudinaryService';
 
 interface PortfolioItem {
   id: string;
@@ -154,6 +154,7 @@ export default function PortfolioPage() {
                           {playingVideoId === project.id ? (
                             <video
                               src={optimizeCloudinaryUrl(project.image, 'video')}
+                              poster={getCloudinaryVideoPoster(project.image)}
                               className="w-full h-full object-cover"
                               controls
                               autoPlay
@@ -181,9 +182,17 @@ export default function PortfolioPage() {
                                 <Play className="w-6 h-6 fill-current ml-1" />
                               </button>
                               
-                              <div className="w-full h-full bg-charcoal/40 flex items-center justify-center text-white/20 select-none">
-                                <Film className="w-16 h-16 animate-pulse" />
-                              </div>
+                              {getCloudinaryVideoPoster(project.image) ? (
+                                <img
+                                  src={getCloudinaryVideoPoster(project.image)}
+                                  alt={project.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-charcoal/40 flex items-center justify-center text-white/20 select-none">
+                                  <Film className="w-16 h-16 animate-pulse" />
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>

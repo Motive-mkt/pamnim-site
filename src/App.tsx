@@ -22,10 +22,7 @@ function ProtectedRoute({ children, adminOnly = false }: { children: React.React
   if (loading) return null;
   if (!user) return <Navigate to="/login" />;
 
-  const adminEmails = ['jessescaledyou@gmail.com', 'your-admin-email@example.com'];
-  const isAdminEmail = user.email && adminEmails.includes(user.email.toLowerCase().trim());
-
-  if (adminOnly && profile?.role !== 'owner' && !isAdminEmail) {
+  if (adminOnly && profile?.role !== 'owner') {
     return <Navigate to="/" />;
   }
   return <>{children}</>;

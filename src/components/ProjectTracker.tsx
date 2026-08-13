@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../lib/firebase';
 import { collection, doc, updateDoc, addDoc, onSnapshot, query, orderBy, deleteDoc } from 'firebase/firestore';
 import { useAuth } from '../hooks/useAuth';
-import { uploadMediaToProxy } from '../services/cloudinaryService';
+import { uploadMediaToProxy, getCloudinaryVideoPoster } from '../services/cloudinaryService';
 import { 
   CheckCircle2, Circle, Clock, Camera, Image as ImageIcon, X, Plus, 
   AlertCircle, ChevronRight, Lock, MessageSquare, Play, Trash2, Edit3, ArrowRight, Upload
@@ -451,7 +451,7 @@ export default function ProjectTracker({
             <form onSubmit={handleUploadSubmit} className="space-y-4">
               <div className="relative rounded-2xl overflow-hidden bg-black/5 max-h-64 flex items-center justify-center border">
                 {mediaType === 'video' ? (
-                  <video src={mediaPreview} controls className="max-h-64 w-full object-contain" />
+                  <video src={mediaPreview} controls preload="metadata" playsInline className="max-h-64 w-full object-contain" />
                 ) : (
                   <img src={mediaPreview} alt="Preview" className="max-h-64 w-full object-contain" />
                 )}
@@ -550,7 +550,7 @@ export default function ProjectTracker({
                 {/* Media Container */}
                 <div className="relative aspect-video bg-charcoal/5 flex items-center justify-center overflow-hidden">
                   {item.mediaType === 'video' ? (
-                    <video src={item.mediaUrl} controls className="w-full h-full object-cover" />
+                    <video src={item.mediaUrl} poster={getCloudinaryVideoPoster(item.mediaUrl)} controls preload="metadata" playsInline className="w-full h-full object-cover" />
                   ) : (
                     <img src={item.mediaUrl} alt={item.note || 'Stage update'} className="w-full h-full object-cover" />
                   )}

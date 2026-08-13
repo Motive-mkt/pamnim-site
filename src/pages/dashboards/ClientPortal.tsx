@@ -50,7 +50,7 @@ export default function ClientPortal() {
     <AdminLayout activeTab="my-project">
       <div className="space-y-8">
         {/* Welcome Header */}
-        <div className="bg-ochre text-white p-8 sm:p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="bg-ochre text-white p-6 sm:p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="relative z-10 max-w-xl">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs font-bold uppercase tracking-widest text-white/80 bg-white/10 px-3 py-1 rounded-full">
@@ -65,7 +65,7 @@ export default function ClientPortal() {
           <Sparkles className="absolute -bottom-10 -right-10 w-64 h-64 text-white/5 pointer-events-none" />
 
           {/* Navigation Tabs */}
-          <div className="relative z-10 flex gap-2 bg-black/20 p-1.5 rounded-2xl shrink-0">
+          <div className="relative z-10 flex flex-wrap gap-2 bg-black/20 p-1.5 rounded-2xl shrink-0">
             <button
               onClick={() => setActiveTab('tracker')}
               className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${

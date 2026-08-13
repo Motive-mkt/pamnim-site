@@ -6,10 +6,11 @@ import { cn } from '../../lib/utils';
 import { 
   Plus, Users, Briefcase, Edit2, Trash2, CheckCircle2, Clock, Globe, UserPlus, Mail,
   Home, Palette, LayoutGrid, PaintBucket, RefreshCcw, MessageSquare, HelpCircle, Film, Sparkles,
-  Image as ImageIcon, Copy, Check
+  Image as ImageIcon, Copy, Check, ArrowUp, ArrowDown, Upload, X, Sparkle
 } from 'lucide-react';
 import { useCMS } from '../../hooks/useCMS';
 import { refineDraftCopy } from '../../services/geminiService';
+import { getCloudinaryVideoPoster } from '../../services/cloudinaryService';
 import { serviceCategories } from '../../data/servicesData';
 import ProjectTracker from '../../components/ProjectTracker';
 import ProjectChat from '../../components/ProjectChat';
@@ -131,9 +132,13 @@ export default function OwnerDashboard() {
   });
 
   // CMS Edit State
+  const [cmsLogoUrl, setCmsLogoUrl] = useState(content.logoUrl || '');
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [cmsHero, setCmsHero] = useState(content.hero);
   const [cmsContact, setCmsContact] = useState(content.contact);
   const [cmsLuxuryCategories, setCmsLuxuryCategories] = useState<any[]>([]);
+  const [isUploadingHeroSlide, setIsUploadingHeroSlide] = useState(false);
+  const [manualSlideUrl, setManualSlideUrl] = useState('');
 
   // Gemini Copywriter Assistant State
   const [refinement, setRefinement] = useState<{
@@ -207,6 +212,62 @@ export default function OwnerDashboard() {
     });
   };
 
+  const handleUploadLogo = async (file: File) => {
+    try {
+      setIsUploadingLogo(true);
+      const url = await uploadFileToCloudinary(file);
+      setCmsLogoUrl(url);
+    } catch (err: any) {
+      alert(`Logo upload failed: ${err.message || err}`);
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  const handleUploadHeroSlide = async (file: File) => {
+    try {
+      setIsUploadingHeroSlide(true);
+      const url = await uploadFileToCloudinary(file);
+      setCmsHero(prev => ({
+        ...prev,
+        heroSlideshow: [...(prev.heroSlideshow || []), url]
+      }));
+    } catch (err: any) {
+      alert(`Slide upload failed: ${err.message || err}`);
+    } finally {
+      setIsUploadingHeroSlide(false);
+    }
+  };
+
+  const handleRemoveHeroSlide = (index: number) => {
+    setCmsHero(prev => ({
+      ...prev,
+      heroSlideshow: (prev.heroSlideshow || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleMoveHeroSlide = (index: number, direction: 'up' | 'down') => {
+    const slides = [...(cmsHero.heroSlideshow || [])];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= slides.length) return;
+    const temp = slides[index];
+    slides[index] = slides[targetIndex];
+    slides[targetIndex] = temp;
+    setCmsHero(prev => ({
+      ...prev,
+      heroSlideshow: slides
+    }));
+  };
+
+  const handleAddManualSlideUrl = () => {
+    if (!manualSlideUrl.trim()) return;
+    setCmsHero(prev => ({
+      ...prev,
+      heroSlideshow: [...(prev.heroSlideshow || []), manualSlideUrl.trim()]
+    }));
+    setManualSlideUrl('');
+  };
+
   const [stats, setStats] = useState({
     activeProjects: 0,
     totalClients: 0
@@ -218,6 +279,7 @@ export default function OwnerDashboard() {
   }, []);
 
   useEffect(() => {
+    setCmsLogoUrl(content.logoUrl || '');
     setCmsHero(content.hero);
     setCmsContact(content.contact);
     if (content.services) {
@@ -636,12 +698,13 @@ export default function OwnerDashboard() {
   const handleSaveCMS = async () => {
     await setDoc(doc(db, 'siteContent', 'homepage'), {
       ...content,
+      logoUrl: cmsLogoUrl,
       hero: cmsHero,
       contact: cmsContact,
       services: cmsServices,
       luxuryCategories: cmsLuxuryCategories
     });
-    alert('Homepage, contact info and luxury categories updated!');
+    alert('Site logo, homepage, contact info and categories updated successfully!');
   };
 
   const handleSaveServices = async (updatedServicesList?: any[]) => {
@@ -854,8 +917,8 @@ export default function OwnerDashboard() {
 
       {activeTab === 'projects' && (
         <div className="space-y-8">
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-charcoal/5">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <div className="bg-white rounded-3xl p-5 sm:p-8 shadow-sm border border-charcoal/5">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-8 flex-wrap">
               <div>
                 <h2 className="text-2xl font-bold">Project Progress Tracking</h2>
                 <p className="text-sm text-charcoal/60 mt-1">Select a project to view or manage its 4-stage tracking progress, media, and notes.</p>
@@ -870,48 +933,125 @@ export default function OwnerDashboard() {
             </div>
 
             {projects.length === 0 ? (
-              <div className="p-12 text-center text-charcoal/40 bg-cream/30 rounded-3xl border border-dashed border-charcoal/15">
+              <div className="p-8 sm:p-12 text-center text-charcoal/40 bg-cream/30 rounded-3xl border border-dashed border-charcoal/15">
                 No active projects found. Click "Start New Project" above to create one.
               </div>
             ) : (
-              <div className="grid lg:grid-cols-3 gap-8">
-                {/* Project Selector List */}
-                <div className="space-y-3">
+              <div className="space-y-8">
+                {/* Desktop Table Layout (md: and above) */}
+                <div className="hidden md:block overflow-x-auto border border-charcoal/10 rounded-2xl">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-cream/50 border-b border-charcoal/10 text-xs font-bold uppercase text-charcoal/50">
+                        <th className="p-4">Project Name</th>
+                        <th className="p-4">Client Name</th>
+                        <th className="p-4">Assigned Staff</th>
+                        <th className="p-4">Status</th>
+                        <th className="p-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-charcoal/5 text-sm">
+                      {projects.map((proj) => {
+                        const isSelected = (selectedProject?.id || projects[0]?.id) === proj.id;
+                        const projStaff = staff.filter(s => proj.employeeIds?.includes(s.uid || s.id) || proj.assignedStaffUids?.includes(s.uid || s.id));
+                        return (
+                          <tr key={proj.id} className={cn("hover:bg-cream/30 transition-colors", isSelected && "bg-ochre/5 font-medium")}>
+                            <td className="p-4 font-bold text-charcoal">{proj.name}</td>
+                            <td className="p-4 text-charcoal/70">{proj.clientName || 'N/A'}</td>
+                            <td className="p-4">
+                              <div className="flex items-center -space-x-2">
+                                {projStaff.length > 0 ? (
+                                  projStaff.map((s, idx) => (
+                                    <div key={s.id || idx} className="w-7 h-7 rounded-full bg-ochre text-white text-[10px] font-bold flex items-center justify-center border-2 border-white" title={s.name}>
+                                      {s.name ? s.name.charAt(0).toUpperCase() : 'S'}
+                                    </div>
+                                  ))
+                                ) : (
+                                  <span className="text-xs text-charcoal/40 italic">Unassigned</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <span className="bg-ochre/10 text-ochre text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
+                                {proj.currentStageName || 'Started'}
+                              </span>
+                            </td>
+                            <td className="p-4 text-right">
+                              <button
+                                onClick={() => setSelectedProject(proj)}
+                                className={cn(
+                                  "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all",
+                                  isSelected ? "bg-ochre text-white shadow-sm" : "bg-cream text-charcoal hover:bg-ochre hover:text-white"
+                                )}
+                              >
+                                {isSelected ? 'Viewing Tracker' : 'Select / Edit'}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Stacked Card Layout (below md) */}
+                <div className="block md:hidden space-y-4">
                   <h3 className="text-xs font-bold text-charcoal/40 uppercase tracking-widest px-1">Projects List</h3>
                   {projects.map((proj) => {
                     const isSelected = (selectedProject?.id || projects[0]?.id) === proj.id;
+                    const projStaff = staff.filter(s => proj.employeeIds?.includes(s.uid || s.id) || proj.assignedStaffUids?.includes(s.uid || s.id));
                     return (
-                      <button
+                      <div 
                         key={proj.id}
-                        onClick={() => setSelectedProject(proj)}
                         className={cn(
-                          "w-full text-left p-5 rounded-2xl border transition-all text-sm",
-                          isSelected 
-                            ? "bg-ochre text-white border-ochre shadow-lg shadow-ochre/20"
-                            : "bg-white border-charcoal/10 hover:border-ochre/50 hover:bg-cream/50"
+                          "p-5 rounded-2xl border transition-all space-y-3",
+                          isSelected ? "bg-cream/60 border-ochre shadow-md" : "bg-white border-charcoal/10"
                         )}
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full uppercase", isSelected ? "bg-white/20 text-white" : "bg-ochre/10 text-ochre")}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h4 className="font-bold text-base text-charcoal leading-snug">{proj.name}</h4>
+                            <p className="text-xs text-charcoal/60 mt-0.5">Client: <span className="font-semibold text-charcoal">{proj.clientName || 'N/A'}</span></p>
+                          </div>
+                          <span className="bg-ochre/10 text-ochre text-[10px] font-black px-2.5 py-1 rounded-full uppercase shrink-0">
                             {proj.currentStageName || 'Started'}
                           </span>
-                          <span className={cn("text-xs font-semibold truncate max-w-[160px]", isSelected ? "text-white/80" : "text-charcoal/50")}>
-                            {proj.selectedServices && proj.selectedServices.length > 0
-                              ? `${proj.selectedServices.length} Included Scopes`
-                              : (proj.serviceName || proj.categoryTitle || 'Service')}
-                          </span>
                         </div>
-                        <h4 className="font-bold text-base mb-1">{proj.name}</h4>
-                        <p className={cn("text-xs", isSelected ? "text-white/80" : "text-charcoal/60")}>
-                          Client: {proj.clientName}
-                        </p>
-                      </button>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-charcoal/5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase font-bold text-charcoal/40">Staff:</span>
+                            <div className="flex items-center -space-x-1.5">
+                              {projStaff.length > 0 ? (
+                                projStaff.map((s, idx) => (
+                                  <div key={s.id || idx} className="w-6 h-6 rounded-full bg-ochre text-white text-[9px] font-bold flex items-center justify-center border-2 border-white" title={s.name}>
+                                    {s.name ? s.name.charAt(0).toUpperCase() : 'S'}
+                                  </div>
+                                ))
+                              ) : (
+                                <span className="text-xs text-charcoal/40 italic">None</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => setSelectedProject(proj)}
+                            className={cn(
+                              "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5",
+                              isSelected ? "bg-ochre text-white shadow-sm" : "bg-cream text-charcoal hover:bg-ochre hover:text-white"
+                            )}
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                            {isSelected ? 'Active Tracker' : 'Edit Project'}
+                          </button>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
 
-                {/* Selected Project Tracker Interactive View */}
-                <div className="lg:col-span-2">
+                {/* Selected Project Interactive Tracker Component */}
+                <div>
                   {(() => {
                     const activeProj = selectedProject || projects[0];
                     if (!activeProj) return null;
@@ -1190,7 +1330,7 @@ export default function OwnerDashboard() {
                   <div key={item.id} className="group relative aspect-square rounded-2xl overflow-hidden bg-cream border border-charcoal/5">
                      {isVideo ? (
                        <div className="relative w-full h-full bg-black select-none">
-                         <video src={item.image} className="w-full h-full object-cover pointer-events-none" muted playsInline />
+                         <video src={item.image} poster={getCloudinaryVideoPoster(item.image)} className="w-full h-full object-cover pointer-events-none" muted playsInline />
                          <div className="absolute top-4 left-4 z-10 bg-charcoal/80 text-cream p-1.5 rounded-lg">
                            <Film className="w-4 h-4" />
                          </div>
@@ -1284,6 +1424,83 @@ export default function OwnerDashboard() {
               >
                 Save All Changes
               </button>
+           </div>
+
+           {/* Brand Logo Settings Card */}
+           <div className="mb-10 p-6 bg-cream/50 rounded-2xl border border-charcoal/10 space-y-4">
+             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+               <div>
+                 <h3 className="text-base font-bold text-charcoal flex items-center gap-2">
+                   <span>Company Brand Logo</span>
+                 </h3>
+                 <p className="text-xs text-charcoal/60 mt-0.5">
+                   Upload your official company logo here. It will be displayed automatically on the website header, footer, and admin dashboard. If left blank, a placeholder badge is displayed.
+                 </p>
+               </div>
+               {cmsLogoUrl && (
+                 <button
+                   type="button"
+                   onClick={() => setCmsLogoUrl('')}
+                   className="self-start sm:self-auto text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-all cursor-pointer shrink-0"
+                 >
+                   Remove Logo
+                 </button>
+               )}
+             </div>
+
+             <div className="flex flex-col md:flex-row items-center gap-6 pt-2">
+               {/* Logo Preview Box */}
+               <div className="w-full md:w-64 h-24 bg-white rounded-xl border border-charcoal/10 flex items-center justify-center p-4 relative group shadow-sm shrink-0">
+                 {cmsLogoUrl ? (
+                   <img 
+                     src={cmsLogoUrl} 
+                     alt="Brand Logo Preview" 
+                     className="max-h-16 w-auto object-contain"
+                     referrerPolicy="no-referrer"
+                   />
+                 ) : (
+                   <div className="flex flex-col items-center gap-1.5 text-charcoal/40">
+                     <div className="h-8 px-3 rounded-lg border border-dashed border-charcoal/20 bg-charcoal/5 flex items-center gap-1.5 text-xs text-charcoal/50 font-medium">
+                       <Sparkle className="w-3.5 h-3.5 text-ochre/70" />
+                       <span>Logo Placeholder</span>
+                     </div>
+                     <span className="text-[10px] font-medium text-charcoal/40">No logo uploaded yet</span>
+                   </div>
+                 )}
+               </div>
+
+               {/* Upload & Direct Link Inputs */}
+               <div className="flex-1 w-full space-y-3">
+                 <div className="flex flex-wrap items-center gap-3">
+                   <label className="cursor-pointer bg-charcoal text-white hover:bg-charcoal/90 text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2">
+                     <Upload className="w-4 h-4 text-ochre-light" />
+                     <span>{isUploadingLogo ? 'Uploading Logo...' : 'Upload Logo Image'}</span>
+                     <input 
+                       type="file" 
+                       accept="image/*" 
+                       className="hidden" 
+                       disabled={isUploadingLogo}
+                       onChange={(e) => {
+                         const file = e.target.files?.[0];
+                         if (file) handleUploadLogo(file);
+                       }}
+                     />
+                   </label>
+                   <span className="text-xs text-charcoal/40 font-medium">PNG, SVG, JPG or WebP (Transparent PNG recommended)</span>
+                 </div>
+
+                 <div>
+                   <label className="block text-[10px] font-bold uppercase text-charcoal/40 mb-1">Or Paste Direct Logo Image URL</label>
+                   <input 
+                     type="url"
+                     placeholder="https://example.com/logo.png"
+                     value={cmsLogoUrl}
+                     onChange={(e) => setCmsLogoUrl(e.target.value)}
+                     className="w-full px-3.5 py-2 text-xs bg-white border border-charcoal/10 rounded-xl focus:outline-none focus:border-ochre"
+                   />
+                 </div>
+               </div>
+             </div>
            </div>
 
            <div className="grid lg:grid-cols-2 gap-12">
@@ -1389,6 +1606,102 @@ export default function OwnerDashboard() {
                        )}
                      </div>
                    )}
+                </div>
+
+                {/* Hero Slideshow Images Management */}
+                <div className="pt-4 border-t border-charcoal/5">
+                   <div className="flex justify-between items-center mb-2">
+                      <label className="block text-xs font-bold uppercase text-charcoal/40">Hero Slideshow Background Images</label>
+                      <span className="text-[10px] text-charcoal/40 font-mono font-medium">{(cmsHero.heroSlideshow || []).length} slides</span>
+                   </div>
+                   <p className="text-xs text-charcoal/50 mb-4 font-medium">
+                      These images cycle in the homepage hero background header. Upload image files or paste direct URLs.
+                   </p>
+
+                   {/* Slides List */}
+                   <div className="space-y-3 mb-4">
+                      {(cmsHero.heroSlideshow || []).map((slideUrl: string, index: number) => (
+                        <div key={index} className="flex items-center gap-3 bg-cream/40 p-2.5 rounded-xl border border-charcoal/5 group hover:border-ochre/30 transition-all">
+                          <div className="w-14 h-10 rounded-lg overflow-hidden bg-charcoal/10 flex-shrink-0 border border-charcoal/5 relative">
+                            <img src={slideUrl} alt={`Slide ${index + 1}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-charcoal truncate" title={slideUrl}>{slideUrl}</p>
+                            <p className="text-[10px] text-charcoal/40">Slide #{index + 1}</p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              disabled={index === 0}
+                              onClick={() => handleMoveHeroSlide(index, 'up')}
+                              className="p-1.5 rounded-lg text-charcoal/40 hover:text-charcoal hover:bg-white disabled:opacity-20 transition-all cursor-pointer disabled:cursor-not-allowed"
+                              title="Move Up"
+                            >
+                              <ArrowUp className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={index === (cmsHero.heroSlideshow || []).length - 1}
+                              onClick={() => handleMoveHeroSlide(index, 'down')}
+                              className="p-1.5 rounded-lg text-charcoal/40 hover:text-charcoal hover:bg-white disabled:opacity-20 transition-all cursor-pointer disabled:cursor-not-allowed"
+                              title="Move Down"
+                            >
+                              <ArrowDown className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveHeroSlide(index)}
+                              className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-all cursor-pointer"
+                              title="Remove Slide"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {(cmsHero.heroSlideshow || []).length === 0 && (
+                        <div className="p-6 text-center border-2 border-dashed border-charcoal/10 rounded-xl bg-cream/20">
+                          <p className="text-xs text-charcoal/40 font-medium">No slideshow images added yet. Upload or add image URLs below.</p>
+                        </div>
+                      )}
+                   </div>
+
+                   {/* Upload / Add Controls */}
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label className={`flex items-center justify-center gap-2 p-3 bg-white border border-charcoal/10 rounded-xl text-xs font-bold text-charcoal hover:border-ochre hover:text-ochre cursor-pointer transition-all shadow-sm ${isUploadingHeroSlide ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <Upload className="w-4 h-4 text-ochre" />
+                        <span>{isUploadingHeroSlide ? 'Uploading...' : 'Upload Image File'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleUploadHeroSlide(file);
+                            e.target.value = '';
+                          }}
+                          className="hidden"
+                          disabled={isUploadingHeroSlide}
+                        />
+                      </label>
+
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Or paste Image URL..."
+                          value={manualSlideUrl}
+                          onChange={(e) => setManualSlideUrl(e.target.value)}
+                          className="flex-1 p-3 bg-white border border-charcoal/10 rounded-xl text-xs focus:outline-none focus:border-ochre font-medium"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddManualSlideUrl}
+                          disabled={!manualSlideUrl.trim()}
+                          className="px-4 py-3 bg-charcoal text-white text-xs font-bold rounded-xl hover:bg-charcoal/90 disabled:opacity-30 transition-all"
+                        >
+                          Add
+                        </button>
+                      </div>
+                   </div>
                 </div>
               </div>
 
@@ -1574,15 +1887,15 @@ export default function OwnerDashboard() {
 
       {/* Service Modal */}
       {showServiceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-charcoal/40 backdrop-blur-sm">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-10 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-charcoal/40 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-6 sm:p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => setShowServiceModal(false)} 
-              className="absolute top-8 right-8 text-charcoal/20 hover:text-charcoal transition-colors hover:rotate-90 duration-300"
+              className="absolute top-6 right-6 text-charcoal/20 hover:text-charcoal transition-colors hover:rotate-90 duration-300"
             >
                <Plus className="w-8 h-8 rotate-45" />
             </button>
-            <h2 className="text-3xl font-bold mb-8">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-6">
               {editingServiceId !== null ? 'Edit Service' : 'Add New Service'}
             </h2>
             <form 
@@ -1634,7 +1947,7 @@ export default function OwnerDashboard() {
                </div>
                <div>
                   <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Select Accent Icon</label>
-                  <div className="grid grid-cols-4 gap-3 bg-cream/30 p-3 rounded-2xl border border-charcoal/5 max-h-48 overflow-y-auto">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 bg-cream/30 p-3 rounded-2xl border border-charcoal/5 max-h-48 overflow-y-auto">
                     {Object.keys(iconMap).map((key) => {
                       const IconOpt = iconMap[key];
                       return (
@@ -1669,8 +1982,8 @@ export default function OwnerDashboard() {
 
       {/* Media Modal */}
       {showMediaModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-charcoal/40 backdrop-blur-sm">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-xl p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-charcoal/40 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-xl p-6 sm:p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => {
                 if (!isUploading) {
@@ -1681,16 +1994,14 @@ export default function OwnerDashboard() {
                 }
               }} 
               disabled={isUploading}
-              className="absolute top-8 right-8 text-charcoal/20 hover:text-charcoal transition-colors disabled:opacity-20 cursor-pointer"
+              className="absolute top-6 right-6 text-charcoal/20 hover:text-charcoal transition-colors disabled:opacity-20 cursor-pointer"
             >
                <Plus className="w-8 h-8 rotate-45" />
             </button>
             
-            <h2 className="text-3xl font-bold mb-2">Upload to {mediaType === 'gallery' ? 'Home Gallery' : 'Portfolio'}</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-2">Upload to {mediaType === 'gallery' ? 'Home Gallery' : 'Portfolio'}</h2>
             <p className="text-sm text-charcoal/40 mb-8 font-medium">
-              {mediaType === 'gallery' 
-                ? 'Strict Media Policy: Images only. Automatic high-resolution sizing and web compression matches standards.'
-                : 'Cinematic layout. Upload stunning project photographs (Images) or walk-throughs (Videos).'}
+              Cinematic layout. Upload stunning project photographs (Images) or walk-throughs (Videos).
             </p>
 
             <form onSubmit={handleAddMedia} className="space-y-6">
@@ -1771,13 +2082,11 @@ export default function OwnerDashboard() {
                       if (e.dataTransfer.files) {
                         const files = Array.from(e.dataTransfer.files) as File[];
                         // Robust media extension check secondary fallback to prevent browser MIME mismatch
-                        const filtered = mediaType === 'gallery' 
-                          ? files.filter(isImageFile)
-                          : files.filter(f => isImageFile(f) || isVideoFile(f));
+                        const filtered = files.filter(f => isImageFile(f) || isVideoFile(f));
                         setSelectedFiles(prev => [...prev, ...filtered]);
                       }
                     }}
-                    className={`border-2 border-dashed rounded-[2rem] p-10 text-center transition-all cursor-pointer relative ${
+                    className={`border-2 border-dashed rounded-[2rem] p-6 sm:p-10 text-center transition-all cursor-pointer relative ${
                       dragActive 
                         ? 'border-ochre bg-ochre/5 scale-[1.01] shadow-lg ring-4 ring-ochre/15' 
                         : 'border-charcoal/15 hover:border-ochre/50 bg-cream/10 hover:bg-cream/20'
@@ -1792,14 +2101,12 @@ export default function OwnerDashboard() {
                       id="multiple-file-picker"
                       type="file" 
                       multiple 
-                      accept={mediaType === 'gallery' ? "image/*" : "image/*,video/*"}
+                      accept="image/*,video/*"
                       className="hidden" 
                       onChange={(e) => {
                         if (e.target.files) {
                           const files = Array.from(e.target.files) as File[];
-                          const filtered = mediaType === 'gallery'
-                            ? files.filter(isImageFile)
-                            : files.filter(f => isImageFile(f) || isVideoFile(f));
+                          const filtered = files.filter(f => isImageFile(f) || isVideoFile(f));
                           setSelectedFiles(prev => [...prev, ...filtered]);
                         }
                       }}
@@ -1815,9 +2122,7 @@ export default function OwnerDashboard() {
                         {dragActive ? "Drop your cinematic assets now!" : "Drag & drop files here, or click to browse"}
                       </h4>
                       <p className="text-xs text-charcoal/40 font-medium p-1">
-                        {mediaType === 'gallery' 
-                          ? 'Supports photography assets (JPG, PNG, WebP) up to 50MB'
-                          : 'Supports photographs and cinematic walkthrough MP4 videos up to 50MB'}
+                        Supports photographs and cinematic walkthrough MP4 videos up to 50MB
                       </p>
                     </div>
                   </div>
@@ -1924,12 +2229,12 @@ export default function OwnerDashboard() {
 
       {/* Staff Modal */}
       {showStaffModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-charcoal/40 backdrop-blur-sm">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-10 shadow-2xl relative">
-            <button onClick={() => setShowStaffModal(false)} className="absolute top-8 right-8 text-charcoal/20 hover:text-charcoal transition-colors">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-charcoal/40 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-6 sm:p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setShowStaffModal(false)} className="absolute top-6 right-6 text-charcoal/20 hover:text-charcoal transition-colors">
                <Plus className="w-8 h-8 rotate-45" />
             </button>
-            <h2 className="text-3xl font-bold mb-8">Add Team Member</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-6">Add Team Member</h2>
             <form onSubmit={handleAddStaff} className="space-y-4">
                <div>
                   <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Full Name</label>
@@ -1975,9 +2280,9 @@ export default function OwnerDashboard() {
         </div>
       )}
       {showProjectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-charcoal/40 backdrop-blur-sm">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-10 shadow-2xl relative">
-            <button onClick={() => setShowProjectModal(false)} className="absolute top-8 right-8 text-charcoal/20 hover:text-charcoal transition-colors">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-charcoal/40 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-6 sm:p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setShowProjectModal(false)} className="absolute top-6 right-6 text-charcoal/20 hover:text-charcoal transition-colors">
                <Plus className="w-8 h-8 rotate-45" />
             </button>
             <h2 className="text-3xl font-bold mb-8">Start New Project</h2>

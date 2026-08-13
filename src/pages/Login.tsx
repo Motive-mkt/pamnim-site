@@ -71,51 +71,40 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
       if (isSignUp) {
         if (!name) throw new Error('Please enter your name');
         
-        // Check if database is completely empty (no siteContent/metadata with initialized: true)
-        const metadataPath = 'siteContent/metadata';
+        // Check if an owner profile document exists in profiles collection
         try {
-          const metadataDoc = await getDoc(doc(db, 'siteContent', 'metadata'));
-          isFirstUser = !metadataDoc.exists() || !metadataDoc.data()?.initialized;
-          
-          if (!isFirstUser) {
-            // As double verification, check if profiles are empty
-            const profilesSnap = await getDocs(collection(db, 'profiles'));
-            if (profilesSnap.empty) {
-              isFirstUser = true;
-            }
-          }
+          const ownerQuery = query(collection(db, 'profiles'), where('role', '==', 'owner'));
+          const ownerSnap = await getDocs(ownerQuery);
+          isFirstUser = ownerSnap.empty;
         } catch (err) {
-          // If metadata doc call fails or permissions are restricted, check if profiles are empty
           try {
             const profilesSnap = await getDocs(collection(db, 'profiles'));
-            if (profilesSnap.empty) {
-              isFirstUser = true;
-            }
+            isFirstUser = profilesSnap.empty;
           } catch (e) {
-            // Fallback
+            isFirstUser = false;
           }
         }
 
-        // If not first user, we MUST authenticate strictly by invitation from owner
+        // If not first user, check if an invited profile matching this email already exists
         if (!isFirstUser) {
-          // Check 'profiles' collection for matching email address using a query
-          const q = query(collection(db, 'profiles'), where('email', '==', email.trim()));
-          let querySnap = await getDocs(q);
-          
-          let foundDoc = querySnap.docs[0];
-          if (!foundDoc) {
-            // try matching with lowercase in case of case variance
-            const qLower = query(collection(db, 'profiles'), where('email', '==', email.trim().toLowerCase()));
-            const querySnapLower = await getDocs(qLower);
-            foundDoc = querySnapLower.docs[0];
-          }
+          try {
+            const q = query(collection(db, 'profiles'), where('email', '==', email.trim()));
+            let querySnap = await getDocs(q);
+            
+            let foundDoc = querySnap.docs[0];
+            if (!foundDoc) {
+              const qLower = query(collection(db, 'profiles'), where('email', '==', email.trim().toLowerCase()));
+              const querySnapLower = await getDocs(qLower);
+              foundDoc = querySnapLower.docs[0];
+            }
 
-          if (!foundDoc) {
-            throw new Error("Registration restricted. Please contact the administrator for an invitation.");
+            if (foundDoc) {
+              existingInvitedDoc = foundDoc.data();
+              existingDocId = foundDoc.id;
+            }
+          } catch (e) {
+            console.warn("Could not check invited profiles:", e);
           }
-
-          existingInvitedDoc = foundDoc.data();
-          existingDocId = foundDoc.id;
         }
 
         // Create the user in Firebase Auth
@@ -153,14 +142,15 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
             handleFirestoreError(err, OperationType.WRITE, 'siteContent/metadata');
           }
         } else {
-          // Linking invited user's UID to that existing profile document
+          // Linking invited user's UID to that existing profile document or setting default client role
           try {
             await setDoc(docRef, {
-              ...existingInvitedDoc,
+              ...(existingInvitedDoc || {}),
               uid: user.uid,
-              name: name || existingInvitedDoc.name || 'Client',
+              name: name || existingInvitedDoc?.name || 'Client',
               email: user.email || email.trim().toLowerCase(),
-              status: 'active',
+              role: existingInvitedDoc?.role || 'client',
+              status: existingInvitedDoc?.status || 'active',
               updatedAt: new Date().toISOString()
             });
           } catch (err) {
@@ -203,7 +193,7 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
           }
         }
       } else {
-        // Just signing in, make sure profile exists, otherwise load/create if needed as fallback (existing logic)
+        // Just signing in, make sure profile exists, otherwise load/create if needed as fallback
         let docSnap: any;
         try {
           docSnap = await getDoc(docRef);
@@ -211,41 +201,39 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
           handleFirestoreError(err, OperationType.GET, profilePath);
         }
 
-        const adminEmails = ['jessescaledyou@gmail.com', 'your-admin-email@example.com'];
-        const isInitialAdmin = user && user.email && adminEmails.includes(user.email.toLowerCase().trim());
-
         if (!docSnap || !docSnap.exists()) {
-          // Fallback if signin succeeds but no profile exists, create a default profile / owner profile
+          // Fallback if signin succeeds but no profile exists in DB
           try {
+            const ownerQuery = query(collection(db, 'profiles'), where('role', '==', 'owner'));
+            const ownerSnap = await getDocs(ownerQuery);
+            const isFirstOwner = ownerSnap.empty;
+
             await setDoc(docRef, {
               uid: user.uid,
               email: user.email,
-              name: user.displayName || (isInitialAdmin ? 'Owner' : 'Client'),
-              role: isInitialAdmin ? 'owner' : 'client',
+              name: user.displayName || (isFirstOwner ? 'Owner' : 'Client'),
+              role: isFirstOwner ? 'owner' : 'client',
               status: 'active',
               createdAt: new Date().toISOString()
             });
           } catch (err) {
             handleFirestoreError(err, OperationType.WRITE, profilePath);
           }
-        } else if (isInitialAdmin && docSnap.data()?.role !== 'owner') {
-          // Auto-upgrade client role to owner if they are a hardcoded admin
-          try {
-            await setDoc(docRef, {
-              uid: user.uid,
-              role: 'owner'
-            }, { merge: true });
-          } catch (err) {
-            console.warn("Could not auto-upgrade admin profile role in db:", err);
-          }
         }
       }
       
-      // Check if user is the administrator
-      const adminEmails = ['jessescaledyou@gmail.com', 'your-admin-email@example.com'];
-      const isAdminEmail = user && user.email && adminEmails.includes(user.email.toLowerCase().trim());
+      // Determine navigation based on profile role in Firestore
+      let userRole = 'client';
+      try {
+        const userProfileSnap = await getDoc(docRef);
+        if (userProfileSnap.exists()) {
+          userRole = userProfileSnap.data().role;
+        }
+      } catch (e) {
+        console.warn("Could not check user role for navigation:", e);
+      }
       
-      if (isAdminEmail) {
+      if (userRole === 'owner') {
         navigate('/admin');
       } else {
         navigate('/');

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
-import { doc, setDoc, addDoc, collection } from 'firebase/firestore';
+import { doc, setDoc, addDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
 import { Sparkle, Mail, Lock, User, Phone, MessageSquare, CheckCircle2, ArrowLeft } from 'lucide-react';
 
@@ -48,22 +48,47 @@ export default function SignupPage() {
       const user = userCredential.user;
       await updateProfile(user, { displayName: name.trim() });
 
-      const requestData = {
-        uid: user.uid,
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        phone: phone.trim() || whatsapp.trim(),
-        whatsapp: whatsapp.trim(),
-        role: 'pending',
-        status: 'pending',
-        createdAt: new Date().toISOString()
-      };
+      // Check if an owner profile document exists in profiles collection
+      let isFirstOwner = false;
+      try {
+        const ownerQuery = query(collection(db, 'profiles'), where('role', '==', 'owner'));
+        const ownerSnap = await getDocs(ownerQuery);
+        isFirstOwner = ownerSnap.empty;
+      } catch (err) {
+        isFirstOwner = false;
+      }
 
-      // Save pending profile document
-      await setDoc(doc(db, 'profiles', user.uid), requestData);
+      if (isFirstOwner) {
+        const ownerData = {
+          uid: user.uid,
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone.trim() || whatsapp.trim(),
+          whatsapp: whatsapp.trim(),
+          role: 'owner',
+          status: 'active',
+          createdAt: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'profiles', user.uid), ownerData);
+        await setDoc(doc(db, 'siteContent', 'metadata'), { initialized: true });
+      } else {
+        const requestData = {
+          uid: user.uid,
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone.trim() || whatsapp.trim(),
+          whatsapp: whatsapp.trim(),
+          role: 'pending',
+          status: 'pending',
+          createdAt: new Date().toISOString()
+        };
 
-      // Save to pending_signups collection for easy admin querying
-      await setDoc(doc(db, 'pending_signups', user.uid), requestData);
+        // Save pending profile document
+        await setDoc(doc(db, 'profiles', user.uid), requestData);
+
+        // Save to pending_signups collection for easy admin querying
+        await setDoc(doc(db, 'pending_signups', user.uid), requestData);
+      }
 
       setSubmittedSuccess(true);
     } catch (err: any) {

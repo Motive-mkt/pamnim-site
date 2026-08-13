@@ -52,9 +52,22 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="pt-12 flex flex-col md:flex-row justify-between items-center gap-6">
-          <Link to="/" className="flex items-center gap-2 text-white/40 hover:text-white/60 transition-all duration-300">
-            <Sparkle className="w-5 h-5 text-ochre-light" />
-            <span className="font-serif text-lg font-bold">Pamnim Interiors</span>
+          <Link to="/" className="flex items-center gap-2 group transition-all duration-300">
+            {content?.logoUrl ? (
+              <div className="bg-white/95 px-3 py-1.5 rounded-xl shadow-sm backdrop-blur-sm flex items-center justify-center group-hover:bg-white transition-colors">
+                <img 
+                  src={content.logoUrl} 
+                  alt="Company Logo" 
+                  className="h-8 w-auto object-contain transition-transform duration-300 group-hover:scale-105" 
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            ) : (
+              <div className="h-8 px-3 rounded-lg border border-dashed border-white/20 bg-white/5 flex items-center gap-1.5 text-xs text-white/50 font-medium">
+                <Sparkle className="w-3.5 h-3.5 text-ochre/70" />
+                <span>Logo Placeholder</span>
+              </div>
+            )}
           </Link>
           <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 text-sm text-white/40">
             <p>© 2026 Pamnim Interiors. All rights reserved.</p>

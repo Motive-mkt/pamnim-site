@@ -3,10 +3,12 @@ import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export interface CMSContent {
+  logoUrl?: string;
   hero: {
     title: string;
     subheadline: string;
     highlightWord: string;
+    heroSlideshow?: string[];
   };
   contact: {
     phone: string;
@@ -19,11 +21,20 @@ export interface CMSContent {
   luxuryCategories?: any[];
 }
 
+const DEFAULT_HERO_SLIDES = [
+  "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=80&w=2000",
+  "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&q=80&w=2000",
+  "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&q=80&w=2000",
+  "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&q=80&w=2000"
+];
+
 const DEFAULT_CONTENT: CMSContent = {
+  logoUrl: '',
   hero: {
     title: "Your Nairobi home, designed to live beautifully.",
     subheadline: "We handle everything — from layout planning to final finishing — so you move into a home that feels exactly right. Based in Nairobi. Trusted by homeowners across Kenya.",
-    highlightWord: "beautifully."
+    highlightWord: "beautifully.",
+    heroSlideshow: DEFAULT_HERO_SLIDES
   },
   contact: {
     phone: "0714 984 268",
@@ -171,8 +182,18 @@ export function useCMS() {
     const unsub = onSnapshot(doc(db, 'siteContent', 'homepage'), (doc) => {
       if (doc.exists()) {
         const data = doc.data();
+        const heroData = data.hero || DEFAULT_CONTENT.hero;
+        const heroSlideshow = (heroData.heroSlideshow && heroData.heroSlideshow.length > 0)
+          ? heroData.heroSlideshow
+          : DEFAULT_HERO_SLIDES;
+
         setContent({
-          hero: data.hero || DEFAULT_CONTENT.hero,
+          logoUrl: data.logoUrl || '',
+          hero: {
+            ...DEFAULT_CONTENT.hero,
+            ...heroData,
+            heroSlideshow
+          },
           contact: data.contact || DEFAULT_CONTENT.contact,
           services: data.services && data.services.length > 0 ? data.services : DEFAULT_CONTENT.services,
           portfolio: data.portfolio || DEFAULT_CONTENT.portfolio,

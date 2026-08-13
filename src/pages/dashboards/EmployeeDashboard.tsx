@@ -68,7 +68,7 @@ export default function EmployeeDashboard() {
     <AdminLayout activeTab="overview">
       <div className="space-y-8">
         {/* Top Header & Navigation Tabs */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-charcoal/10 pb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-charcoal/10 pb-4 flex-wrap">
           <div>
             <h2 className="text-2xl font-bold text-charcoal">Employee Workspace</h2>
             <p className="text-sm text-charcoal/60">
@@ -76,7 +76,7 @@ export default function EmployeeDashboard() {
             </p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setActiveTab('projects')}
               className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
@@ -115,7 +115,7 @@ export default function EmployeeDashboard() {
         {/* Tab 1: Projects & 4-Stage Progress Tracker */}
         {activeTab === 'projects' && (
           <div className="space-y-8">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-charcoal/10 shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 bg-white p-5 sm:p-8 rounded-3xl border border-charcoal/10 shadow-sm flex-wrap">
               <div>
                 <h3 className="font-bold text-lg text-charcoal">Project Management</h3>
                 <p className="text-xs text-charcoal/50">Start projects and manage stage media & status updates.</p>
@@ -208,7 +208,7 @@ export default function EmployeeDashboard() {
         {/* Tab 2: Client Chat */}
         {activeTab === 'chat' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-3xl p-6 border border-charcoal/10 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="bg-white rounded-3xl p-5 sm:p-8 border border-charcoal/10 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4 flex-wrap">
               <div>
                 <h3 className="text-xl font-bold">Client Chat Threads</h3>
                 <p className="text-xs text-charcoal/50">Select a client below to converse in real-time or address stage comments.</p>
