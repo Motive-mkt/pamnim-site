@@ -1,36 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import { Star, Check } from 'lucide-react';
 import { useCMS } from '../hooks/useCMS';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { optimizeHeroCloudinaryUrl } from '../services/cloudinaryService';
 
-const FALLBACK_SLIDES = [
-  "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=90&w=2560",
-  "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&q=90&w=2560",
-  "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&q=90&w=2560",
-  "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&q=90&w=2560"
-];
+const FALLBACK_HERO_IMAGE = "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=90&w=2560";
 
 export default function Hero() {
   const { content } = useCMS();
   const hero = content.hero;
   const contact = content.contact;
 
-  const slides = hero.heroSlideshow && hero.heroSlideshow.length > 0
-    ? hero.heroSlideshow
-    : FALLBACK_SLIDES;
-
-  const [currentSlide, setCurrentSlide] = useState(0);
-
-  useEffect(() => {
-    if (slides.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [slides.length]);
+  const heroImage = (hero.heroSlideshow && hero.heroSlideshow.length > 0)
+    ? hero.heroSlideshow[0]
+    : ((hero as any).heroImage || FALLBACK_HERO_IMAGE);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -74,21 +59,17 @@ export default function Hero() {
 
   return (
     <section className="relative min-h-screen flex items-center pt-32 pb-20 lg:py-0 overflow-hidden">
-      {/* Background Slideshow */}
+      {/* Background Image */}
       <div className="absolute inset-0 z-0 bg-charcoal overflow-hidden">
-        <AnimatePresence mode="sync">
-          <motion.img
-            key={currentSlide}
-            src={optimizeHeroCloudinaryUrl(slides[currentSlide])}
-            alt="Modern luxury interior by Pamnim Interiors"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.5, ease: 'easeInOut' }}
-            className="absolute inset-0 w-full h-full object-cover object-center"
-            referrerPolicy="no-referrer"
-          />
-        </AnimatePresence>
+        <motion.img
+          src={optimizeHeroCloudinaryUrl(heroImage)}
+          alt="Modern luxury interior by Pamnim Interiors"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1.2, ease: 'easeOut' }}
+          className="absolute inset-0 w-full h-full object-cover object-center"
+          referrerPolicy="no-referrer"
+        />
         <div className="absolute inset-0 bg-black/50 z-10 pointer-events-none" />
       </div>
 

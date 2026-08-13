@@ -1608,14 +1608,14 @@ export default function OwnerDashboard() {
                    )}
                 </div>
 
-                {/* Hero Slideshow Images Management */}
+                {/* Hero Background Image Management */}
                 <div className="pt-4 border-t border-charcoal/5">
                    <div className="flex justify-between items-center mb-2">
-                      <label className="block text-xs font-bold uppercase text-charcoal/40">Hero Slideshow Background Images</label>
-                      <span className="text-[10px] text-charcoal/40 font-mono font-medium">{(cmsHero.heroSlideshow || []).length} slides</span>
+                      <label className="block text-xs font-bold uppercase text-charcoal/40">Hero Background Image</label>
+                      <span className="text-[10px] text-charcoal/40 font-mono font-medium">Primary Image</span>
                    </div>
                    <p className="text-xs text-charcoal/50 mb-4 font-medium">
-                      These images cycle in the homepage hero background header. Upload image files or paste direct URLs.
+                      This image is displayed in the homepage hero background. Upload a new photo or select from the list below.
                    </p>
 
                    {/* Slides List */}
