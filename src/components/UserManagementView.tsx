@@ -124,8 +124,8 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
   };
 
   const handleUpdateEmployeeRole = async (staffUid: string, newRole: 'regular_employee' | 'elevated_employee' | 'client') => {
-    if (!isOwner) {
-      alert('Only the Owner can promote or modify user access levels.');
+    if (!isOwner && !canApproveSignups) {
+      alert('Only the Owner or Elevated Employees can modify user access levels.');
       return;
     }
 
@@ -145,8 +145,8 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
   // However, it does not delete their Firebase Authentication account. Fully revoking their login credentials
   // requires a Firebase Admin SDK call from a backend server, not just a client-side Firestore delete.
   const handleRemoveMember = async (memberId: string, memberName: string) => {
-    if (!isOwner) {
-      alert('Only the Owner can remove team members.');
+    if (!isOwner && !canApproveSignups) {
+      alert('Only the Owner or Elevated Employees can remove team members.');
       return;
     }
 
@@ -325,8 +325,8 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                   <p className="text-xs text-charcoal/50 mt-0.5">{member.email}</p>
                 </div>
 
-                {/* Owner controls to promote / demote staff & remove staff */}
-                {isOwner && !isSelf && (
+                {/* Owner & Elevated Staff controls to promote / demote staff & remove staff */}
+                {(isOwner || canApproveSignups) && !isSelf && (
                   <div className="flex items-center gap-2 flex-wrap justify-end">
                     {isElevated ? (
                       <button
@@ -405,8 +405,8 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                   <p className="text-xs text-charcoal/50 mt-0.5">{client.email || 'No email provided'}</p>
                 </div>
 
-                {/* Owner controls to remove client */}
-                {isOwner && client.role !== 'owner' && (
+                {/* Owner & Elevated Staff controls to remove client */}
+                {(isOwner || canApproveSignups) && client.role !== 'owner' && (
                   <button
                     onClick={() => handleRemoveMember(client.id, client.name || client.email)}
                     className="px-3 py-1.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"

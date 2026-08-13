@@ -3,33 +3,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Helper functions
     function isSignedIn() { return request.auth != null; }
-    function isVerified() { 
-      return isSignedIn() && (
-        ('email_verified' in request.auth.token && request.auth.token.email_verified == true) || 
-        ('firebase' in request.auth.token && 'sign_in_provider' in request.auth.token.firebase && request.auth.token.firebase.sign_in_provider == 'password')
-      ); 
-    }
     
     function getProfile(uid) {
       return get(/databases/$(database)/documents/profiles/$(uid)).data;
-    }
-    
-    function hasRole(role) {
-      return isSignedIn() && 
-             exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
-             'role' in getProfile(request.auth.uid) &&
-             getProfile(request.auth.uid).role == role;
-    }
-    
-    function isOwnerEmail() {
-      return isSignedIn() && (
-        request.auth.uid == 'zWfj7envswZrJWlWDbKWIS9Ei5E2' ||
-        ('email' in request.auth.token && (
-          request.auth.token.email == 'jessescaledyou_test@gmail.com' || 
-          request.auth.token.email == 'jessescaledyou@gmail.com' ||
-          request.auth.token.email == 'your-admin-email@example.com'
-        ))
-      );
     }
     
     function isOwnerProfile() {
@@ -38,19 +14,31 @@ service cloud.firestore {
              get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'owner';
     }
     
-    function isOwner() { 
-      return isOwnerEmail() || isOwnerProfile();
+    function isElevatedEmployee() {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
+             get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'elevated_employee';
     }
-    function isEmployee() {
+
+    function isOwner() {
+      return isOwnerProfile();
+    }
+
+    function isStaff() {
       return isSignedIn() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && (
         'role' in getProfile(request.auth.uid) && (
-          getProfile(request.auth.uid).role == 'senior_designer' || 
-          getProfile(request.auth.uid).role == 'designer' || 
-          getProfile(request.auth.uid).role == 'project_manager'
+          getProfile(request.auth.uid).role in ['owner', 'elevated_employee', 'regular_employee', 'senior_designer', 'designer', 'project_manager']
         )
       );
     }
-    function isClient() { return hasRole('client'); }
+
+    function canManageUsers() {
+      return isOwner() || isElevatedEmployee();
+    }
+
+    function isClient() {
+      return isSignedIn() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && getProfile(request.auth.uid).role == 'client';
+    }
 
     // Validation Helpers
     function isValidMediaItem(data) {
@@ -73,53 +61,72 @@ service cloud.firestore {
     // Profiles
     match /profiles/{userId} {
       allow read: if true;
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isOwner() || (isSignedIn() && request.auth.uid == userId);
-      allow delete: if isSignedIn() && (request.auth.uid == userId || request.auth.token.email == 'jessescaledyou_test@gmail.com' || request.auth.token.email == 'your-admin-email@example.com');
+      allow create: if isSignedIn();
+      allow update: if canManageUsers() || (isSignedIn() && request.auth.uid == userId);
+      allow delete: if canManageUsers() || (isSignedIn() && request.auth.uid == userId);
     }
 
-    // Projects
+    // Pending Signups
+    match /pending_signups/{signupId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if canManageUsers() || isSignedIn();
+    }
+
+    // Projects & Subcollections
     match /projects/{projectId} {
-      allow read: if isOwner() || isEmployee() || (isClient() && resource.data.clientId == request.auth.uid);
-      allow create: if isOwner();
-      allow update: if isOwner() || (isEmployee() && (request.auth.uid in resource.data.employeeIds));
+      allow read: if isStaff() || (isClient() && resource.data.clientId == request.auth.uid);
+      allow create: if canManageUsers() || isStaff();
+      allow update: if isStaff();
       allow delete: if isOwner();
       
+      match /updates/{updateId} {
+        allow read: if isStaff() || (isClient() && get(/databases/$(database)/documents/projects/$(projectId)).data.clientId == request.auth.uid);
+        allow create, update, delete: if isStaff();
+      }
+
       match /progressNotes/{noteId} {
-        allow read: if isOwner() || isEmployee() || (isClient() && get(/databases/$(database)/documents/projects/$(projectId)).data.clientId == request.auth.uid);
-        allow create: if isOwner() || isEmployee();
-        allow update, delete: if isOwner();
+        allow read: if isStaff() || (isClient() && get(/databases/$(database)/documents/projects/$(projectId)).data.clientId == request.auth.uid);
+        allow create, update, delete: if isStaff();
+      }
+    }
+
+    // Chats / Messages
+    match /chats/{clientId} {
+      allow read, write: if isSignedIn();
+      
+      match /messages/{messageId} {
+        allow read, write: if isSignedIn();
       }
     }
 
     // Site Content
     match /siteContent/{docId} {
       allow read: if true;
-      allow write: if isOwner() || (docId == 'metadata' && !exists(/databases/$(database)/documents/siteContent/metadata));
+      allow write: if isStaff() || isOwner() || (docId == 'metadata' && !exists(/databases/$(database)/documents/siteContent/metadata));
     }
 
     // Media Collections (Gallery & Portfolio)
     match /gallery/{itemId} {
       allow read: if true;
-      allow create, update, delete: if isOwner();
+      allow create, update, delete: if isStaff() || isOwner();
     }
 
     match /portfolio_assets/{itemId} {
       allow read: if true;
-      allow create, update: if isOwner() && isValidMediaItem(request.resource.data);
-      allow delete: if isOwner();
+      allow create, update, delete: if isStaff() || isOwner();
     }
 
     // Inquiries
     match /inquiries/{inquiryId} {
       allow create: if isValidInquiry(request.resource.data);
-      allow read, update, delete: if isOwner();
+      allow read, update, delete: if isStaff() || isOwner();
     }
     
     // Detailed Services
     match /detailedServices/{serviceId} {
       allow read: if true;
-      allow create, update, delete: if isOwner();
+      allow create, update, delete: if isStaff() || isOwner();
     }
     
     // Default deny catch-all
