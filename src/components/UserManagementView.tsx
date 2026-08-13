@@ -233,30 +233,30 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
               {pendingRequests.map(req => (
                 <div 
                   key={req.id} 
-                  className="p-5 rounded-2xl border border-charcoal/10 bg-cream/30 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  className="p-4 sm:p-5 rounded-2xl border border-charcoal/10 bg-cream/30 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
                 >
-                  <div className="space-y-1">
-                    <h4 className="font-bold text-base text-charcoal">{req.name || 'Unnamed Request'}</h4>
-                    <div className="flex flex-wrap items-center gap-4 text-xs text-charcoal/60">
+                  <div className="space-y-1 min-w-0">
+                    <h4 className="font-bold text-base text-charcoal truncate">{req.name || 'Unnamed Request'}</h4>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-charcoal/60">
                       {req.email && (
-                        <span className="flex items-center gap-1">
-                          <Mail className="w-3.5 h-3.5" /> {req.email}
+                        <span className="flex items-center gap-1 min-w-0 break-all">
+                          <Mail className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{req.email}</span>
                         </span>
                       )}
                       {(req.whatsapp || req.phone) && (
-                        <span className="flex items-center gap-1">
-                          <Phone className="w-3.5 h-3.5 text-emerald-600" /> WhatsApp: {req.whatsapp || req.phone}
+                        <span className="flex items-center gap-1 shrink-0">
+                          <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> WhatsApp: {req.whatsapp || req.phone}
                         </span>
                       )}
-                      <span>Requested: {new Date(req.createdAt || Date.now()).toLocaleDateString()}</span>
+                      <span className="shrink-0">Requested: {new Date(req.createdAt || Date.now()).toLocaleDateString()}</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0 w-full lg:w-auto pt-2 lg:pt-0 border-t lg:border-t-0 border-charcoal/5">
                     <select
                       value={assignedRoles[req.id] || 'client'}
                       onChange={e => handleRoleSelectionChange(req.id, e.target.value)}
-                      className="px-3 py-2 rounded-xl border border-charcoal/15 bg-white text-xs font-bold text-charcoal outline-none focus:border-ochre"
+                      className="px-3 py-2.5 rounded-xl border border-charcoal/15 bg-white text-xs font-bold text-charcoal outline-none focus:border-ochre cursor-pointer"
                     >
                       <option value="client">Client</option>
                       <option value="regular_employee">Regular Employee</option>
@@ -266,10 +266,10 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                     <button
                       onClick={() => handleApproveRequest(req)}
                       disabled={processingId === req.id}
-                      className="px-5 py-2.5 rounded-xl bg-ochre text-white text-xs font-bold shadow-md hover:bg-ochre-dark transition-all flex items-center gap-2 disabled:opacity-50"
+                      className="px-4 py-2.5 rounded-xl bg-ochre text-white text-xs font-bold shadow-md hover:bg-ochre-dark transition-all flex items-center justify-center gap-2 disabled:opacity-50 min-h-[42px]"
                     >
-                      <UserCheck className="w-4 h-4" />
-                      {processingId === req.id ? 'Approving...' : 'Approve & Notify WhatsApp'}
+                      <UserCheck className="w-4 h-4 shrink-0" />
+                      <span>{processingId === req.id ? 'Approving...' : 'Approve & Notify WhatsApp'}</span>
                     </button>
                   </div>
                 </div>
@@ -302,10 +302,10 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
             return (
               <div 
                 key={member.id}
-                className="p-4 rounded-2xl border border-charcoal/10 flex items-center justify-between gap-4 bg-white"
+                className="p-4 rounded-2xl border border-charcoal/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white"
               >
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h4 className="font-bold text-sm text-charcoal">{member.name}</h4>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       isMemberOwner 
@@ -322,12 +322,12 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-charcoal/50 mt-0.5">{member.email}</p>
+                  <p className="text-xs text-charcoal/50 mt-0.5 truncate">{member.email}</p>
                 </div>
 
                 {/* Owner & Elevated Staff controls to promote / demote staff & remove staff */}
                 {(isOwner || canApproveSignups) && !isSelf && (
-                  <div className="flex items-center gap-2 flex-wrap justify-end">
+                  <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-charcoal/5">
                     {isElevated ? (
                       <button
                         onClick={() => handleUpdateEmployeeRole(member.id, 'regular_employee')}
