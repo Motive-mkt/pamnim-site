@@ -72,7 +72,7 @@ export default function Hero() {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center pt-32 pb-20 lg:py-0">
+    <section className="relative min-h-screen flex items-center pt-32 pb-20 lg:py-0 overflow-hidden">
       {/* Background Slideshow */}
       <div className="absolute inset-0 z-0 bg-charcoal overflow-hidden">
         <AnimatePresence mode="sync">
@@ -84,7 +84,7 @@ export default function Hero() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 1.5, ease: 'easeInOut' }}
-            className="absolute inset-0 w-full h-full object-contain md:object-cover object-[center_30%]"
+            className="absolute inset-0 w-full h-full object-cover object-center"
             referrerPolicy="no-referrer"
           />
         </AnimatePresence>

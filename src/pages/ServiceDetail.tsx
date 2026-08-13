@@ -74,7 +74,7 @@ export default function ServiceDetailPage() {
               <img
                 src={heroImage}
                 alt={`${serviceName} Hero`}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-center"
                 referrerPolicy="no-referrer"
               />
             </div>
