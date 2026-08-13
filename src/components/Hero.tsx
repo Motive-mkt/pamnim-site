@@ -4,12 +4,13 @@ import { Star, Check } from 'lucide-react';
 import { useCMS } from '../hooks/useCMS';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { optimizeHeroCloudinaryUrl } from '../services/cloudinaryService';
 
 const FALLBACK_SLIDES = [
-  "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=80&w=2000",
-  "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&q=80&w=2000",
-  "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&q=80&w=2000",
-  "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&q=80&w=2000"
+  "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=90&w=2560",
+  "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&q=90&w=2560",
+  "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&q=90&w=2560",
+  "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&q=90&w=2560"
 ];
 
 export default function Hero() {
@@ -78,7 +79,7 @@ export default function Hero() {
         <AnimatePresence mode="sync">
           <motion.img
             key={currentSlide}
-            src={slides[currentSlide]}
+            src={optimizeHeroCloudinaryUrl(slides[currentSlide])}
             alt="Modern luxury interior by Pamnim Interiors"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

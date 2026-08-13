@@ -7,6 +7,7 @@ import Footer from '../components/Footer';
 import { serviceCategories } from '../data/servicesData';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { optimizeHeroCloudinaryUrl } from '../services/cloudinaryService';
 
 export default function ServiceDetailPage() {
   const { categoryId, serviceSlug } = useParams();
@@ -72,7 +73,7 @@ export default function ServiceDetailPage() {
           {heroImage ? (
             <div className="w-full aspect-[21/9] rounded-[2.5rem] overflow-hidden border border-charcoal/5 shadow-md bg-cream">
               <img
-                src={heroImage}
+                src={optimizeHeroCloudinaryUrl(heroImage)}
                 alt={`${serviceName} Hero`}
                 className="w-full h-full object-cover object-center"
                 referrerPolicy="no-referrer"

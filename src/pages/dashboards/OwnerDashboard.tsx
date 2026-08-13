@@ -341,7 +341,7 @@ export default function OwnerDashboard() {
     });
   };
 
-  const compressImageToMax500KB = (file: File): Promise<string> => {
+  const compressImageToMax500KB = (file: File, maxDimension = 2560, quality = 0.92): Promise<string> => {
     return new Promise((resolve) => {
       const fallbackToRawBase64 = () => {
         const reader = new FileReader();
@@ -366,8 +366,8 @@ export default function OwnerDashboard() {
               let width = img.width;
               let height = img.height;
 
-              // Limit dimensions to 1200px max for swift local storage / lightweight transit
-              const MAX_SIZE = 1200;
+              // High-resolution maximum dimension for crisp wide desktop displays (2560px max width/height)
+              const MAX_SIZE = maxDimension;
               if (width > MAX_SIZE || height > MAX_SIZE) {
                 if (width > height) {
                   height = Math.round((height * MAX_SIZE) / width);
@@ -383,8 +383,8 @@ export default function OwnerDashboard() {
               const ctx = canvas.getContext('2d');
               if (ctx) {
                 ctx.drawImage(img, 0, 0, width, height);
-                // High-Performance JPEG compression at 0.75 quality fits perfectly within 500KB
-                const compressed = canvas.toDataURL('image/jpeg', 0.75);
+                // Ultra high-definition JPEG compression at 0.92 quality for crisp desktop heroes
+                const compressed = canvas.toDataURL('image/jpeg', quality);
                 resolve(compressed);
               } else {
                 resolve(event.target?.result as string);
@@ -594,7 +594,7 @@ export default function OwnerDashboard() {
       if (secureUrl.includes('cloudinary.com') && !secureUrl.includes('/q_auto')) {
         const assetSection = isVideo ? '/video/upload/' : '/image/upload/';
         if (secureUrl.includes(assetSection)) {
-          secureUrl = secureUrl.replace(assetSection, `${assetSection}q_auto:good,f_auto/`);
+          secureUrl = secureUrl.replace(assetSection, `${assetSection}q_auto:best,f_auto/`);
         }
       }
 

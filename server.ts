@@ -217,10 +217,10 @@ async function startServer() {
         } else {
           // Default Unsplash fallbacks
           const randomImages = [
-            "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1200&q=80",
-            "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1200&q=80",
-            "https://images.unsplash.com/photo-1616486038856-3c4852afcc3c?auto=format&fit=crop&w=1200&q=80",
-            "https://images.unsplash.com/photo-1615529182904-14819c35db37?auto=format&fit=crop&w=1200&q=80"
+            "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=2560&q=90",
+            "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=2560&q=90",
+            "https://images.unsplash.com/photo-1616486038856-3c4852afcc3c?auto=format&fit=crop&w=2560&q=90",
+            "https://images.unsplash.com/photo-1615529182904-14819c35db37?auto=format&fit=crop&w=2560&q=90"
           ];
           simulatedUrl = randomImages[Math.floor(Math.random() * randomImages.length)];
         }
@@ -281,12 +281,12 @@ async function startServer() {
       const responseData: any = await response.json();
       let secureUrl = responseData.secure_url || responseData.url;
 
-      // STRICT MEDIA POLICY: Enforce q_auto,f_auto transformation for automatic formatting and compression
+      // STRICT MEDIA POLICY: Enforce q_auto:best,f_auto transformation for automatic formatting and compression
       if (secureUrl) {
         if (type === "video") {
           secureUrl = secureUrl.replace("/video/upload/", "/video/upload/q_auto,f_auto/");
         } else {
-          secureUrl = secureUrl.replace("/image/upload/", "/image/upload/q_auto,f_auto/");
+          secureUrl = secureUrl.replace("/image/upload/", "/image/upload/q_auto:best,f_auto/");
         }
       }
 

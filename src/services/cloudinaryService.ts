@@ -26,14 +26,50 @@ export function optimizeCloudinaryUrl(url: string, type: 'image' | 'video' = 'im
   try {
     const assetSection = type === 'video' ? '/video/upload/' : '/image/upload/';
     if (url.includes(assetSection)) {
-      // Inject standard lossless visual compression flags
-      return url.replace(assetSection, `${assetSection}q_auto:good,f_auto/`);
+      // Inject high-definition visual compression flags without restricting image dimensions
+      return url.replace(assetSection, `${assetSection}q_auto:best,f_auto/`);
     }
   } catch (error) {
     console.warn("Could not parse Cloudinary URL for premium transformation, using original:", error);
   }
 
   return url;
+}
+
+/**
+ * Optimizes Cloudinary & Unsplash hero background images specifically for desktop displays (1920px+).
+ * Removes small width constraints (w_600, w_800, w_1200) and applies high-definition w_2560,c_limit or f_auto,q_auto:best.
+ */
+export function optimizeHeroCloudinaryUrl(url: string): string {
+  if (!url || typeof url !== 'string') return '';
+  
+  // Upgrade Unsplash image widths to 2560px for desktop crispness
+  if (url.includes('images.unsplash.com')) {
+    let upgraded = url;
+    upgraded = upgraded.replace(/w=\d+/, 'w=2560').replace(/q=\d+/, 'q=90');
+    if (!upgraded.includes('w=')) upgraded += '&w=2560';
+    if (!upgraded.includes('q=')) upgraded += '&q=90';
+    return upgraded;
+  }
+
+  if (!url.includes('cloudinary.com')) return url;
+
+  try {
+    let heroUrl = url;
+    // Replace any small width flags like w_600, w_800, w_1200 with w_2560
+    heroUrl = heroUrl.replace(/w_\d+/g, 'w_2560');
+    // Replace eco or low quality settings with q_auto:best
+    heroUrl = heroUrl.replace(/q_auto(:[a-z]+)?/g, 'q_auto:best');
+
+    if (!heroUrl.includes('/q_auto') && !heroUrl.includes('/f_auto')) {
+      if (heroUrl.includes('/image/upload/')) {
+        heroUrl = heroUrl.replace('/image/upload/', '/image/upload/q_auto:best,f_auto,w_2560,c_limit/');
+      }
+    }
+    return heroUrl;
+  } catch (err) {
+    return url;
+  }
 }
 
 /**
