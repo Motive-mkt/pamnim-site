@@ -4,7 +4,7 @@ import { useCMS } from '../hooks/useCMS';
 import { Sparkle, LogOut, LayoutDashboard, Briefcase, Users, FileText, UserCircle, Menu, X, Copy, Check, UserPlus } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth } from '../lib/firebase';
-import { cn } from '../lib/utils';
+import { cn, getOptimizedImageUrl } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface AdminLayoutProps {
@@ -48,10 +48,11 @@ export default function AdminLayout({ children, activeTab }: AdminLayoutProps) {
           {content?.logoUrl ? (
             <div className="bg-white/95 px-3 py-1.5 rounded-xl shadow-sm backdrop-blur-sm flex items-center justify-center group-hover:bg-white transition-colors">
               <img 
-                src={content.logoUrl} 
+                src={getOptimizedImageUrl(content.logoUrl, 200)} 
                 alt="Company Logo" 
                 className="h-9 w-auto object-contain transition-transform duration-300 group-hover:scale-105" 
                 referrerPolicy="no-referrer"
+                loading="eager"
               />
             </div>
           ) : (
@@ -103,10 +104,11 @@ export default function AdminLayout({ children, activeTab }: AdminLayoutProps) {
              <Link to="/" className="md:hidden flex items-center justify-center">
                 {content?.logoUrl ? (
                   <img 
-                    src={content.logoUrl} 
+                    src={getOptimizedImageUrl(content.logoUrl, 180)} 
                     alt="Company Logo" 
                     className="h-8 w-auto object-contain" 
                     referrerPolicy="no-referrer"
+                    loading="eager"
                   />
                 ) : (
                   <div className="h-8 px-2.5 rounded-lg border border-dashed border-charcoal/20 bg-charcoal/5 flex items-center gap-1.5 text-xs text-charcoal/60 font-medium">
@@ -183,10 +185,11 @@ export default function AdminLayout({ children, activeTab }: AdminLayoutProps) {
                     {content?.logoUrl ? (
                       <div className="bg-white/95 px-3 py-1.5 rounded-xl shadow-sm backdrop-blur-sm flex items-center justify-center">
                         <img 
-                          src={content.logoUrl} 
+                          src={getOptimizedImageUrl(content.logoUrl, 180)} 
                           alt="Company Logo" 
                           className="h-9 w-auto object-contain" 
                           referrerPolicy="no-referrer"
+                          loading="eager"
                         />
                       </div>
                     ) : (

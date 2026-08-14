@@ -68,7 +68,7 @@ export default function ServiceDetailPage() {
           </div>
         </div>
 
-        {/* 1. Hero image — full-width image at the top */}
+        {/* 1. Hero image: full-width image at the top */}
         <div className="max-w-7xl mx-auto px-6 md:px-12 pt-8">
           {heroImage ? (
             <div className="w-full aspect-[21/9] rounded-[2.5rem] overflow-hidden border border-charcoal/5 shadow-md bg-cream">
@@ -157,7 +157,7 @@ export default function ServiceDetailPage() {
           </div>
         </main>
 
-        {/* 5. CTA band — "Get a Quote" */}
+        {/* 5. CTA band: "Get a Quote" */}
         <section className="py-20 bg-cream">
           <div className="max-w-5xl mx-auto px-6 md:px-12 text-center">
             <div className="bg-charcoal text-white rounded-[3rem] p-10 md:p-16 relative overflow-hidden border border-white/5 shadow-2xl">

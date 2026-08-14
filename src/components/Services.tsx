@@ -25,7 +25,7 @@ export const LUXURY_CATEGORIES = [
     id: "interior-architecture",
     title: "Smart Space Planning & Custom Layouts",
     subtitle: "The Structural Masterplan",
-    outcome: "We design spaces that work the way your life does — maximising every square metre of your Nairobi home without compromising on style.",
+    outcome: "We design spaces that work the way your life does, maximising every square metre of your Nairobi home without compromising on style.",
     bullets: [
       "Smart Spatial & Furniture Layouts",
       "Ergonomic Kitchen & Living Zones",
@@ -47,7 +47,7 @@ export const LUXURY_CATEGORIES = [
     id: "bespoke-finishes",
     title: "Bespoke Finishes & Premium Carpentry",
     subtitle: "Texture, Tactility & Custom Joinery",
-    outcome: "Every surface, fitting, and finish is selected to feel intentional — because the details are what make a home feel expensive, not just designed.",
+    outcome: "Every surface, fitting, and finish is selected to feel intentional, because the details are what make a home feel expensive, not just designed.",
     bullets: [
       "Custom Wainscoting & Wall Paneling",
       "Floor-to-ceiling Wardrobes & Cabinetry",
@@ -70,7 +70,7 @@ export const LUXURY_CATEGORIES = [
     id: "premium-flooring",
     title: "Premium Flooring Solutions",
     subtitle: "Flawless Ground Foundations",
-    outcome: "The right floor anchors every room. We source and install premium options — hardwood, engineered, vinyl, and stone — fitted to last and built to impress.",
+    outcome: "The right floor anchors every room. We source and install premium options including hardwood, engineered, vinyl, and stone, fitted to last and built to impress.",
     bullets: [
       "Laser-Aligned Ceramic & Porcelain Tiling",
       "100% Waterproof SPC & Wood Flooring",
@@ -318,7 +318,7 @@ export default function Services() {
             BUDGET FLEXIBILITY
           </span>
           <p className="text-xs md:text-sm font-sans font-medium text-charcoal/60">
-            We work across a range of budgets — tell us yours. Projects start from <span className="text-charcoal font-bold font-mono">KES 50,000</span>.
+            We work across a range of budgets. Tell us yours. Projects start from <span className="text-charcoal font-bold font-mono">KES 50,000</span>.
           </p>
         </div>
       </div>

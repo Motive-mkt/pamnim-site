@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  updateProfile,
   sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
-import { doc, getDoc, setDoc, collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useNavigate, Link } from 'react-router-dom';
-import { Sparkle, Mail, Lock, User, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Sparkle, Mail, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
 
 enum OperationType {
   CREATE = 'create',
@@ -45,15 +43,13 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   throw new Error(JSON.stringify(errInfo));
 }
 
-export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: boolean }) {
+export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [isSignUp, setIsSignUp] = useState(isSignUpDefault);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
   const navigate = useNavigate();
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -63,162 +59,44 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
     setMessage(null);
     
     try {
-      let user;
-      let existingInvitedDoc: any = null;
-      let existingDocId: string | null = null;
-      let isFirstUser = false;
+      const result = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const user = result.user;
 
-      if (isSignUp) {
-        if (!name) throw new Error('Please enter your name');
-        
-        // Check if an owner profile document exists in profiles collection
-        try {
-          const ownerQuery = query(collection(db, 'profiles'), where('role', '==', 'owner'));
-          const ownerSnap = await getDocs(ownerQuery);
-          isFirstUser = ownerSnap.empty;
-        } catch (err) {
-          try {
-            const profilesSnap = await getDocs(collection(db, 'profiles'));
-            isFirstUser = profilesSnap.empty;
-          } catch (e) {
-            isFirstUser = false;
-          }
-        }
-
-        // If not first user, check if an invited profile matching this email already exists
-        if (!isFirstUser) {
-          try {
-            const q = query(collection(db, 'profiles'), where('email', '==', email.trim()));
-            let querySnap = await getDocs(q);
-            
-            let foundDoc = querySnap.docs[0];
-            if (!foundDoc) {
-              const qLower = query(collection(db, 'profiles'), where('email', '==', email.trim().toLowerCase()));
-              const querySnapLower = await getDocs(qLower);
-              foundDoc = querySnapLower.docs[0];
-            }
-
-            if (foundDoc) {
-              existingInvitedDoc = foundDoc.data();
-              existingDocId = foundDoc.id;
-            }
-          } catch (e) {
-            console.warn("Could not check invited profiles:", e);
-          }
-        }
-
-        // Create the user in Firebase Auth
-        const result = await createUserWithEmailAndPassword(auth, email, password);
-        user = result.user;
-        await updateProfile(user, { displayName: name });
-      } else {
-        const result = await signInWithEmailAndPassword(auth, email, password);
-        user = result.user;
-      }
-
-      // Now create/update profile doc
+      // Ensure profile doc exists, fallback to creating pending or first owner if missing
       const profilePath = `profiles/${user.uid}`;
       const docRef = doc(db, 'profiles', user.uid);
 
-      if (isSignUp) {
-        if (isFirstUser) {
-          // Creating first owner user
-          try {
-            await setDoc(docRef, {
-              uid: user.uid,
-              email: user.email?.trim().toLowerCase() || email.trim().toLowerCase(),
-              name: name || 'Owner',
-              role: 'owner',
-              status: 'active',
-              createdAt: new Date().toISOString()
-            });
-          } catch (err) {
-            handleFirestoreError(err, OperationType.WRITE, profilePath);
-          }
+      let docSnap: any;
+      try {
+        docSnap = await getDoc(docRef);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.GET, profilePath);
+      }
 
-          try {
-            await setDoc(doc(db, 'siteContent', 'metadata'), { initialized: true });
-          } catch (err) {
-            handleFirestoreError(err, OperationType.WRITE, 'siteContent/metadata');
-          }
-        } else {
-          // Linking invited user's UID to that existing profile document or setting default client role
-          try {
-            await setDoc(docRef, {
-              ...(existingInvitedDoc || {}),
-              uid: user.uid,
-              name: name || existingInvitedDoc?.name || 'Client',
-              email: user.email || email.trim().toLowerCase(),
-              role: existingInvitedDoc?.role || 'client',
-              status: existingInvitedDoc?.status || 'active',
-              updatedAt: new Date().toISOString()
-            });
-          } catch (err) {
-            handleFirestoreError(err, OperationType.WRITE, profilePath);
-          }
-
-          // Delete the old placeholder profile document
-          if (existingDocId && existingDocId !== user.uid) {
-            try {
-              await deleteDoc(doc(db, 'profiles', existingDocId));
-            } catch (err) {
-              console.error('Error deleting old profile document:', err);
-            }
-
-            // Update any projects pointing to the old client placeholder ID to live user.uid
-            try {
-              const projectsQuery = query(collection(db, 'projects'), where('clientId', '==', existingDocId));
-              const projectsSnap = await getDocs(projectsQuery);
-              for (const pDoc of projectsSnap.docs) {
-                await setDoc(pDoc.ref, { clientId: user.uid }, { merge: true });
-              }
-            } catch (pe) {
-              console.error('Error updating project client link:', pe);
-            }
-
-            // Update any projects where the old placeholder was in employeeIds
-            try {
-              const projectsQuery = query(collection(db, 'projects'));
-              const projectsSnap = await getDocs(projectsQuery);
-              for (const pDoc of projectsSnap.docs) {
-                const pData = pDoc.data();
-                if (Array.isArray(pData.employeeIds) && pData.employeeIds.includes(existingDocId)) {
-                  const updatedIds = pData.employeeIds.map((id: string) => id === existingDocId ? user.uid : id);
-                  await setDoc(pDoc.ref, { employeeIds: updatedIds }, { merge: true });
-                }
-              }
-            } catch (pe) {
-              console.error('Error updating project employee link:', pe);
-            }
-          }
-        }
-      } else {
-        // Just signing in, make sure profile exists, otherwise load/create if needed as fallback
-        let docSnap: any;
+      if (!docSnap || !docSnap.exists()) {
         try {
-          docSnap = await getDoc(docRef);
-        } catch (err) {
-          handleFirestoreError(err, OperationType.GET, profilePath);
-        }
+          const ownerQuery = query(collection(db, 'profiles'), where('role', '==', 'owner'));
+          const ownerSnap = await getDocs(ownerQuery);
+          const isFirstOwner = ownerSnap.empty;
 
-        if (!docSnap || !docSnap.exists()) {
-          // Fallback if signin succeeds but no profile exists in DB
-          try {
-            const ownerQuery = query(collection(db, 'profiles'), where('role', '==', 'owner'));
-            const ownerSnap = await getDocs(ownerQuery);
-            const isFirstOwner = ownerSnap.empty;
-
-            await setDoc(docRef, {
-              uid: user.uid,
-              email: user.email,
-              name: user.displayName || (isFirstOwner ? 'Owner' : 'Client'),
-              role: isFirstOwner ? 'owner' : 'client',
-              status: 'active',
-              createdAt: new Date().toISOString()
-            });
-          } catch (err) {
-            handleFirestoreError(err, OperationType.WRITE, profilePath);
+          const newProfileData = {
+            uid: user.uid,
+            email: user.email?.trim().toLowerCase() || email.trim().toLowerCase(),
+            name: user.displayName || (isFirstOwner ? 'Owner' : 'User'),
+            role: isFirstOwner ? 'owner' : 'pending',
+            status: isFirstOwner ? 'active' : 'pending',
+            createdAt: new Date().toISOString()
+          };
+          await setDoc(docRef, newProfileData);
+          if (!isFirstOwner) {
+            try {
+              await setDoc(doc(db, 'pending_signups', user.uid), newProfileData);
+            } catch (e) {
+              // ignore
+            }
           }
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, profilePath);
         }
       }
       
@@ -249,7 +127,7 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
       }
 
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        errorMessage = 'wrong email/ password';
+        errorMessage = 'Invalid email or password.';
       }
       if (err.code === 'auth/email-already-in-use') errorMessage = 'This email is already registered.';
       setError(errorMessage);
@@ -268,7 +146,7 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
     setError(null);
     setMessage(null);
     try {
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(auth, email.trim());
       setMessage('Password reset email sent! Please check your inbox.');
     } catch (err: any) {
       setError(err.message);
@@ -286,7 +164,7 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
             <span className="font-serif text-3xl font-bold tracking-tight text-charcoal">Pamnim Interiors</span>
           </div>
           <h1 className="text-2xl font-bold mb-2">
-            {isForgotPassword ? 'Reset Password' : (isSignUp ? 'Create Account' : 'Welcome Back')}
+            {isForgotPassword ? 'Reset Password' : 'Welcome Back'}
           </h1>
           <p className="text-charcoal/60">
             {isForgotPassword ? 'Enter your email to receive a reset link' : 'Access your personalized design portal'}
@@ -340,20 +218,6 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
           </form>
         ) : (
           <form onSubmit={handleAuth} className="space-y-4">
-            {isSignUp && (
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal/30" />
-                <input
-                  type="text"
-                  placeholder="Full Name"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-cream/30 border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre transition-all"
-                />
-              </div>
-            )}
-            
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal/30" />
               <input
@@ -378,28 +242,26 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
               />
             </div>
 
-            {!isSignUp && (
-              <div className="flex justify-end">
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    setIsForgotPassword(true);
-                    setError(null);
-                    setMessage(null);
-                  }}
-                  className="text-xs text-ochre font-medium hover:underline"
-                >
-                  Forgot Password?
-                </button>
-              </div>
-            )}
+            <div className="flex justify-end">
+              <button 
+                type="button" 
+                onClick={() => {
+                  setIsForgotPassword(true);
+                  setError(null);
+                  setMessage(null);
+                }}
+                className="text-xs text-ochre font-medium hover:underline"
+              >
+                Forgot Password?
+              </button>
+            </div>
 
             <button
               type="submit"
               disabled={loading}
               className="w-full bg-charcoal hover:bg-black text-white py-4 rounded-xl font-bold transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2 group"
             >
-              {loading ? 'Processing...' : (isSignUp ? 'Register Account' : 'Sign In')}
+              {loading ? 'Processing...' : 'Sign In'}
               {!loading && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
             </button>
           </form>
@@ -407,18 +269,13 @@ export default function Login({ isSignUpDefault = false }: { isSignUpDefault?: b
 
         <div className="mt-8 pt-8 border-t border-charcoal/5 text-center">
           <p className="text-sm text-charcoal/60">
-            {isSignUp ? 'Already have an account?' : 'New to Pamnim Interiors?'}
-            <button 
-              onClick={() => {
-                setIsSignUp(!isSignUp);
-                setIsForgotPassword(false);
-                setError(null);
-                setMessage(null);
-              }}
-              className="ml-2 text-ochre font-bold hover:underline"
+            New to Pamnim Interiors?{' '}
+            <Link 
+              to="/signup"
+              className="ml-1 text-ochre font-bold hover:underline"
             >
-              {isSignUp ? 'Sign In' : 'Create an Account'}
-            </button>
+              Request Access
+            </Link>
           </p>
         </div>
         

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Sparkle, Phone, Menu, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { cn } from '../lib/utils';
+import { cn, getOptimizedImageUrl } from '../lib/utils';
 import { useCMS } from '../hooks/useCMS';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -64,10 +64,12 @@ export default function Header() {
                 displayLight ? "bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur-sm" : "p-0.5"
               )}>
                 <img 
-                  src={content.logoUrl} 
+                  src={getOptimizedImageUrl(content.logoUrl, 250)} 
                   alt="Company Logo" 
                   className="h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105" 
                   referrerPolicy="no-referrer"
+                  loading="eager"
+                  fetchPriority="high"
                 />
               </div>
             ) : (
@@ -175,10 +177,11 @@ export default function Header() {
                   <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2">
                     {content?.logoUrl ? (
                       <img 
-                        src={content.logoUrl} 
+                        src={getOptimizedImageUrl(content.logoUrl, 200)} 
                         alt="Company Logo" 
                         className="h-10 w-auto object-contain" 
                         referrerPolicy="no-referrer"
+                        loading="eager"
                       />
                     ) : (
                       <div className="h-10 px-3 rounded-xl border-2 border-dashed border-charcoal/20 bg-charcoal/5 flex items-center gap-2 text-xs font-bold text-charcoal/60">

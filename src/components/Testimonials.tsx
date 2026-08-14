@@ -29,7 +29,7 @@ export default function Testimonials() {
               ))}
             </div>
             <p className="text-xl text-charcoal/80 leading-relaxed italic mb-8 relative z-10">
-              "Excellent service and great results — the team understood exactly what we wanted and delivered beyond our expectations."
+              "Excellent service and great results. The team understood exactly what we wanted and delivered beyond our expectations."
             </p>
             <div>
               <p className="font-bold">Verified Client</p>

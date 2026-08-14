@@ -101,7 +101,7 @@ export default function Hero() {
 
           <ul className="space-y-4 mb-10">
             {[
-              'Free first consultation — no commitment',
+              'Free first consultation with no commitment',
               'Bespoke design for your budget and space',
               'On-time delivery, fully managed project'
             ].map((item) => (
@@ -134,7 +134,7 @@ export default function Hero() {
           ) : (
             <>
               <h2 className="text-2xl text-charcoal font-bold mb-2">Book your free consultation</h2>
-              <p className="text-charcoal/60 mb-6 text-sm">Tell us about your space — we'll respond within 24 hours.</p>
+              <p className="text-charcoal/60 mb-6 text-sm">Tell us about your space. We'll respond within 24 hours.</p>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>

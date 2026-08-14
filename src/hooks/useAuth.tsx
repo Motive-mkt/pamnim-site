@@ -61,18 +61,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const ownerSnap = await getDocs(ownerQuery);
               const isFirstOwner = ownerSnap.empty;
 
-              const newRole: UserRole = isFirstOwner ? 'owner' : 'client';
-              const newName = user.displayName || (isFirstOwner ? 'Owner' : 'Client');
+              const newRole: UserRole = isFirstOwner ? 'owner' : 'pending';
+              const newStatus: 'active' | 'pending' = isFirstOwner ? 'active' : 'pending';
+              const newName = user.displayName || (isFirstOwner ? 'Owner' : 'User');
 
               const newProfileData = {
                 uid: user.uid,
                 email: user.email || '',
                 name: newName,
                 role: newRole,
-                status: 'active',
+                status: newStatus,
                 createdAt: new Date().toISOString()
               };
               await setDoc(docRef, newProfileData);
+              if (!isFirstOwner) {
+                try {
+                  await setDoc(doc(db, 'pending_signups', user.uid), newProfileData);
+                } catch (e) {
+                  // ignore if collection is locked or handled separately
+                }
+              }
               setProfile(newProfileData as Profile);
             } catch (createErr) {
               console.warn("Failed to auto-create profile:", createErr);

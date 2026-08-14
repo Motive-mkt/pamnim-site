@@ -77,6 +77,18 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
     }
 
     const targetRole = assignedRoles[req.id] || 'client';
+
+    if (targetRole === 'owner') {
+      if (!isOwner) {
+        alert('Only the current Owner can approve a request as Owner.');
+        return;
+      }
+      const confirmed = window.confirm(
+        `Are you sure you want to approve "${req.name || req.email}" as an Owner? This will grant full system ownership.`
+      );
+      if (!confirmed) return;
+    }
+
     setProcessingId(req.id);
 
     try {
@@ -103,7 +115,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
 
       // Automated WhatsApp notification message
       const whatsappNumber = (req.whatsapp || req.phone || '').replace(/\D/g, '');
-      const readableRoleName = targetRole === 'client' ? 'Client' : targetRole === 'elevated_employee' ? 'Elevated Employee' : 'Regular Employee';
+      const readableRoleName = targetRole === 'owner' ? 'Owner' : targetRole === 'client' ? 'Client' : targetRole === 'elevated_employee' ? 'Elevated Employee' : 'Regular Employee';
       const loginUrl = `${window.location.origin}/login`;
       const messageText = `Hello ${req.name}! Your request for Pamnim Interiors has been approved as a ${readableRoleName}.\n\nYou can log into your portal here:\n${loginUrl}`;
 
@@ -123,8 +135,21 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
     }
   };
 
-  const handleUpdateEmployeeRole = async (staffUid: string, newRole: 'regular_employee' | 'elevated_employee' | 'client') => {
-    if (!isOwner && !canApproveSignups) {
+  const handleUpdateEmployeeRole = async (
+    staffUid: string, 
+    newRole: 'owner' | 'elevated_employee' | 'regular_employee' | 'client',
+    memberName?: string
+  ) => {
+    if (newRole === 'owner') {
+      if (!isOwner) {
+        alert('Only the current Owner can promote someone else to Owner.');
+        return;
+      }
+      const confirmed = window.confirm(
+        `This will make "${memberName || 'this user'}" an Owner with full administrative control. Continue?`
+      );
+      if (!confirmed) return;
+    } else if (!isOwner && !canApproveSignups) {
       alert('Only the Owner or Elevated Employees can modify user access levels.');
       return;
     }
@@ -134,7 +159,8 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
         role: newRole,
         updatedAt: new Date().toISOString()
       });
-      alert(`User role updated to ${newRole === 'elevated_employee' ? 'Elevated Employee' : newRole === 'regular_employee' ? 'Regular Employee' : 'Client'}.`);
+      const roleLabel = newRole === 'owner' ? 'Owner' : newRole === 'elevated_employee' ? 'Elevated Employee' : newRole === 'regular_employee' ? 'Regular Employee' : 'Client';
+      alert(`User role updated to ${roleLabel}.`);
     } catch (err: any) {
       console.error('Error updating user role:', err);
       alert('Failed to update user role: ' + (err.message || 'Unknown error'));
@@ -261,6 +287,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                       <option value="client">Client</option>
                       <option value="regular_employee">Regular Employee</option>
                       <option value="elevated_employee">Elevated Employee</option>
+                      {isOwner && <option value="owner">Owner</option>}
                     </select>
 
                     <button
@@ -351,6 +378,15 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                       Make Client
                     </button>
 
+                    {isOwner && !isMemberOwner && (
+                      <button
+                        onClick={() => handleUpdateEmployeeRole(member.id, 'owner', member.name)}
+                        className="px-3 py-1.5 rounded-xl border border-purple-200 text-purple-700 hover:bg-purple-50 text-xs font-bold transition-all cursor-pointer"
+                      >
+                        Make Owner
+                      </button>
+                    )}
+
                     <button
                       onClick={() => handleRemoveMember(member.id, member.name || member.email)}
                       className="px-3 py-1.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
@@ -393,7 +429,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
             activeClients.map(client => (
               <div 
                 key={client.id}
-                className="p-4 rounded-2xl border border-charcoal/10 flex items-center justify-between gap-4 bg-white"
+                className="p-4 rounded-2xl border border-charcoal/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white"
               >
                 <div>
                   <div className="flex items-center gap-2">
@@ -405,16 +441,26 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                   <p className="text-xs text-charcoal/50 mt-0.5">{client.email || 'No email provided'}</p>
                 </div>
 
-                {/* Owner & Elevated Staff controls to remove client */}
+                {/* Owner & Elevated Staff controls to manage client */}
                 {(isOwner || canApproveSignups) && client.role !== 'owner' && (
-                  <button
-                    onClick={() => handleRemoveMember(client.id, client.name || client.email)}
-                    className="px-3 py-1.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-                    title="Remove Client"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Remove</span>
-                  </button>
+                  <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-charcoal/5">
+                    {isOwner && (
+                      <button
+                        onClick={() => handleUpdateEmployeeRole(client.id, 'owner', client.name)}
+                        className="px-3 py-1.5 rounded-xl border border-purple-200 text-purple-700 hover:bg-purple-50 text-xs font-bold transition-all cursor-pointer"
+                      >
+                        Make Owner
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleRemoveMember(client.id, client.name || client.email)}
+                      className="px-3 py-1.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                      title="Remove Client"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Remove</span>
+                    </button>
+                  </div>
                 )}
               </div>
             ))

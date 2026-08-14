@@ -2,6 +2,7 @@ import { Phone, Sparkle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCMS } from '../hooks/useCMS';
+import { getOptimizedImageUrl } from '../lib/utils';
 
 export default function Footer() {
   const { user } = useAuth();
@@ -16,7 +17,7 @@ export default function Footer() {
             Let's design a home you'll love coming back to.
           </h2>
           <p className="text-xl text-white/60 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Book a free consultation today. We'll discuss your vision, budget and timeline — no obligations.
+            Book a free consultation today. We'll discuss your vision, budget and timeline with no obligations.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
             <a
@@ -56,10 +57,11 @@ export default function Footer() {
             {content?.logoUrl ? (
               <div className="bg-white/95 px-3 py-1.5 rounded-xl shadow-sm backdrop-blur-sm flex items-center justify-center group-hover:bg-white transition-colors">
                 <img 
-                  src={content.logoUrl} 
+                  src={getOptimizedImageUrl(content.logoUrl, 200)} 
                   alt="Company Logo" 
                   className="h-8 w-auto object-contain transition-transform duration-300 group-hover:scale-105" 
                   referrerPolicy="no-referrer"
+                  loading="eager"
                 />
               </div>
             ) : (

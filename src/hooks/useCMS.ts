@@ -32,7 +32,7 @@ const DEFAULT_CONTENT: CMSContent = {
   logoUrl: '',
   hero: {
     title: "Your Nairobi home, designed to live beautifully.",
-    subheadline: "We handle everything — from layout planning to final finishing — so you move into a home that feels exactly right. Based in Nairobi. Trusted by homeowners across Kenya.",
+    subheadline: "We handle everything from layout planning to final finishing so you move into a home that feels exactly right. Based in Nairobi. Trusted by homeowners across Kenya.",
     highlightWord: "beautifully.",
     heroSlideshow: DEFAULT_HERO_SLIDES
   },
@@ -65,7 +65,7 @@ const DEFAULT_CONTENT: CMSContent = {
       id: "4",
       iconName: "PaintBucket",
       title: "Interior Finishing & Aesthetic",
-      description: "Refined finishes — paint, lighting, textures — that elevate your space."
+      description: "Refined finishes including paint, lighting, and textures that elevate your space."
     },
     {
       id: "5",
@@ -86,7 +86,7 @@ const DEFAULT_CONTENT: CMSContent = {
       id: "interior-architecture",
       title: "Smart Space Planning & Custom Layouts",
       subtitle: "The Structural Masterplan",
-      outcome: "We design spaces that work the way your life does — maximising every square metre of your Nairobi home without compromising on style.",
+      outcome: "We design spaces that work the way your life does, maximising every square metre of your Nairobi home without compromising on style.",
       bullets: [
         "Smart Spatial & Furniture Layouts",
         "Ergonomic Kitchen & Living Zones",
@@ -108,7 +108,7 @@ const DEFAULT_CONTENT: CMSContent = {
       id: "bespoke-finishes",
       title: "Bespoke Finishes & Premium Carpentry",
       subtitle: "Texture, Tactility & Custom Joinery",
-      outcome: "Every surface, fitting, and finish is selected to feel intentional — because the details are what make a home feel expensive, not just designed.",
+      outcome: "Every surface, fitting, and finish is selected to feel intentional, because the details are what make a home feel expensive, not just designed.",
       bullets: [
         "Custom Wainscoting & Wall Paneling",
         "Floor-to-ceiling Wardrobes & Cabinetry",
@@ -131,7 +131,7 @@ const DEFAULT_CONTENT: CMSContent = {
       id: "premium-flooring",
       title: "Premium Flooring Solutions",
       subtitle: "Flawless Ground Foundations",
-      outcome: "The right floor anchors every room. We source and install premium options — hardwood, engineered, vinyl, and stone — fitted to last and built to impress.",
+      outcome: "The right floor anchors every room. We source and install premium options including hardwood, engineered, vinyl, and stone, fitted to last and built to impress.",
       bullets: [
         "Laser-Aligned Ceramic & Porcelain Tiling",
         "100% Waterproof SPC & Wood Flooring",
@@ -174,6 +174,27 @@ const DEFAULT_CONTENT: CMSContent = {
   ]
 };
 
+function cleanDashes<T>(obj: T): T {
+  if (typeof obj === 'string') {
+    return obj
+      .replace(/—/g, ', ')
+      .replace(/–/g, '-')
+      .replace(/  +/g, ' ')
+      .replace(/, ,/g, ',') as unknown as T;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(cleanDashes) as unknown as T;
+  }
+  if (obj && typeof obj === 'object') {
+    const res: any = {};
+    for (const k of Object.keys(obj)) {
+      res[k] = cleanDashes((obj as any)[k]);
+    }
+    return res as T;
+  }
+  return obj;
+}
+
 export function useCMS() {
   const [content, setContent] = useState<CMSContent>(DEFAULT_CONTENT);
   const [loading, setLoading] = useState(true);
@@ -181,7 +202,8 @@ export function useCMS() {
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'siteContent', 'homepage'), (doc) => {
       if (doc.exists()) {
-        const data = doc.data();
+        const rawData = doc.data();
+        const data = cleanDashes(rawData);
         const heroData = data.hero || DEFAULT_CONTENT.hero;
         const heroSlideshow = (heroData.heroSlideshow && heroData.heroSlideshow.length > 0)
           ? heroData.heroSlideshow
