@@ -20,7 +20,7 @@ export default function Dashboard() {
 
   if (!profile) return <Navigate to="/login" />;
 
-  if (profile.role === 'pending') {
+  if (profile.role === 'pending' || profile.status === 'pending') {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center p-6">
         <div className="bg-white max-w-md w-full p-8 rounded-3xl border border-charcoal/10 shadow-xl text-center space-y-4">

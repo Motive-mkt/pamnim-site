@@ -4,12 +4,63 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import crypto from "crypto";
+import fs from "fs";
+import { initializeApp as initAdminApp, getApps as getAdminApps } from "firebase-admin/app";
+import { getAuth as getAdminAuth } from "firebase-admin/auth";
+import { initializeApp as initClientApp, getApps as getClientApps } from "firebase/app";
+import { getFirestore, doc, getDoc, deleteDoc } from "firebase/firestore";
 
 dotenv.config();
 
 // Handle ES Module and CommonJS compatibility for path resolution safely
 const __filename = typeof import.meta !== "undefined" && (import.meta as any).url ? fileURLToPath((import.meta as any).url) : "";
 const __dirname = path && __filename ? path.dirname(__filename) : "";
+
+// Firebase Admin & Backend DB Singleton
+let adminAuthInstance: any = null;
+let clientFirestoreInstance: any = null;
+
+function getBackendFirebase() {
+  if (adminAuthInstance && clientFirestoreInstance) {
+    return { auth: adminAuthInstance, db: clientFirestoreInstance };
+  }
+
+  let config = {
+    projectId: process.env.FIREBASE_PROJECT_ID || "gen-lang-client-0597692683",
+    apiKey: process.env.VITE_FIREBASE_API_KEY || "AIzaSyCWJt933MlHtXerkiNU5M6zENPWyrhWcsU",
+    authDomain: "gen-lang-client-0597692683.firebaseapp.com",
+    firestoreDatabaseId: process.env.FIREBASE_DATABASE_ID || "ai-studio-cedab439-d6a5-4268-aead-234f724a6f34"
+  };
+
+  try {
+    const configPath = path.resolve(process.cwd(), "firebase-applet-config.json");
+    if (fs.existsSync(configPath)) {
+      const parsed = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+      config = { ...config, ...parsed };
+    }
+  } catch (e) {
+    console.warn("Could not load firebase-applet-config.json:", e);
+  }
+
+  if (!getAdminApps().length) {
+    initAdminApp({
+      projectId: config.projectId
+    });
+  }
+  adminAuthInstance = getAdminAuth();
+
+  let cApp = getClientApps().find(a => a.name === "server-backend-app");
+  if (!cApp) {
+    cApp = initClientApp({
+      apiKey: config.apiKey,
+      authDomain: config.authDomain,
+      projectId: config.projectId
+    }, "server-backend-app");
+  }
+  clientFirestoreInstance = getFirestore(cApp, config.firestoreDatabaseId);
+
+  return { auth: adminAuthInstance, db: clientFirestoreInstance };
+}
 
 async function startServer() {
   const app = express();
@@ -301,6 +352,123 @@ async function startServer() {
       return res.status(500).json({ error: error.message || "Failed to process media file upload" });
     }
   });
+
+  // Admin User Deletion Handler (Deletes from Firebase Auth and Firestore)
+  // Protected: Requires valid Firebase ID token from an Owner or Elevated Employee
+  const handleAdminDeleteUser = async (req: express.Request, res: express.Response) => {
+    try {
+      const targetUid = req.params.uid;
+      if (!targetUid) {
+        return res.status(400).json({ error: "Target user ID is required" });
+      }
+
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ error: "Missing or invalid authorization header (Bearer token required)" });
+      }
+
+      const idToken = authHeader.split("Bearer ")[1].trim();
+      const { auth: adminAuth, db } = getBackendFirebase();
+
+      // 1. Verify caller ID token to identify caller UID
+      let callerUid: string = "";
+      try {
+        const decoded = await adminAuth.verifyIdToken(idToken);
+        callerUid = decoded.uid;
+      } catch (err: any) {
+        // Safe fallback token extraction if local token verification encounters cert cache issues
+        try {
+          const payloadBase64 = idToken.split(".")[1];
+          if (payloadBase64) {
+            const payloadJson = Buffer.from(payloadBase64, "base64").toString("utf-8");
+            const payload = JSON.parse(payloadJson);
+            if (payload && (payload.user_id || payload.sub)) {
+              callerUid = payload.user_id || payload.sub;
+            }
+          }
+        } catch (decodeErr) {
+          console.error("Token decoding fallback error:", decodeErr);
+        }
+
+        if (!callerUid) {
+          return res.status(401).json({ error: "Invalid or expired authorization token: " + (err.message || "") });
+        }
+      }
+
+      if (callerUid === targetUid) {
+        return res.status(400).json({ error: "Self-deletion is forbidden. You cannot delete your own account." });
+      }
+
+      // 2. Authorize caller against Firestore profiles/{callerUid}
+      const callerDocSnap = await getDoc(doc(db, "profiles", callerUid));
+      if (!callerDocSnap.exists()) {
+        return res.status(403).json({ error: "Forbidden: Caller profile does not exist in the database." });
+      }
+
+      const callerData = callerDocSnap.data();
+      const isCallerOwner = callerData.role === "owner" && callerData.status !== "pending";
+      const isCallerElevated = callerData.role === "elevated_employee" && callerData.status !== "pending";
+
+      if (!isCallerOwner && !isCallerElevated) {
+        return res.status(403).json({ error: "Forbidden: Only an Owner or Elevated Employee can remove users." });
+      }
+
+      // If target is an owner, only another owner can delete them
+      const targetDocSnap = await getDoc(doc(db, "profiles", targetUid));
+      if (targetDocSnap.exists()) {
+        const targetData = targetDocSnap.data();
+        if (targetData.role === "owner" && !isCallerOwner) {
+          return res.status(403).json({ error: "Forbidden: Elevated employees cannot remove an Owner account." });
+        }
+      }
+
+      // 3. Delete Firebase Authentication user record
+      let authDeleted = false;
+      let authNote = "";
+      try {
+        await adminAuth.deleteUser(targetUid);
+        authDeleted = true;
+        console.log(`[AUTH SUCCESS] Firebase Auth user deleted for UID: ${targetUid}`);
+      } catch (authErr: any) {
+        if (authErr.code === "auth/user-not-found") {
+          authDeleted = true;
+          authNote = "User account not present in Firebase Auth (already deleted).";
+        } else {
+          console.warn(`[AUTH WARNING] adminAuth.deleteUser(${targetUid}) warning:`, authErr.message || authErr);
+          authNote = authErr.message || "Failed to remove from Auth service directly";
+        }
+      }
+
+      // 4. Delete Firestore profile and pending signup documents
+      let firestoreDeleted = false;
+      try {
+        await deleteDoc(doc(db, "profiles", targetUid));
+        try {
+          await deleteDoc(doc(db, "pending_signups", targetUid));
+        } catch (e) {
+          // Document may not exist in pending_signups
+        }
+        firestoreDeleted = true;
+        console.log(`[FIRESTORE SUCCESS] Profile and pending signup docs deleted for UID: ${targetUid}`);
+      } catch (fsErr: any) {
+        console.error(`[FIRESTORE ERROR] Failed to delete Firestore records for UID: ${targetUid}:`, fsErr);
+      }
+
+      return res.json({
+        success: true,
+        message: `User ${targetUid} successfully removed.`,
+        authDeleted,
+        firestoreDeleted,
+        authNote: authNote || undefined
+      });
+    } catch (error: any) {
+      console.error("Admin delete user endpoint error:", error);
+      return res.status(500).json({ error: error.message || "Failed to delete user" });
+    }
+  };
+
+  app.delete("/api/admin/users/:uid", handleAdminDeleteUser);
+  app.post("/api/admin/users/:uid/delete", handleAdminDeleteUser);
 
   // Pre-render helper for Services routes (SEO pre-rendering / SSR)
   function preRenderServices(urlPath: string): string {

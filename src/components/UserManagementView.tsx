@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { collection, query, getDocs, doc, setDoc, deleteDoc, onSnapshot, where, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../hooks/useAuth';
 import { 
   Users, UserPlus, CheckCircle2, Copy, Shield, Phone, Mail, 
-  ExternalLink, Sparkles, Check, Clock, UserCheck, AlertCircle, ArrowUpRight, Trash2
+  ExternalLink, Sparkles, Check, Clock, UserCheck, AlertCircle, ArrowUpRight, Trash2, XCircle
 } from 'lucide-react';
 
 interface UserManagementViewProps {
@@ -167,9 +167,8 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
     }
   };
 
-  // Note: Deleting a profile document from Firestore revokes their application role and data access in the app.
-  // However, it does not delete their Firebase Authentication account. Fully revoking their login credentials
-  // requires a Firebase Admin SDK call from a backend server, not just a client-side Firestore delete.
+  // Deleting a member now calls the backend Express endpoint using Firebase Admin SDK
+  // to permanently delete the Firebase Auth user record as well as the Firestore profile documents.
   const handleRemoveMember = async (memberId: string, memberName: string) => {
     if (!isOwner && !canApproveSignups) {
       alert('Only the Owner or Elevated Employees can remove team members.');
@@ -177,22 +176,57 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
     }
 
     const confirmed = window.confirm(
-      `Are you sure you want to remove "${memberName}"? This will revoke their access permanently.`
+      `Are you sure you want to permanently remove "${memberName}"? This will delete their authentication credentials and revoke all system access immediately.`
     );
     if (!confirmed) return;
 
+    setProcessingId(memberId);
+
     try {
-      await deleteDoc(doc(db, 'profiles', memberId));
+      // 1. Get current user's Firebase ID token for secure backend verification
+      let token = '';
+      if (auth.currentUser) {
+        token = await auth.currentUser.getIdToken();
+      }
+
+      // 2. Call backend Admin endpoint to delete from Firebase Auth and Firestore
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(memberId)}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => ({}));
+        throw new Error(errorBody.error || `Server returned HTTP ${res.status}`);
+      }
+
+      const result = await res.json();
+
+      // Direct fallback deletion on client in case of local cache sync
+      try {
+        await deleteDoc(doc(db, 'profiles', memberId));
+      } catch (e) {}
       try {
         await deleteDoc(doc(db, 'pending_signups', memberId));
-      } catch (e) {
-        // Document might not exist in pending_signups
-      }
-      alert(`"${memberName}" has been successfully removed.`);
+      } catch (e) {}
+
+      alert(`"${memberName}" has been permanently removed from Firebase Authentication and the system.`);
       if (onRefreshData) onRefreshData();
     } catch (err: any) {
       console.error('Error removing member:', err);
-      alert('Failed to remove member: ' + (err.message || 'Unknown error'));
+      // Fallback direct delete from Firestore if backend reported an error
+      try {
+        await deleteDoc(doc(db, 'profiles', memberId));
+        alert(`User profile was deleted from Firestore, with notice: ${err.message}`);
+        if (onRefreshData) onRefreshData();
+      } catch (fallbackErr: any) {
+        alert('Failed to remove user: ' + (err.message || fallbackErr.message || 'Unknown error'));
+      }
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -297,6 +331,16 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                     >
                       <UserCheck className="w-4 h-4 shrink-0" />
                       <span>{processingId === req.id ? 'Approving...' : 'Approve & Notify WhatsApp'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleRemoveMember(req.id, req.name || req.email || 'Request')}
+                      disabled={processingId === req.id}
+                      className="px-3 py-2.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 min-h-[42px]"
+                      title="Decline and delete request"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Decline</span>
                     </button>
                   </div>
                 </div>

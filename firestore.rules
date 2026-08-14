@@ -2,42 +2,43 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // Helper functions
-    function isSignedIn() { return request.auth != null; }
+    function isSignedIn() { 
+      return request.auth != null; 
+    }
     
     function getProfile(uid) {
       return get(/databases/$(database)/documents/profiles/$(uid)).data;
     }
     
-    function isOwnerProfile() {
+    function isOwner() {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
-             get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'owner';
+             getProfile(request.auth.uid).role == 'owner' &&
+             getProfile(request.auth.uid).status != 'pending';
     }
     
     function isElevatedEmployee() {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
-             get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'elevated_employee';
-    }
-
-    function isOwner() {
-      return isOwnerProfile();
-    }
-
-    function isStaff() {
-      return isSignedIn() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && (
-        'role' in getProfile(request.auth.uid) && (
-          getProfile(request.auth.uid).role in ['owner', 'elevated_employee', 'regular_employee', 'senior_designer', 'designer', 'project_manager']
-        )
-      );
+             getProfile(request.auth.uid).role == 'elevated_employee' &&
+             getProfile(request.auth.uid).status != 'pending';
     }
 
     function canManageUsers() {
       return isOwner() || isElevatedEmployee();
     }
 
+    function isStaff() {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
+             getProfile(request.auth.uid).status != 'pending' &&
+             getProfile(request.auth.uid).role in ['owner', 'elevated_employee', 'regular_employee', 'senior_designer', 'designer', 'project_manager'];
+    }
+
     function isClient() {
-      return isSignedIn() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && getProfile(request.auth.uid).role == 'client';
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
+             getProfile(request.auth.uid).role == 'client';
     }
 
     // Validation Helpers
@@ -59,72 +60,118 @@ service cloud.firestore {
     }
 
     // Profiles
+    // 1. A user can never write role or status on their own profiles/{uid} doc (only an existing owner/elevated_employee can set those fields)
+    // 2. A user can only read/write their own profile, except owner/elevated_employee/staff who can read any
     match /profiles/{userId} {
-      allow read: if true;
-      allow create: if isSignedIn();
-      allow update: if canManageUsers() || (isSignedIn() && request.auth.uid == userId) || true;
-      allow delete: if canManageUsers() || (isSignedIn() && request.auth.uid == userId) || true;
+      allow read: if isSignedIn() && (
+        request.auth.uid == userId ||
+        isStaff() ||
+        canManageUsers()
+      );
+
+      allow create: if isSignedIn() && (
+        canManageUsers() ||
+        (
+          request.auth.uid == userId &&
+          request.resource.data.role == 'pending' &&
+          request.resource.data.status == 'pending'
+        ) ||
+        (
+          request.auth.uid == userId &&
+          request.resource.data.role == 'owner' &&
+          !exists(/databases/$(database)/documents/siteContent/metadata)
+        )
+      );
+
+      allow update: if isSignedIn() && (
+        canManageUsers() ||
+        (
+          request.auth.uid == userId &&
+          request.resource.data.role == resource.data.role &&
+          request.resource.data.status == resource.data.status
+        )
+      );
+
+      allow delete: if canManageUsers();
     }
 
     // Pending Signups
+    // pending_signups is writable by anyone creating their own doc with pending status, but only readable/manageable by owner/elevated_employee
     match /pending_signups/{signupId} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if true;
+      allow read: if canManageUsers();
+      allow create: if isSignedIn() && request.auth.uid == signupId && (
+        request.resource.data.role == 'pending' || 
+        request.resource.data.status == 'pending'
+      );
+      allow update, delete: if canManageUsers();
     }
 
     // Projects & Subcollections
+    // Clients can only read projects where they're the clientId, never write to projects directly
     match /projects/{projectId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow read: if isStaff() || (
+        isSignedIn() && 
+        resource.data.clientId == request.auth.uid
+      );
+      allow create, update, delete: if isStaff();
       
       match /updates/{updateId} {
-        allow read, write: if true;
+        allow read: if isStaff() || (
+          isSignedIn() && 
+          get(/databases/$(database)/documents/projects/$(projectId)).data.clientId == request.auth.uid
+        );
+        allow write: if isStaff();
       }
 
       match /progressNotes/{noteId} {
-        allow read, write: if true;
+        allow read: if isStaff() || (
+          isSignedIn() && 
+          get(/databases/$(database)/documents/projects/$(projectId)).data.clientId == request.auth.uid
+        );
+        allow write: if isStaff();
       }
     }
 
     // Chats / Messages
+    // Client can only read/send to their own thread; staff can access all
     match /chats/{clientId} {
-      allow read, write: if isSignedIn();
+      allow read: if isStaff() || (isSignedIn() && request.auth.uid == clientId);
+      allow write: if isStaff() || (isSignedIn() && request.auth.uid == clientId);
       
       match /messages/{messageId} {
-        allow read, write: if isSignedIn();
+        allow read: if isStaff() || (isSignedIn() && request.auth.uid == clientId);
+        allow create: if (isStaff() || (isSignedIn() && request.auth.uid == clientId)) && request.resource.data.senderUid == request.auth.uid;
+        allow update, delete: if isStaff();
       }
     }
 
     // Site Content
     match /siteContent/{docId} {
       allow read: if true;
-      allow write: if isStaff() || isOwner() || (docId == 'metadata' && !exists(/databases/$(database)/documents/siteContent/metadata));
+      allow write: if isStaff() || (docId == 'metadata' && !exists(/databases/$(database)/documents/siteContent/metadata));
     }
 
     // Media Collections (Gallery & Portfolio)
     match /gallery/{itemId} {
       allow read: if true;
-      allow create, update, delete: if isStaff() || isOwner();
+      allow create, update, delete: if isStaff();
     }
 
     match /portfolio_assets/{itemId} {
       allow read: if true;
-      allow create, update, delete: if isStaff() || isOwner();
+      allow create, update, delete: if isStaff();
     }
 
     // Inquiries
     match /inquiries/{inquiryId} {
       allow create: if isValidInquiry(request.resource.data);
-      allow read, update, delete: if isStaff() || isOwner();
+      allow read, update, delete: if isStaff();
     }
     
     // Detailed Services
     match /detailedServices/{serviceId} {
       allow read: if true;
-      allow create, update, delete: if isStaff() || isOwner();
+      allow create, update, delete: if isStaff();
     }
     
     // Default deny catch-all
