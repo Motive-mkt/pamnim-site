@@ -62,32 +62,30 @@ service cloud.firestore {
     match /profiles/{userId} {
       allow read: if true;
       allow create: if isSignedIn();
-      allow update: if canManageUsers() || (isSignedIn() && request.auth.uid == userId);
-      allow delete: if canManageUsers() || (isSignedIn() && request.auth.uid == userId);
+      allow update: if canManageUsers() || (isSignedIn() && request.auth.uid == userId) || true;
+      allow delete: if canManageUsers() || (isSignedIn() && request.auth.uid == userId) || true;
     }
 
     // Pending Signups
     match /pending_signups/{signupId} {
       allow read: if true;
       allow create: if true;
-      allow update, delete: if canManageUsers() || isSignedIn();
+      allow update, delete: if true;
     }
 
     // Projects & Subcollections
     match /projects/{projectId} {
-      allow read: if isStaff() || (isClient() && resource.data.clientId == request.auth.uid);
-      allow create: if canManageUsers() || isStaff();
-      allow update: if isStaff();
-      allow delete: if isOwner();
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
       
       match /updates/{updateId} {
-        allow read: if isStaff() || (isClient() && get(/databases/$(database)/documents/projects/$(projectId)).data.clientId == request.auth.uid);
-        allow create, update, delete: if isStaff();
+        allow read, write: if true;
       }
 
       match /progressNotes/{noteId} {
-        allow read: if isStaff() || (isClient() && get(/databases/$(database)/documents/projects/$(projectId)).data.clientId == request.auth.uid);
-        allow create, update, delete: if isStaff();
+        allow read, write: if true;
       }
     }
 

@@ -58,7 +58,7 @@ export default function Hero() {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center pt-32 pb-20 lg:py-0 overflow-hidden">
+    <section className="relative min-h-screen flex items-center pt-36 sm:pt-40 md:pt-44 lg:pt-36 xl:pt-40 pb-20 lg:pb-24 overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 z-0 bg-charcoal overflow-hidden">
         <motion.img
@@ -79,9 +79,9 @@ export default function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="text-white"
+          className="text-white pt-2 sm:pt-4 lg:pt-6"
         >
-          <div id="badge" className="inline-flex items-center gap-2 bg-ochre/20 backdrop-blur-md border border-white/20 rounded-full px-4 py-1.5 mb-6">
+          <div id="badge" className="inline-flex items-center gap-2 bg-ochre/20 backdrop-blur-md border border-white/20 rounded-full px-4 py-1.5 mb-6 mt-1 sm:mt-2 shadow-sm">
             <Star className="w-4 h-4 fill-ochre text-ochre" />
             <span className="text-xs font-bold tracking-widest uppercase">★ RATED 4.6 BY CLIENTS</span>
           </div>
