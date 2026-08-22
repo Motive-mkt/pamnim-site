@@ -9,7 +9,7 @@ import { optimizeHeroCloudinaryUrl } from '../services/cloudinaryService';
 const FALLBACK_HERO_IMAGE = "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=90&w=2560";
 
 export default function Hero() {
-  const { content } = useCMS();
+  const { content, loading } = useCMS();
   const hero = content.hero;
   const contact = content.contact;
 
@@ -61,15 +61,18 @@ export default function Hero() {
     <section className="relative min-h-screen flex items-center pt-36 sm:pt-40 md:pt-44 lg:pt-36 xl:pt-40 pb-20 lg:pb-24 overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 z-0 bg-charcoal overflow-hidden">
-        <motion.img
-          src={optimizeHeroCloudinaryUrl(heroImage)}
-          alt="Modern luxury interior by Pamnim Interiors"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1.2, ease: 'easeOut' }}
-          className="absolute inset-0 w-full h-full object-cover object-center"
-          referrerPolicy="no-referrer"
-        />
+        {!loading && (
+          <motion.img
+            key={heroImage}
+            src={optimizeHeroCloudinaryUrl(heroImage)}
+            alt="Modern luxury interior by Pamnim Interiors"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1.2, ease: 'easeOut' }}
+            className="absolute inset-0 w-full h-full object-cover object-center"
+            referrerPolicy="no-referrer"
+          />
+        )}
         <div className="absolute inset-0 bg-black/50 z-10 pointer-events-none" />
       </div>
 

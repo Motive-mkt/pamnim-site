@@ -10,7 +10,7 @@ export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, isAdmin } = useAuth();
-  const { content } = useCMS();
+  const { content, loading } = useCMS();
   const location = useLocation();
 
   const isHomePage = location.pathname === '/';
@@ -58,7 +58,14 @@ export default function Header() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12 flex justify-between items-center text-charcoal transition-colors">
           {/* Logo */}
           <Link to="/" id="logo" className={cn("flex items-center gap-2 group cursor-pointer transition-colors shrink-0", displayLight ? "text-white" : "text-charcoal")}>
-            {content?.logoUrl ? (
+            {loading ? (
+              <div
+                className={cn(
+                  "h-10 md:h-12 w-32 rounded-xl animate-pulse",
+                  displayLight ? "bg-white/20" : "bg-charcoal/10"
+                )}
+              />
+            ) : content?.logoUrl ? (
               <div className={cn(
                 "transition-all duration-300 rounded-xl flex items-center justify-center",
                 displayLight ? "bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur-sm" : "p-0.5"
@@ -175,7 +182,9 @@ export default function Header() {
               <div>
                 <div className="flex justify-between items-center mb-12">
                   <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2">
-                    {content?.logoUrl ? (
+                    {loading ? (
+                      <div className="h-10 w-28 rounded-xl bg-charcoal/10 animate-pulse" />
+                    ) : content?.logoUrl ? (
                       <img 
                         src={getOptimizedImageUrl(content.logoUrl, 200)} 
                         alt="Company Logo" 
