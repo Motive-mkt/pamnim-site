@@ -138,6 +138,10 @@ service cloud.firestore {
         );
         allow write: if isStaff();
       }
+
+      match /expenses/{expenseId} {
+        allow read, write: if isStaff();
+      }
     }
 
     // Chats / Messages
