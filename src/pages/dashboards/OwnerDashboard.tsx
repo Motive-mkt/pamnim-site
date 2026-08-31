@@ -6,7 +6,7 @@ import { cn } from '../../lib/utils';
 import { 
   Plus, Users, Briefcase, Edit2, Trash2, CheckCircle2, Clock, Globe, UserPlus, Mail,
   Home, Palette, LayoutGrid, PaintBucket, RefreshCcw, MessageSquare, HelpCircle, Film, Sparkles,
-  Image as ImageIcon, Copy, Check, ArrowUp, ArrowDown, Upload, X, Sparkle
+  Image as ImageIcon, Copy, Check, ArrowUp, ArrowDown, Upload, X, Sparkle, DollarSign, Save, AlertCircle
 } from 'lucide-react';
 import { useCMS } from '../../hooks/useCMS';
 import { refineDraftCopy } from '../../services/geminiService';
@@ -120,6 +120,8 @@ export default function OwnerDashboard() {
   // Create Project Modal State
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showStaffModal, setShowStaffModal] = useState(false);
+  const [savingCostProjectId, setSavingCostProjectId] = useState<string | null>(null);
+  const [costSaveFeedback, setCostSaveFeedback] = useState<{ id: string; type: 'success' | 'error'; message: string } | null>(null);
   const [newProject, setNewProject] = useState({
     name: '',
     clientId: '',
@@ -695,6 +697,46 @@ export default function OwnerDashboard() {
     }
   };
 
+  const handleSaveProjectCost = async (projectId: string, costValue: string | number) => {
+    const trimmed = String(costValue).trim();
+    if (trimmed === '') {
+      setCostSaveFeedback({ id: projectId, type: 'error', message: 'Cost cannot be empty. Please enter a valid number.' });
+      return;
+    }
+    const numericVal = Number(trimmed);
+    if (isNaN(numericVal)) {
+      setCostSaveFeedback({ id: projectId, type: 'error', message: 'Please enter a valid numeric value.' });
+      return;
+    }
+    if (numericVal < 0) {
+      setCostSaveFeedback({ id: projectId, type: 'error', message: 'Total project cost cannot be negative.' });
+      return;
+    }
+
+    setSavingCostProjectId(projectId);
+    setCostSaveFeedback(null);
+
+    try {
+      await updateDoc(doc(db, 'projects', projectId), {
+        totalCost: numericVal
+      });
+
+      // Update local state immediately
+      setProjects(prev => prev.map(p => p.id === projectId ? { ...p, totalCost: numericVal } : p));
+      setSelectedProject((prev: any) => prev?.id === projectId ? { ...prev, totalCost: numericVal } : prev);
+
+      setCostSaveFeedback({ id: projectId, type: 'success', message: 'Total project cost updated successfully!' });
+      setTimeout(() => {
+        setCostSaveFeedback(null);
+      }, 3500);
+    } catch (err: any) {
+      console.error('Error updating project total cost:', err);
+      setCostSaveFeedback({ id: projectId, type: 'error', message: 'Failed to update total cost: ' + (err.message || 'Unknown error') });
+    } finally {
+      setSavingCostProjectId(null);
+    }
+  };
+
   const handleSaveCMS = async () => {
     await setDoc(doc(db, 'siteContent', 'homepage'), {
       ...content,
@@ -946,6 +988,7 @@ export default function OwnerDashboard() {
                         <th className="p-4">Project Name</th>
                         <th className="p-4">Client Name</th>
                         <th className="p-4">Assigned Staff</th>
+                        <th className="p-4">Total Cost</th>
                         <th className="p-4">Status</th>
                         <th className="p-4 text-right">Action</th>
                       </tr>
@@ -970,6 +1013,9 @@ export default function OwnerDashboard() {
                                   <span className="text-xs text-charcoal/40 italic">Unassigned</span>
                                 )}
                               </div>
+                            </td>
+                            <td className="p-4 font-semibold text-charcoal">
+                              {typeof proj.totalCost === 'number' ? `$${proj.totalCost.toLocaleString()}` : '$0'}
                             </td>
                             <td className="p-4">
                               <span className="bg-ochre/10 text-ochre text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
@@ -1012,6 +1058,7 @@ export default function OwnerDashboard() {
                           <div>
                             <h4 className="font-bold text-base text-charcoal leading-snug">{proj.name}</h4>
                             <p className="text-xs text-charcoal/60 mt-0.5">Client: <span className="font-semibold text-charcoal">{proj.clientName || 'N/A'}</span></p>
+                            <p className="text-xs text-charcoal/60 mt-0.5">Total Cost: <span className="font-bold text-charcoal">{typeof proj.totalCost === 'number' ? `$${proj.totalCost.toLocaleString()}` : '$0'}</span></p>
                           </div>
                           <span className="bg-ochre/10 text-ochre text-[10px] font-black px-2.5 py-1 rounded-full uppercase shrink-0">
                             {proj.currentStageName || 'Started'}
@@ -1051,22 +1098,46 @@ export default function OwnerDashboard() {
                 </div>
 
                 {/* Selected Project Interactive Tracker Component */}
-                <div>
+                <div className="space-y-6">
                   {(() => {
                     const activeProj = selectedProject || projects[0];
                     if (!activeProj) return null;
                     return (
-                      <ProjectTracker
-                        project={activeProj}
-                        isReadOnly={false}
-                        onOpenChatWithTag={(taggedCtx) => {
-                          setChatTaggedContext(taggedCtx);
-                          const clientMatch = clients.find(c => c.uid === activeProj.clientId || c.id === activeProj.clientId);
-                          if (clientMatch) setSelectedChatClient(clientMatch);
-                          setActiveTab('chat');
-                        }}
-                        onProjectUpdated={fetchData}
-                      />
+                      <>
+                        {/* Project Financials & Total Cost Settings */}
+                        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-charcoal/10 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-xl bg-ochre/10 text-ochre flex items-center justify-center">
+                                <DollarSign className="w-4 h-4" />
+                              </div>
+                              <h3 className="text-lg font-bold text-charcoal">Total Project Cost</h3>
+                            </div>
+                            <p className="text-xs text-charcoal/60 max-w-xl">
+                              Set or update the agreed contract price for <span className="font-semibold text-charcoal">{activeProj.name}</span>. This value is used by the payment tracker to compute balances and milestone payments.
+                            </p>
+                          </div>
+
+                          <ProjectCostEditor
+                            project={activeProj}
+                            onSaveCost={handleSaveProjectCost}
+                            isSaving={savingCostProjectId === activeProj.id}
+                            feedback={costSaveFeedback?.id === activeProj.id ? costSaveFeedback : null}
+                          />
+                        </div>
+
+                        <ProjectTracker
+                          project={activeProj}
+                          isReadOnly={false}
+                          onOpenChatWithTag={(taggedCtx) => {
+                            setChatTaggedContext(taggedCtx);
+                            const clientMatch = clients.find(c => c.uid === activeProj.clientId || c.id === activeProj.clientId);
+                            if (clientMatch) setSelectedChatClient(clientMatch);
+                            setActiveTab('chat');
+                          }}
+                          onProjectUpdated={fetchData}
+                        />
+                      </>
                     );
                   })()}
                 </div>
@@ -2510,6 +2581,116 @@ function StatCard({ label, value, icon: Icon, color }: any) {
       <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center", color)}>
         <Icon className="w-8 h-8" />
       </div>
+    </div>
+  );
+}
+
+function ProjectCostEditor({ 
+  project, 
+  onSaveCost, 
+  isSaving, 
+  feedback 
+}: { 
+  project: any; 
+  onSaveCost: (projectId: string, cost: string | number) => Promise<void>; 
+  isSaving: boolean; 
+  feedback: { type: 'success' | 'error'; message: string } | null;
+}) {
+  const [costInput, setCostInput] = useState<string>(String(project.totalCost ?? 0));
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCostInput(String(project.totalCost ?? 0));
+    setLocalError(null);
+  }, [project.id, project.totalCost]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLocalError(null);
+
+    const trimmed = costInput.trim();
+    if (trimmed === '') {
+      setLocalError('Cost cannot be empty. Please enter a valid number.');
+      return;
+    }
+    const num = Number(trimmed);
+    if (isNaN(num)) {
+      setLocalError('Please enter a valid numeric value.');
+      return;
+    }
+    if (num < 0) {
+      setLocalError('Total Project Cost cannot be negative.');
+      return;
+    }
+
+    onSaveCost(project.id, num);
+  };
+
+  const currentSavedCost = project.totalCost ?? 0;
+  const hasChanged = Number(costInput) !== currentSavedCost;
+
+  return (
+    <div className="flex flex-col gap-2 shrink-0">
+      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+        <div className="relative">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/40 font-bold text-sm select-none">$</span>
+          <input
+            type="number"
+            min="0"
+            step="any"
+            value={costInput}
+            onChange={(e) => {
+              setCostInput(e.target.value);
+              setLocalError(null);
+            }}
+            placeholder="0.00"
+            aria-label="Total Project Cost"
+            className={cn(
+              "w-full sm:w-44 pl-8 pr-3 py-2.5 bg-cream/50 border rounded-xl text-sm font-bold text-charcoal focus:outline-none transition-all",
+              localError || feedback?.type === 'error' ? "border-red-400 focus:border-red-500 bg-red-50/30" : "border-charcoal/15 focus:border-ochre focus:bg-white"
+            )}
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={isSaving}
+          className={cn(
+            "px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-sm cursor-pointer",
+            isSaving 
+              ? "bg-charcoal/20 text-charcoal/60 cursor-not-allowed" 
+              : hasChanged 
+                ? "bg-ochre text-white hover:bg-ochre-dark shadow-ochre/20" 
+                : "bg-charcoal text-white hover:bg-charcoal/80"
+          )}
+        >
+          {isSaving ? (
+            <>
+              <RefreshCcw className="w-3.5 h-3.5 animate-spin" />
+              <span>Saving...</span>
+            </>
+          ) : (
+            <>
+              <Save className="w-3.5 h-3.5" />
+              <span>Save Cost</span>
+            </>
+          )}
+        </button>
+      </form>
+
+      {(localError || feedback) && (
+        <div className={cn(
+          "text-xs font-medium px-2.5 py-1.5 rounded-lg flex items-center gap-1.5",
+          (localError || feedback?.type === 'error') ? "text-red-700 bg-red-50 border border-red-200" : "text-emerald-800 bg-emerald-50 border border-emerald-200"
+        )}>
+          {(localError || feedback?.type === 'error') ? (
+            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600" />
+          ) : (
+            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+          )}
+          <span>{localError || feedback?.message}</span>
+        </div>
+      )}
     </div>
   );
 }

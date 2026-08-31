@@ -130,6 +130,14 @@ service cloud.firestore {
         );
         allow write: if isStaff();
       }
+
+      match /payments/{paymentId} {
+        allow read: if isStaff() || (
+          isSignedIn() && 
+          get(/databases/$(database)/documents/projects/$(projectId)).data.clientId == request.auth.uid
+        );
+        allow write: if isStaff();
+      }
     }
 
     // Chats / Messages
