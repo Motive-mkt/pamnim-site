@@ -6,7 +6,8 @@ import { cn } from '../../lib/utils';
 import { 
   Plus, Users, Briefcase, Edit2, Trash2, CheckCircle2, Clock, Globe, UserPlus, Mail,
   Home, Palette, LayoutGrid, PaintBucket, RefreshCcw, MessageSquare, HelpCircle, Film, Sparkles,
-  Image as ImageIcon, Copy, Check, ArrowUp, ArrowDown, Upload, X, Sparkle, DollarSign, Save, AlertCircle
+  Image as ImageIcon, Copy, Check, ArrowUp, ArrowDown, Upload, X, Sparkle, DollarSign, Save, AlertCircle,
+  FileText, FileSignature
 } from 'lucide-react';
 import { useCMS } from '../../hooks/useCMS';
 import { refineDraftCopy } from '../../services/geminiService';
@@ -16,6 +17,8 @@ import ProjectTracker from '../../components/ProjectTracker';
 import ProjectChat from '../../components/ProjectChat';
 import StartProjectModal from '../../components/StartProjectModal';
 import UserManagementView from '../../components/UserManagementView';
+import InvoiceGenerator from '../../components/InvoiceGenerator';
+import QuoteGenerator from '../../components/QuoteGenerator';
 
 const iconMap: Record<string, any> = {
   Home,
@@ -63,7 +66,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 }
 
 export default function OwnerDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'invoices' | 'quotes' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat'>('overview');
   const [projects, setProjects] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
@@ -881,6 +884,8 @@ export default function OwnerDashboard() {
   const navItems = [
     { id: 'overview', label: 'Dashboard', icon: Briefcase },
     { id: 'projects', label: 'Projects & Tracking', icon: Briefcase },
+    { id: 'invoices', label: 'Invoice Generator', icon: FileText },
+    { id: 'quotes', label: 'Quote Generator', icon: FileSignature },
     { id: 'chat', label: 'Client Chat', icon: MessageSquare },
     { id: 'staff', label: 'Team & Approvals', icon: Users },
     { id: 'services', label: 'Services', icon: LayoutGrid },
@@ -893,18 +898,18 @@ export default function OwnerDashboard() {
   return (
     <AdminLayout activeTab={activeTab}>
       {/* Tab Navigation */}
-      <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
+      <div className="flex gap-2.5 sm:gap-4 mb-6 sm:mb-8 overflow-x-auto pb-2.5 pt-1 px-1 snap-x snap-mandatory scrollbar-thin">
         {navItems.map(item => (
           <button
             key={item.id}
             onClick={() => setActiveTab(item.id as any)}
             className={cn(
-              "flex items-center gap-2 px-6 py-3 rounded-xl font-bold whitespace-nowrap transition-all",
+              "flex items-center gap-2 px-4 sm:px-6 min-h-[44px] py-2.5 sm:py-3 rounded-xl font-bold whitespace-nowrap transition-all snap-start shrink-0 text-xs sm:text-sm cursor-pointer",
               activeTab === item.id ? "bg-ochre text-white shadow-lg shadow-ochre/20" : "bg-white border border-charcoal/5 hover:bg-cream"
             )}
           >
-            <item.icon className="w-4 h-4" />
-            {item.label}
+            <item.icon className="w-4 h-4 shrink-0" />
+            <span>{item.label}</span>
           </button>
         ))}
       </div>
@@ -1486,19 +1491,22 @@ export default function OwnerDashboard() {
       )}
 
       {activeTab === 'content' && (
-        <div className="bg-white rounded-3xl p-8 border border-charcoal/5 shadow-sm">
-           <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-bold">Homepage & Settings</h2>
+        <div className="bg-white rounded-3xl p-4 sm:p-6 md:p-8 border border-charcoal/5 shadow-sm mb-8 pb-20 sm:pb-8">
+           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+              <div>
+                <h2 className="text-2xl font-bold">Homepage & Settings</h2>
+                <p className="text-xs text-charcoal/60 mt-0.5">Manage brand logo, hero copy & slides, and public contact information.</p>
+              </div>
               <button 
                 onClick={handleSaveCMS}
-                className="bg-ochre text-white font-bold px-10 py-3 rounded-xl hover:bg-ochre/90 transition-all shadow-lg shadow-ochre/20"
+                className="w-full sm:w-auto bg-ochre text-white font-bold px-6 sm:px-10 py-3 rounded-xl hover:bg-ochre/90 transition-all shadow-lg shadow-ochre/20 cursor-pointer text-center"
               >
                 Save All Changes
               </button>
            </div>
 
            {/* Brand Logo Settings Card */}
-           <div className="mb-10 p-6 bg-cream/50 rounded-2xl border border-charcoal/10 space-y-4">
+           <div className="mb-10 p-4 sm:p-6 bg-cream/50 rounded-2xl border border-charcoal/10 space-y-4">
              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                <div>
                  <h3 className="text-base font-bold text-charcoal flex items-center gap-2">
@@ -1542,7 +1550,7 @@ export default function OwnerDashboard() {
 
                {/* Upload & Direct Link Inputs */}
                <div className="flex-1 w-full space-y-3">
-                 <div className="flex flex-wrap items-center gap-3">
+                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                    <label className="cursor-pointer bg-charcoal text-white hover:bg-charcoal/90 text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2">
                      <Upload className="w-4 h-4 text-ochre-light" />
                      <span>{isUploadingLogo ? 'Uploading Logo...' : 'Upload Logo Image'}</span>
@@ -1563,7 +1571,7 @@ export default function OwnerDashboard() {
                  <div>
                    <label className="block text-[10px] font-bold uppercase text-charcoal/40 mb-1">Or Paste Direct Logo Image URL</label>
                    <input 
-                     type="url"
+                     type="url" 
                      placeholder="https://example.com/logo.png"
                      value={cmsLogoUrl}
                      onChange={(e) => setCmsLogoUrl(e.target.value)}
@@ -1574,7 +1582,7 @@ export default function OwnerDashboard() {
              </div>
            </div>
 
-           <div className="grid lg:grid-cols-2 gap-12">
+           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
               <div className="space-y-6">
                 <h3 className="text-lg font-bold text-charcoal/40 uppercase tracking-widest border-b border-charcoal/5 pb-2">Hero Section</h3>
                 <div>
@@ -1583,7 +1591,7 @@ export default function OwnerDashboard() {
                       <button
                         type="button"
                         onClick={() => handleRefineText('heroTitle', cmsHero.title, 'Main header of the warm minimalist interior design landing page')}
-                        className="text-[10px] font-bold text-ochre hover:text-ochre/80 flex items-center gap-1 bg-ochre/5 hover:bg-ochre/10 px-2.5 py-1 rounded-lg transition-all"
+                        className="text-[10px] font-bold text-ochre hover:text-ochre/80 flex items-center gap-1 bg-ochre/5 hover:bg-ochre/10 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
                       >
                         <span>✦ Refine with AI</span>
                       </button>
@@ -1592,7 +1600,7 @@ export default function OwnerDashboard() {
                      rows={3}
                      value={cmsHero.title}
                      onChange={(e) => setCmsHero({...cmsHero, title: e.target.value})}
-                     className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre"
+                     className="w-full p-3 sm:p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-sm"
                    />
                    {refinement.field === 'heroTitle' && (
                      <div className="mt-2 p-4 bg-ochre/5 border border-ochre/20 rounded-xl space-y-3">
@@ -1607,13 +1615,13 @@ export default function OwnerDashboard() {
                            <div className="flex gap-2">
                              <button
                                onClick={handleApplyRefinement}
-                               className="text-xs font-bold px-3 py-1 bg-ochre text-white rounded hover:bg-ochre/90"
+                               className="text-xs font-bold px-3 py-1 bg-ochre text-white rounded hover:bg-ochre/90 cursor-pointer"
                              >
                                Apply Draft
                              </button>
                              <button
                                onClick={() => setRefinement({ field: null, originalText: '', refinedText: '', loading: false, error: null })}
-                               className="text-xs font-bold px-3 py-1 bg-charcoal/5 text-charcoal/60 rounded hover:bg-charcoal/10"
+                               className="text-xs font-bold px-3 py-1 bg-charcoal/5 text-charcoal/60 rounded hover:bg-charcoal/10 cursor-pointer"
                              >
                                Discard
                              </button>
@@ -1629,7 +1637,7 @@ export default function OwnerDashboard() {
                      type="text"
                      value={cmsHero.highlightWord}
                      onChange={(e) => setCmsHero({...cmsHero, highlightWord: e.target.value})}
-                     className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre"
+                     className="w-full p-3 sm:p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-sm"
                    />
                 </div>
                 <div>
@@ -1638,7 +1646,7 @@ export default function OwnerDashboard() {
                       <button
                         type="button"
                         onClick={() => handleRefineText('heroSub', cmsHero.subheadline, 'Sub-headline / intro copy of high-end interiors firm in Goa')}
-                        className="text-[10px] font-bold text-ochre hover:text-ochre/80 flex items-center gap-1 bg-ochre/5 hover:bg-ochre/10 px-2.5 py-1 rounded-lg transition-all"
+                        className="text-[10px] font-bold text-ochre hover:text-ochre/80 flex items-center gap-1 bg-ochre/5 hover:bg-ochre/10 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
                       >
                         <span>✦ Refine with AI</span>
                       </button>
@@ -1647,7 +1655,7 @@ export default function OwnerDashboard() {
                      rows={4}
                      value={cmsHero.subheadline}
                      onChange={(e) => setCmsHero({...cmsHero, subheadline: e.target.value})}
-                     className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre"
+                     className="w-full p-3 sm:p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-sm"
                    />
                    {refinement.field === 'heroSub' && (
                      <div className="mt-2 p-4 bg-ochre/5 border border-ochre/20 rounded-xl space-y-3">
@@ -1662,13 +1670,13 @@ export default function OwnerDashboard() {
                            <div className="flex gap-2">
                              <button
                                onClick={handleApplyRefinement}
-                               className="text-xs font-bold px-3 py-1 bg-ochre text-white rounded hover:bg-ochre/90"
+                               className="text-xs font-bold px-3 py-1 bg-ochre text-white rounded hover:bg-ochre/90 cursor-pointer"
                              >
                                Apply Draft
                              </button>
                              <button
                                onClick={() => setRefinement({ field: null, originalText: '', refinedText: '', loading: false, error: null })}
-                               className="text-xs font-bold px-3 py-1 bg-charcoal/5 text-charcoal/60 rounded hover:bg-charcoal/10"
+                               className="text-xs font-bold px-3 py-1 bg-charcoal/5 text-charcoal/60 rounded hover:bg-charcoal/10 cursor-pointer"
                              >
                                Discard
                              </button>
@@ -1692,15 +1700,15 @@ export default function OwnerDashboard() {
                    {/* Slides List */}
                    <div className="space-y-3 mb-4">
                       {(cmsHero.heroSlideshow || []).map((slideUrl: string, index: number) => (
-                        <div key={index} className="flex items-center gap-3 bg-cream/40 p-2.5 rounded-xl border border-charcoal/5 group hover:border-ochre/30 transition-all">
-                          <div className="w-14 h-10 rounded-lg overflow-hidden bg-charcoal/10 flex-shrink-0 border border-charcoal/5 relative">
+                        <div key={index} className="flex items-center gap-2 sm:gap-3 bg-cream/40 p-2 sm:p-2.5 rounded-xl border border-charcoal/5 group hover:border-ochre/30 transition-all">
+                          <div className="w-12 sm:w-14 h-9 sm:h-10 rounded-lg overflow-hidden bg-charcoal/10 flex-shrink-0 border border-charcoal/5 relative">
                             <img src={slideUrl} alt={`Slide ${index + 1}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium text-charcoal truncate" title={slideUrl}>{slideUrl}</p>
                             <p className="text-[10px] text-charcoal/40">Slide #{index + 1}</p>
                           </div>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
                             <button
                               type="button"
                               disabled={index === 0}
@@ -1708,7 +1716,7 @@ export default function OwnerDashboard() {
                               className="p-1.5 rounded-lg text-charcoal/40 hover:text-charcoal hover:bg-white disabled:opacity-20 transition-all cursor-pointer disabled:cursor-not-allowed"
                               title="Move Up"
                             >
-                              <ArrowUp className="w-4 h-4" />
+                              <ArrowUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </button>
                             <button
                               type="button"
@@ -1717,7 +1725,7 @@ export default function OwnerDashboard() {
                               className="p-1.5 rounded-lg text-charcoal/40 hover:text-charcoal hover:bg-white disabled:opacity-20 transition-all cursor-pointer disabled:cursor-not-allowed"
                               title="Move Down"
                             >
-                              <ArrowDown className="w-4 h-4" />
+                              <ArrowDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </button>
                             <button
                               type="button"
@@ -1725,7 +1733,7 @@ export default function OwnerDashboard() {
                               className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-all cursor-pointer"
                               title="Remove Slide"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </button>
                           </div>
                         </div>
@@ -1761,13 +1769,13 @@ export default function OwnerDashboard() {
                           placeholder="Or paste Image URL..."
                           value={manualSlideUrl}
                           onChange={(e) => setManualSlideUrl(e.target.value)}
-                          className="flex-1 p-3 bg-white border border-charcoal/10 rounded-xl text-xs focus:outline-none focus:border-ochre font-medium"
+                          className="flex-1 min-w-0 p-3 bg-white border border-charcoal/10 rounded-xl text-xs focus:outline-none focus:border-ochre font-medium"
                         />
                         <button
                           type="button"
                           onClick={handleAddManualSlideUrl}
                           disabled={!manualSlideUrl.trim()}
-                          className="px-4 py-3 bg-charcoal text-white text-xs font-bold rounded-xl hover:bg-charcoal/90 disabled:opacity-30 transition-all"
+                          className="px-3.5 sm:px-4 py-3 bg-charcoal text-white text-xs font-bold rounded-xl hover:bg-charcoal/90 disabled:opacity-30 transition-all shrink-0 cursor-pointer"
                         >
                           Add
                         </button>
@@ -1784,7 +1792,7 @@ export default function OwnerDashboard() {
                      type="text"
                      value={cmsContact.phone}
                      onChange={(e) => setCmsContact({...cmsContact, phone: e.target.value})}
-                     className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre"
+                     className="w-full p-3 sm:p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-sm"
                    />
                 </div>
                 <div>
@@ -1793,7 +1801,7 @@ export default function OwnerDashboard() {
                      type="text"
                      value={cmsContact.whatsapp}
                      onChange={(e) => setCmsContact({...cmsContact, whatsapp: e.target.value})}
-                     className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre"
+                     className="w-full p-3 sm:p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-sm"
                    />
                 </div>
                 <div>
@@ -1802,7 +1810,7 @@ export default function OwnerDashboard() {
                      type="email"
                      value={cmsContact.email}
                      onChange={(e) => setCmsContact({...cmsContact, email: e.target.value})}
-                     className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre"
+                     className="w-full p-3 sm:p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-sm"
                    />
                 </div>
                 <div>
@@ -1811,7 +1819,7 @@ export default function OwnerDashboard() {
                      type="text"
                      value={cmsContact.address}
                      onChange={(e) => setCmsContact({...cmsContact, address: e.target.value})}
-                     className="w-full p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre"
+                     className="w-full p-3 sm:p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-sm"
                    />
                 </div>
               </div>
@@ -1821,8 +1829,8 @@ export default function OwnerDashboard() {
 
       {/* Real Project Previews & Category Settings */}
       {activeTab === 'content' && (
-        <div className="max-w-6xl mx-auto px-6 lg:px-8 pb-16">
-          <div className="bg-white border border-charcoal/5 rounded-[2.5rem] p-8 md:p-12 shadow-sm space-y-8">
+        <div className="max-w-6xl mx-auto px-0 sm:px-6 lg:px-8 pb-24 sm:pb-16">
+          <div className="bg-white border border-charcoal/5 rounded-2xl sm:rounded-[2.5rem] p-4 sm:p-8 md:p-12 shadow-sm space-y-6 sm:space-y-8">
             <div>
               <h3 className="text-xl font-bold">Category Project Previews & Settings</h3>
               <p className="text-sm text-charcoal/60 mt-1">
@@ -1830,9 +1838,9 @@ export default function OwnerDashboard() {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
               {cmsLuxuryCategories.map((category, catIdx) => (
-                <div key={category.id || catIdx} className="p-6 rounded-3xl bg-cream/30 border border-charcoal/5 space-y-6 relative group" id={`category-${category.id}`}>
+                <div key={category.id || catIdx} className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-cream/30 border border-charcoal/5 space-y-5 sm:space-y-6 relative group" id={`category-${category.id}`}>
                   <div className="flex justify-between items-center border-b border-charcoal/5 pb-4">
                     <div>
                       <span className="text-[10px] font-mono tracking-widest text-ochre uppercase font-bold">Category {category.accent || catIdx + 1}</span>
@@ -1840,7 +1848,7 @@ export default function OwnerDashboard() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <label className="block text-[10px] font-bold uppercase text-charcoal/40 mb-1.5">Starting Price</label>
                       <input
@@ -1877,9 +1885,9 @@ export default function OwnerDashboard() {
                     
                     {(category.images || []).map((imgUrl: string, imgIdx: number) => (
                       <div key={imgIdx} className="space-y-1.5">
-                        <div className="flex gap-3 items-center">
+                        <div className="flex gap-2 sm:gap-3 items-center">
                           {/* Tiny thumbnail preview */}
-                          <div className="w-12 h-12 rounded-xl bg-cream border border-charcoal/5 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                          <div className="w-10 sm:w-12 h-10 sm:h-12 rounded-xl bg-cream border border-charcoal/5 overflow-hidden flex-shrink-0 flex items-center justify-center">
                             {imgUrl ? (
                               <img src={imgUrl} className="w-full h-full object-cover" alt="Preview Thumbnail" onError={(e) => { (e.target as any).src = "https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&q=80&w=120" }} referrerPolicy="no-referrer" />
                             ) : (
@@ -1888,7 +1896,7 @@ export default function OwnerDashboard() {
                           </div>
                           
                           {/* Input url */}
-                          <div className="flex-1 relative">
+                          <div className="flex-1 relative min-w-0">
                             <input
                               type="text"
                               value={imgUrl}
@@ -1899,17 +1907,17 @@ export default function OwnerDashboard() {
                                 updated[catIdx] = { ...category, images: updatedImages };
                                 setCmsLuxuryCategories(updated);
                               }}
-                              className="w-full pl-3 pr-20 py-3 bg-white border border-charcoal/5 rounded-xl text-[11px] focus:outline-none focus:border-ochre font-mono truncate"
+                              className="w-full pl-2.5 sm:pl-3 pr-14 sm:pr-20 py-2.5 sm:py-3 bg-white border border-charcoal/5 rounded-xl text-[11px] focus:outline-none focus:border-ochre font-mono truncate"
                               placeholder={`Paste Image URL ${imgIdx + 1}...`}
                             />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] uppercase tracking-wider text-charcoal/30 font-bold font-sans">
+                            <span className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-[8px] sm:text-[9px] uppercase tracking-wider text-charcoal/30 font-bold font-sans pointer-events-none">
                               Image {imgIdx + 1}
                             </span>
                           </div>
                         </div>
 
                         {/* Quick selection from media library */}
-                        <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+                        <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none max-w-full">
                           <span className="text-[9px] font-bold text-charcoal/35 whitespace-nowrap">Media Library:</span>
                           {gallery.slice(0, 4).map((mItem, mIdx) => (
                             <button
@@ -1953,6 +1961,37 @@ export default function OwnerDashboard() {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Invoice Generator Tab */}
+      {activeTab === 'invoices' && (
+        <div className="pb-16">
+          <InvoiceGenerator />
+        </div>
+      )}
+
+      {/* Quote Generator Tab */}
+      {activeTab === 'quotes' && (
+        <div className="pb-16">
+          <QuoteGenerator />
+        </div>
+      )}
+
+      {/* Sticky Mobile Save Bar for Homepage Editor */}
+      {activeTab === 'content' && (
+        <div className="fixed bottom-0 left-0 right-0 sm:hidden bg-white/95 backdrop-blur-md border-t border-charcoal/10 p-3.5 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold text-charcoal truncate">Homepage Editor</p>
+            <p className="text-[10px] text-charcoal/50 truncate">Unsaved changes will be applied</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleSaveCMS}
+            className="bg-ochre text-white text-xs font-bold px-5 py-2.5 rounded-xl hover:bg-ochre/90 shadow-md shadow-ochre/20 transition-all shrink-0 cursor-pointer"
+          >
+            Save All Changes
+          </button>
         </div>
       )}
 
