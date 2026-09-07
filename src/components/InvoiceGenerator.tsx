@@ -1,66 +1,223 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, Download, FileText, Sparkles, Building2, User, Phone, Mail, DollarSign, Calendar, CheckCircle2 } from 'lucide-react';
-import { generateDocumentPDF, PDFLineItem, formatMoney } from '../utils/pdfGenerator';
+import React, { useState, useEffect } from 'react';
+import { 
+  collection, query, getDocs, where, onSnapshot, addDoc, orderBy 
+} from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { useAuth } from '../hooks/useAuth';
 import { useCMS } from '../hooks/useCMS';
+import { 
+  Plus, Trash2, Download, FileText, Sparkles, Building2, User, Phone, Mail, 
+  DollarSign, Calendar, CheckCircle2, Layers, AlertCircle, RefreshCw, Briefcase,
+  CreditCard, Check, ArrowRight
+} from 'lucide-react';
+import { generateDocumentPDF, formatMoney } from '../utils/pdfGenerator';
+import CatalogManagerModal from './CatalogManagerModal';
+import { CatalogItem } from '../types/catalog';
+
+export interface InvoicePaymentItem {
+  id: string;
+  name: string; // Name of client / item
+  paymentType: 'Partial' | 'Full';
+  amount: number | '';
+  refCode: string;
+  date: string;
+}
 
 export default function InvoiceGenerator() {
   const { content } = useCMS();
+  const { profile } = useAuth();
 
-  // Initial auto-generated Invoice ID
   const defaultInvoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
   const todayStr = new Date().toISOString().split('T')[0];
 
+  // Document Info
   const [docNumber, setDocNumber] = useState(defaultInvoiceNumber);
   const [date, setDate] = useState(todayStr);
+
+  // Client Selection
+  const [clientsList, setClientsList] = useState<any[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [isCustomClient, setIsCustomClient] = useState<boolean>(false);
   const [clientName, setClientName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [clientPhone, setClientPhone] = useState('');
-  const [projectName, setProjectName] = useState('');
-  const [amountPaid, setAmountPaid] = useState<number>(0);
+
+  // Project Selection & Subcollection link
+  const [projectsList, setProjectsList] = useState<any[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [selectedProject, setSelectedProject] = useState<any | null>(null);
+  const [existingPayments, setExistingPayments] = useState<any[]>([]);
+  const [totalInvoiced, setTotalInvoiced] = useState<number | ''>('');
+
+  // Notes - Default editable text kept as requested
   const [notes, setNotes] = useState(
     'Payment Terms: 50% deposit upon contract signing, 40% upon interim milestone, 10% upon final handover.\nBank / M-Pesa Details: Pamnim Interior Designers, Paybill: 247247, Acc: 0714984268.'
   );
 
-  const [items, setItems] = useState<PDFLineItem[]>([
+  // Invoice Line Items: Blank by default (no placeholder data)
+  const [items, setItems] = useState<InvoicePaymentItem[]>([
     {
       id: '1',
-      description: 'Living Room Space Planning & Bespoke Joinery Works',
-      quantity: 1,
-      unitPrice: 150000
-    },
-    {
-      id: '2',
-      description: 'Atmospheric LED Lighting & Electrical Fixtures Supply & Installation',
-      quantity: 1,
-      unitPrice: 45000
+      name: '',
+      paymentType: 'Partial',
+      amount: '',
+      refCode: '',
+      date: todayStr
     }
   ]);
 
+  // Catalog State
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
+  const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+  const [activeItemIndexForCatalog, setActiveItemIndexForCatalog] = useState<number | null>(null);
+
+  // UI status
   const [isGenerating, setIsGenerating] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
-  // Calculations
-  const subtotal = items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0);
-  const balanceDue = Math.max(0, subtotal - (Number(amountPaid) || 0));
+  // 1. Fetch Clients
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const q = query(collection(db, 'profiles'), where('role', '==', 'client'));
+        const snap = await getDocs(q);
+        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setClientsList(list);
+      } catch (err) {
+        console.error('Error fetching clients for invoice:', err);
+      }
+    };
+    fetchClients();
+  }, []);
 
+  // 2. Fetch Projects (all staff projects)
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const q = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
+        const snap = await getDocs(q);
+        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setProjectsList(list);
+      } catch (err) {
+        console.error('Error fetching projects for invoice:', err);
+      }
+    };
+    fetchProjects();
+  }, []);
+
+  // 3. Listen to Catalog
+  useEffect(() => {
+    const q = query(collection(db, 'servicesMaterials'), orderBy('name', 'asc'));
+    const unsub = onSnapshot(q, (snap) => {
+      setCatalogItems(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as CatalogItem[]);
+    }, (err) => console.error('Error fetching catalog:', err));
+    return () => unsub();
+  }, []);
+
+  // 4. Listen to Project's Payments subcollection when a project is selected
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setSelectedProject(null);
+      setExistingPayments([]);
+      return;
+    }
+
+    const proj = projectsList.find(p => p.id === selectedProjectId);
+    if (proj) {
+      setSelectedProject(proj);
+      if (typeof proj.totalCost === 'number' && proj.totalCost > 0) {
+        setTotalInvoiced(proj.totalCost);
+      }
+    }
+
+    const paymentsRef = collection(db, 'projects', selectedProjectId, 'payments');
+    const unsub = onSnapshot(paymentsRef, (snap) => {
+      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setExistingPayments(list);
+    }, (err) => {
+      console.error('Error reading project payments:', err);
+    });
+
+    return () => unsub();
+  }, [selectedProjectId, projectsList]);
+
+  // Handle client dropdown change
+  const handleClientSelect = (clientId: string) => {
+    setSelectedClientId(clientId);
+    if (clientId === 'NEW_CLIENT') {
+      setIsCustomClient(true);
+      setClientName('');
+      setClientEmail('');
+      setClientPhone('');
+      setSelectedProjectId('');
+    } else if (clientId === '') {
+      setIsCustomClient(false);
+      setClientName('');
+      setClientEmail('');
+      setClientPhone('');
+      setSelectedProjectId('');
+    } else {
+      setIsCustomClient(false);
+      const found = clientsList.find(c => c.id === clientId || c.uid === clientId);
+      if (found) {
+        setClientName(found.name || found.displayName || '');
+        setClientEmail(found.email || '');
+        setClientPhone(found.phone || found.phoneNumber || '');
+
+        // Auto-select project if client has matching project
+        const clientProjects = projectsList.filter(p => p.clientId === found.id || p.clientId === found.uid);
+        if (clientProjects.length === 1) {
+          setSelectedProjectId(clientProjects[0].id);
+        }
+      }
+    }
+  };
+
+  // Financial Calculations
+  const newPaymentsSum = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const existingPaymentsSum = existingPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  
+  // Total Invoiced: if user entered custom or linked to project totalCost, otherwise sum of items
+  const effectiveTotalInvoiced = typeof totalInvoiced === 'number' && totalInvoiced > 0
+    ? totalInvoiced
+    : (newPaymentsSum + existingPaymentsSum);
+
+  const totalPaymentsLogged = existingPaymentsSum + newPaymentsSum;
+  // Automatically calculated: Total Invoiced - sum of payments logged against that invoice/project
+  const outstandingBalance = Math.max(0, effectiveTotalInvoiced - totalPaymentsLogged);
+
+  // Line Item Handlers
   const handleAddItem = () => {
     setItems([
       ...items,
       {
         id: Date.now().toString(),
-        description: '',
-        quantity: 1,
-        unitPrice: 0
+        name: '',
+        paymentType: 'Partial',
+        amount: '',
+        refCode: '',
+        date: todayStr
       }
     ]);
   };
 
   const handleRemoveItem = (id: string) => {
-    if (items.length <= 1) return;
+    if (items.length <= 1) {
+      setItems([{
+        id: Date.now().toString(),
+        name: '',
+        paymentType: 'Partial',
+        amount: '',
+        refCode: '',
+        date: todayStr
+      }]);
+      return;
+    }
     setItems(items.filter((item) => item.id !== id));
   };
 
-  const handleUpdateItem = (id: string, field: keyof PDFLineItem, value: any) => {
+  const handleUpdateItem = (id: string, field: keyof InvoicePaymentItem, value: any) => {
     setItems(
       items.map((item) => {
         if (item.id === id) {
@@ -71,20 +228,54 @@ export default function InvoiceGenerator() {
     );
   };
 
-  const handleQuickTemplate = (title: string, defaultPrice: number) => {
-    setItems([
-      ...items,
-      {
-        id: Date.now().toString(),
-        description: title,
-        quantity: 1,
-        unitPrice: defaultPrice
-      }
-    ]);
+  const handleCatalogSelect = (catalogItem: CatalogItem) => {
+    if (activeItemIndexForCatalog !== null && items[activeItemIndexForCatalog]) {
+      const targetId = items[activeItemIndexForCatalog].id;
+      setItems(items.map(item => {
+        if (item.id === targetId) {
+          return {
+            ...item,
+            name: catalogItem.name,
+            amount: catalogItem.sellingPrice || ''
+          };
+        }
+        return item;
+      }));
+    }
+    setActiveItemIndexForCatalog(null);
   };
 
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Link & Sync: write payments directly to projects/{projectId}/payments subcollection
+  const recordPaymentsToProjectTracker = async (): Promise<boolean> => {
+    if (!selectedProjectId) return true;
+
+    // Filter valid payment items with positive amounts
+    const validItems = items.filter(i => Number(i.amount) > 0);
+    if (validItems.length === 0) return true;
+
+    try {
+      const paymentsRef = collection(db, 'projects', selectedProjectId, 'payments');
+      for (const item of validItems) {
+        await addDoc(paymentsRef, {
+          amount: Number(item.amount),
+          date: new Date(item.date).toISOString(),
+          method: item.paymentType === 'Full' ? 'full_payment' : 'partial_payment',
+          paymentType: item.paymentType,
+          reference: item.refCode || 'N/A',
+          note: `${item.name || 'Invoice Payment'} (${docNumber})`,
+          recordedBy: profile?.name || 'Owner',
+          createdAt: new Date().toISOString()
+        });
+      }
+      return true;
+    } catch (err) {
+      console.error('Error writing to project payments subcollection:', err);
+      return false;
+    }
+  };
+
+  const handleGenerate = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!clientName.trim()) {
       alert('Please provide a client name.');
       return;
@@ -92,16 +283,52 @@ export default function InvoiceGenerator() {
 
     try {
       setIsGenerating(true);
+
+      // If tied to a project, write payment line items into projects/{projectId}/payments subcollection
+      if (selectedProjectId) {
+        const synced = await recordPaymentsToProjectTracker();
+        if (synced) {
+          setSyncMessage('Payments synchronized with Project Tracker!');
+          setTimeout(() => setSyncMessage(null), 5000);
+        }
+      }
+
+      // Format PDF items matching the invoice columns: Name/Item, Payment Type, Ref Code, Date, Amount
+      const pdfItems = items
+        .filter(i => i.name.trim() || Number(i.amount) > 0)
+        .map(i => ({
+          id: i.id,
+          description: i.name || 'Payment Item',
+          paymentType: i.paymentType,
+          refCode: i.refCode || '—',
+          date: i.date,
+          amount: Number(i.amount) || 0,
+          quantity: 1,
+          unitPrice: Number(i.amount) || 0
+        }));
+
       await generateDocumentPDF('invoice', {
         docNumber,
         date,
-        clientName,
-        clientEmail,
-        clientPhone,
-        projectName,
-        items,
-        amountPaid,
+        clientName: clientName.trim(),
+        clientEmail: clientEmail.trim() || undefined,
+        clientPhone: clientPhone.trim() || undefined,
+        projectName: selectedProject ? selectedProject.name : undefined,
+        items: pdfItems.length > 0 ? pdfItems : [{
+          id: '1',
+          description: 'Payment Item',
+          paymentType: 'Partial',
+          refCode: '—',
+          date,
+          amount: 0,
+          quantity: 1,
+          unitPrice: 0
+        }],
+        totalInvoiced: Number(effectiveTotalInvoiced),
+        amountPaid: Number(totalPaymentsLogged),
+        balanceDue: Number(outstandingBalance),
         notes,
+        currencySymbol: 'KES',
         companyInfo: {
           name: 'Pamnim Interior Designers',
           address: content.contact?.address || 'Nairobi, Kenya',
@@ -110,6 +337,7 @@ export default function InvoiceGenerator() {
           tagline: 'Shinning outside, beautiful inside'
         }
       });
+
       setDownloadSuccess(true);
       setTimeout(() => setDownloadSuccess(false), 4000);
     } catch (err) {
@@ -131,26 +359,35 @@ export default function InvoiceGenerator() {
           </div>
           <h2 className="text-2xl font-bold text-charcoal">Invoice Generator</h2>
           <p className="text-xs text-charcoal/60 mt-0.5">
-            Create and download branded invoices with live line items and balance tracking.
+            Create branded invoices with automated balance calculation, project tracker synchronization, and catalog support.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={handleGenerate}
+            onClick={() => setIsCatalogOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-charcoal/10 hover:bg-cream text-xs font-bold text-charcoal transition-all cursor-pointer"
+          >
+            <Layers className="w-4 h-4 text-ochre" />
+            <span>Catalog Manager</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleGenerate()}
             disabled={isGenerating || !clientName.trim()}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-6 py-3 rounded-xl transition-all shadow-lg shadow-red-600/20 disabled:opacity-40 cursor-pointer"
+            className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-red-600/20 disabled:opacity-40 cursor-pointer"
           >
             {isGenerating ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Generating PDF...</span>
+                <span>Generating...</span>
               </>
             ) : downloadSuccess ? (
               <>
                 <CheckCircle2 className="w-4 h-4 text-white" />
-                <span>Invoice Downloaded!</span>
+                <span>Invoice Ready!</span>
               </>
             ) : (
               <>
@@ -162,282 +399,431 @@ export default function InvoiceGenerator() {
         </div>
       </div>
 
+      {syncMessage && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-bold text-emerald-800 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{syncMessage}</span>
+        </div>
+      )}
+
       <form onSubmit={handleGenerate} className="space-y-8">
-        {/* Document Meta & Client Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 sm:p-6 bg-cream/40 rounded-2xl border border-charcoal/5">
-          {/* Left: Document Info */}
+        {/* Document Meta, Client & Project Selectors */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-5 sm:p-6 bg-cream/40 rounded-2xl border border-charcoal/5">
+          {/* Column 1: Document Metadata */}
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-charcoal flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-ochre" />
-              <span>Invoice Specifications</span>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-charcoal/70 flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-ochre" />
+              <span>Invoice Details</span>
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Invoice Number</label>
-                <input
-                  type="text"
-                  value={docNumber}
-                  onChange={(e) => setDocNumber(e.target.value)}
-                  className="w-full p-3 bg-white border border-charcoal/10 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-red-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Issue Date</label>
-                <div className="relative">
-                  <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full p-3 bg-white border border-charcoal/10 rounded-xl text-xs focus:outline-none focus:border-red-500"
-                    required
-                  />
-                </div>
-              </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Invoice Number</label>
+              <input
+                type="text"
+                value={docNumber}
+                onChange={(e) => setDocNumber(e.target.value)}
+                className="w-full p-2.5 bg-white border border-charcoal/10 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-red-600"
+              />
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Project Name (Optional)</label>
+              <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Invoice Date</label>
               <input
-                type="text"
-                placeholder="e.g. Kilimani 3-Bedroom Full Renovation"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                className="w-full p-3 bg-white border border-charcoal/10 rounded-xl text-xs focus:outline-none focus:border-red-500"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full p-2.5 bg-white border border-charcoal/10 rounded-xl text-xs focus:outline-none focus:border-red-600"
               />
             </div>
           </div>
 
-          {/* Right: Client Details */}
+          {/* Column 2: Client Dropdown (+ New Client free text option) */}
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-charcoal flex items-center gap-2">
-              <User className="w-4 h-4 text-ochre" />
-              <span>Bill To (Client Information)</span>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-charcoal/70 flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-ochre" />
+              <span>Client Information</span>
             </h3>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Select Client *</label>
+              <select
+                value={isCustomClient ? 'NEW_CLIENT' : selectedClientId}
+                onChange={(e) => handleClientSelect(e.target.value)}
+                className="w-full p-2.5 bg-white border border-charcoal/10 rounded-xl text-xs font-semibold focus:outline-none focus:border-red-600"
+              >
+                <option value="">-- Choose Existing Client --</option>
+                {clientsList.map((c) => (
+                  <option key={c.id || c.uid} value={c.id || c.uid}>
+                    {c.name || c.displayName || c.email} {c.phone ? `(${c.phone})` : ''}
+                  </option>
+                ))}
+                <option value="NEW_CLIENT">+ New client (Enter details manually)</option>
+              </select>
+            </div>
 
             <div>
               <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Client Full Name *</label>
               <input
                 type="text"
-                placeholder="e.g. David Mwangi"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                className="w-full p-3 bg-white border border-charcoal/10 rounded-xl text-xs font-bold focus:outline-none focus:border-red-500"
                 required
+                placeholder="Client full name"
+                value={clientName}
+                onChange={(e) => {
+                  setClientName(e.target.value);
+                  if (!isCustomClient && selectedClientId) {
+                    setIsCustomClient(true);
+                  }
+                }}
+                className="w-full p-2.5 bg-white border border-charcoal/10 rounded-xl text-xs font-bold focus:outline-none focus:border-red-600"
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Client Phone</label>
-                <input
-                  type="text"
-                  placeholder="0712 345 678"
-                  value={clientPhone}
-                  onChange={(e) => setClientPhone(e.target.value)}
-                  className="w-full p-3 bg-white border border-charcoal/10 rounded-xl text-xs focus:outline-none focus:border-red-500"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Client Email</label>
+                <label className="block text-[10px] font-bold uppercase text-charcoal/50 mb-1">Email</label>
                 <input
                   type="email"
-                  placeholder="client@example.com"
+                  placeholder="client@email.com"
                   value={clientEmail}
                   onChange={(e) => setClientEmail(e.target.value)}
-                  className="w-full p-3 bg-white border border-charcoal/10 rounded-xl text-xs focus:outline-none focus:border-red-500"
+                  className="w-full p-2.5 bg-white border border-charcoal/10 rounded-xl text-xs focus:outline-none focus:border-red-600"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-charcoal/50 mb-1">Phone</label>
+                <input
+                  type="text"
+                  placeholder="+254 7..."
+                  value={clientPhone}
+                  onChange={(e) => setClientPhone(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-charcoal/10 rounded-xl text-xs focus:outline-none focus:border-red-600"
                 />
               </div>
             </div>
           </div>
+
+          {/* Column 3: Link to Project Tracker */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-charcoal/70 flex items-center gap-1.5">
+              <Briefcase className="w-3.5 h-3.5 text-ochre" />
+              <span>Link to Project Tracker</span>
+            </h3>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">
+                Active Project
+              </label>
+              <select
+                value={selectedProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
+                className="w-full p-2.5 bg-white border border-charcoal/10 rounded-xl text-xs font-semibold focus:outline-none focus:border-red-600"
+              >
+                <option value="">Standalone (No Project Link)</option>
+                {projectsList.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} {p.clientName ? `— ${p.clientName}` : ''} ({p.currentStageName || 'In Progress'})
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-charcoal/50 mt-1">
+                Linking a project syncs payments into its tracker ledger.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">
+                Total Invoiced Amount (KES)
+              </label>
+              <input
+                type="number"
+                min="0"
+                placeholder={selectedProject?.totalCost ? `KES ${formatMoney(selectedProject.totalCost)}` : 'e.g. 500000'}
+                value={totalInvoiced}
+                onChange={(e) => setTotalInvoiced(e.target.value ? parseFloat(e.target.value) : '')}
+                className="w-full p-2.5 bg-white border border-charcoal/10 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-red-600"
+              />
+              <span className="text-[10px] text-charcoal/40">
+                {selectedProject ? 'Auto-loaded from Project Contract Cost' : 'Leave blank to sum payments'}
+              </span>
+            </div>
+
+            {selectedProject && existingPayments.length > 0 && (
+              <div className="p-3 bg-white rounded-xl border border-charcoal/10 text-xs space-y-1">
+                <div className="flex justify-between font-medium text-charcoal/70">
+                  <span>Prior Payments Logged:</span>
+                  <span className="font-mono font-bold text-emerald-600">
+                    KES {formatMoney(existingPaymentsSum)}
+                  </span>
+                </div>
+                <div className="text-[10px] text-charcoal/40">
+                  {existingPayments.length} payment records previously logged on this project.
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Quick Insert Templates */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-          <span className="text-[11px] font-bold text-charcoal/40 flex items-center gap-1 shrink-0">
-            <Sparkles className="w-3.5 h-3.5 text-ochre" /> Quick Add:
-          </span>
-          <button
-            type="button"
-            onClick={() => handleQuickTemplate('Residential Space Planning & 3D Previews', 50000)}
-            className="text-[11px] font-medium px-3 py-1.5 bg-cream hover:bg-ochre/10 hover:text-ochre rounded-lg border border-charcoal/5 transition-all shrink-0 cursor-pointer"
-          >
-            + Space Planning
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickTemplate('Bespoke Joinery, Wainscoting & Custom Wardrobes', 250000)}
-            className="text-[11px] font-medium px-3 py-1.5 bg-cream hover:bg-ochre/10 hover:text-ochre rounded-lg border border-charcoal/5 transition-all shrink-0 cursor-pointer"
-          >
-            + Bespoke Carpentry
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickTemplate('Waterproof SPC Flooring Supply & Precision Installation', 180000)}
-            className="text-[11px] font-medium px-3 py-1.5 bg-cream hover:bg-ochre/10 hover:text-ochre rounded-lg border border-charcoal/5 transition-all shrink-0 cursor-pointer"
-          >
-            + SPC Flooring
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickTemplate('Anti-Glare LED Lighting & Ambient Ceiling Works', 120000)}
-            className="text-[11px] font-medium px-3 py-1.5 bg-cream hover:bg-ochre/10 hover:text-ochre rounded-lg border border-charcoal/5 transition-all shrink-0 cursor-pointer"
-          >
-            + Luxury Lighting
-          </button>
-        </div>
+        {/* Invoice Payment Line Items Table */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base font-bold text-charcoal flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-red-600" />
+                <span>Payment Line Items</span>
+              </h3>
+              <p className="text-xs text-charcoal/50">
+                Specify payment items with type, amount, reference code, and date.
+              </p>
+            </div>
 
-        {/* Line Items Table */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-charcoal">Line Items & Services</h3>
-            <button
-              type="button"
-              onClick={handleAddItem}
-              className="flex items-center gap-1.5 text-xs font-bold text-ochre hover:text-ochre/80 bg-ochre/10 hover:bg-ochre/20 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Line Item</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveItemIndexForCatalog(items.length - 1);
+                  setIsCatalogOpen(true);
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-ochre/10 text-ochre hover:bg-ochre hover:text-white text-xs font-bold transition-all cursor-pointer"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Insert from Catalog</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleAddItem}
+                className="flex items-center gap-1.5 bg-charcoal hover:bg-charcoal/80 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Payment Line</span>
+              </button>
+            </div>
           </div>
 
+          {/* Line Items Table */}
           <div className="border border-charcoal/10 rounded-2xl overflow-hidden bg-white shadow-sm">
-            {/* Desktop Table Header */}
-            <div className="hidden sm:grid grid-cols-12 gap-3 p-3.5 bg-charcoal text-white text-[11px] font-bold uppercase tracking-wider">
-              <div className="col-span-6">Description / Scope</div>
-              <div className="col-span-2 text-center">Qty</div>
-              <div className="col-span-2 text-right">Unit Price (KES)</div>
-              <div className="col-span-2 text-right">Total (KES)</div>
-            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-charcoal text-white text-[11px] font-bold uppercase tracking-wider">
+                    <th className="p-3.5 pl-4">Name of Client / Item</th>
+                    <th className="p-3.5 w-36">Payment Type</th>
+                    <th className="p-3.5 w-40">Amount (KES) *</th>
+                    <th className="p-3.5 w-44">Reference Code</th>
+                    <th className="p-3.5 w-36">Date</th>
+                    <th className="p-3.5 w-12 text-center"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-charcoal/5 text-xs">
+                  {items.map((item, index) => (
+                    <tr key={item.id} className="hover:bg-cream/20 transition-all">
+                      {/* 1. Name of client / item with optional Catalog Quick Fill */}
+                      <td className="p-3 pl-4">
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="e.g. Deposit for living room joinery & gypsum"
+                            value={item.name}
+                            onChange={(e) => handleUpdateItem(item.id, 'name', e.target.value)}
+                            className="w-full p-2 bg-transparent border border-charcoal/10 rounded-lg text-xs font-semibold focus:outline-none focus:border-red-600"
+                          />
+                          {catalogItems.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveItemIndexForCatalog(index);
+                                setIsCatalogOpen(true);
+                              }}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-ochre hover:underline cursor-pointer"
+                              title="Pick from Catalog"
+                            >
+                              Catalog
+                            </button>
+                          )}
+                        </div>
+                      </td>
 
-            {/* Rows */}
-            <div className="divide-y divide-charcoal/5">
-              {items.map((item, idx) => {
-                const itemTotal = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
-                return (
-                  <div key={item.id} className="p-3 sm:p-3.5 flex flex-col sm:grid sm:grid-cols-12 gap-3 items-start sm:items-center hover:bg-cream/20 transition-colors">
-                    {/* Description */}
-                    <div className="w-full sm:col-span-6">
-                      <label className="block sm:hidden text-[10px] font-bold uppercase text-charcoal/40 mb-1">Description #{idx + 1}</label>
-                      <input
-                        type="text"
-                        placeholder="Service or item description..."
-                        value={item.description}
-                        onChange={(e) => handleUpdateItem(item.id, 'description', e.target.value)}
-                        className="w-full p-2.5 bg-cream/30 border border-charcoal/10 rounded-xl text-xs font-medium focus:outline-none focus:border-red-500"
-                        required
-                      />
-                    </div>
+                      {/* 2. Payment Type (Partial / Full dropdown) */}
+                      <td className="p-3">
+                        <select
+                          value={item.paymentType}
+                          onChange={(e) => handleUpdateItem(item.id, 'paymentType', e.target.value as 'Partial' | 'Full')}
+                          className="w-full p-2 bg-transparent border border-charcoal/10 rounded-lg text-xs font-bold focus:outline-none focus:border-red-600"
+                        >
+                          <option value="Partial">Partial</option>
+                          <option value="Full">Full</option>
+                        </select>
+                      </td>
 
-                    {/* Qty */}
-                    <div className="w-full sm:col-span-2">
-                      <label className="block sm:hidden text-[10px] font-bold uppercase text-charcoal/40 mb-1">Quantity</label>
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={item.quantity}
-                        onChange={(e) => handleUpdateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                        className="w-full p-2.5 bg-cream/30 border border-charcoal/10 rounded-xl text-xs font-bold text-center focus:outline-none focus:border-red-500"
-                        required
-                      />
-                    </div>
+                      {/* 3. Amount */}
+                      <td className="p-3">
+                        <input
+                          type="number"
+                          min="0"
+                          step="10"
+                          placeholder="0"
+                          value={item.amount}
+                          onChange={(e) => handleUpdateItem(item.id, 'amount', e.target.value ? parseFloat(e.target.value) : '')}
+                          className="w-full p-2 bg-transparent border border-charcoal/10 rounded-lg text-xs font-mono font-bold focus:outline-none focus:border-red-600 text-right"
+                        />
+                      </td>
 
-                    {/* Unit Price */}
-                    <div className="w-full sm:col-span-2">
-                      <label className="block sm:hidden text-[10px] font-bold uppercase text-charcoal/40 mb-1">Unit Price (KES)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="500"
-                        value={item.unitPrice}
-                        onChange={(e) => handleUpdateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-                        className="w-full p-2.5 bg-cream/30 border border-charcoal/10 rounded-xl text-xs font-mono font-bold text-right focus:outline-none focus:border-red-500"
-                        required
-                      />
-                    </div>
+                      {/* 4. Reference Code */}
+                      <td className="p-3">
+                        <input
+                          type="text"
+                          placeholder="e.g. QA249XYZ / MPESA"
+                          value={item.refCode}
+                          onChange={(e) => handleUpdateItem(item.id, 'refCode', e.target.value)}
+                          className="w-full p-2 bg-transparent border border-charcoal/10 rounded-lg text-xs font-mono focus:outline-none focus:border-red-600"
+                        />
+                      </td>
 
-                    {/* Total & Action */}
-                    <div className="w-full sm:col-span-2 flex items-center justify-between sm:justify-end gap-3">
-                      <span className="sm:hidden text-xs font-bold text-charcoal/60">Row Total:</span>
-                      <span className="text-xs font-mono font-bold text-charcoal">{formatMoney(itemTotal)}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveItem(item.id)}
-                        disabled={items.length <= 1}
-                        className="p-1.5 text-charcoal/30 hover:text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-20 transition-all cursor-pointer"
-                        title="Remove row"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                      {/* 5. Date */}
+                      <td className="p-3">
+                        <input
+                          type="date"
+                          value={item.date}
+                          onChange={(e) => handleUpdateItem(item.id, 'date', e.target.value)}
+                          className="w-full p-2 bg-transparent border border-charcoal/10 rounded-lg text-xs focus:outline-none focus:border-red-600"
+                        />
+                      </td>
+
+                      {/* Remove Button */}
+                      <td className="p-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(item.id)}
+                          className="p-1.5 text-charcoal/30 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                          title="Remove item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
 
-        {/* Bottom Section: Notes on Left, Financial Summary on Right */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-4 border-t border-charcoal/5">
-          {/* Notes & Payment Instructions */}
-          <div className="lg:col-span-7 space-y-2">
-            <label className="block text-xs font-bold uppercase text-charcoal/60">Payment Instructions & Notes</label>
+        {/* Financial Summary & Automated Balance Calculation */}
+        <div className="flex flex-col md:flex-row items-start justify-between gap-6 p-6 bg-cream/30 rounded-2xl border border-charcoal/10">
+          {/* Notes & Payment Instructions (Kept as editable default) */}
+          <div className="w-full md:w-1/2 space-y-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-charcoal/70">
+              Payment Instructions & Notes
+            </label>
             <textarea
               rows={4}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add bank details, M-Pesa paybill, or milestone terms..."
-              className="w-full p-3 bg-cream/30 border border-charcoal/10 rounded-xl text-xs text-charcoal font-mono focus:outline-none focus:border-red-500"
+              className="w-full p-3 bg-white border border-charcoal/10 rounded-xl text-xs text-charcoal/80 focus:outline-none focus:border-red-600 leading-relaxed font-sans"
             />
-            <p className="text-[10px] text-charcoal/40">These instructions will be printed clearly at the bottom of the invoice PDF.</p>
+            <p className="text-[10px] text-charcoal/50">
+              This text appears on the generated PDF invoice.
+            </p>
           </div>
 
-          {/* Financial Summary Card */}
-          <div className="lg:col-span-5 p-5 bg-cream/50 rounded-2xl border border-charcoal/10 space-y-3.5">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-charcoal/60 border-b border-charcoal/10 pb-2">
-              Invoice Summary
-            </h4>
-
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-charcoal/60">Subtotal:</span>
-              <span className="font-bold font-mono text-charcoal">KES {formatMoney(subtotal)}</span>
+          {/* Calculated Totals Box */}
+          <div className="w-full md:w-80 space-y-3 bg-white p-5 rounded-2xl border border-charcoal/10 shadow-sm shrink-0">
+            <div className="flex items-center justify-between text-xs text-charcoal/60">
+              <span>Total Invoiced:</span>
+              <span className="font-mono font-bold text-charcoal">
+                KES {formatMoney(effectiveTotalInvoiced)}
+              </span>
             </div>
 
-            <div className="flex justify-between items-center text-sm">
-              <label className="text-charcoal/60">Amount Paid:</label>
-              <div className="w-36">
-                <input
-                  type="number"
-                  min="0"
-                  step="500"
-                  value={amountPaid}
-                  onChange={(e) => setAmountPaid(parseFloat(e.target.value) || 0)}
-                  className="w-full p-2 bg-white border border-charcoal/10 rounded-lg text-xs font-mono font-bold text-right focus:outline-none focus:border-red-500"
-                />
+            {existingPayments.length > 0 && (
+              <div className="flex items-center justify-between text-xs text-charcoal/60">
+                <span>Prior Logged Payments:</span>
+                <span className="font-mono font-medium text-charcoal/80">
+                  KES {formatMoney(existingPaymentsSum)}
+                </span>
               </div>
+            )}
+
+            <div className="flex items-center justify-between text-xs text-charcoal/60">
+              <span>New Invoice Payments:</span>
+              <span className="font-mono font-bold text-emerald-600">
+                KES {formatMoney(newPaymentsSum)}
+              </span>
             </div>
 
-            <div className="pt-2 border-t border-charcoal/10 flex justify-between items-center p-3 bg-red-50 border border-red-200 rounded-xl">
+            <div className="flex items-center justify-between text-xs font-bold text-charcoal pt-2 border-t border-charcoal/10">
+              <span>Total Payments Logged:</span>
+              <span className="font-mono text-emerald-700">
+                KES {formatMoney(totalPaymentsLogged)}
+              </span>
+            </div>
+
+            {/* Automated Balance Due Box - NEVER manually entered */}
+            <div className="p-3.5 bg-red-50 rounded-xl border border-red-200 flex items-center justify-between">
               <div>
-                <span className="block text-xs font-bold text-red-700 uppercase">Balance Due:</span>
-                <span className="text-[10px] text-red-600/70">Payable by client</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-red-800 block">
+                  Outstanding Balance
+                </span>
+                <span className="text-[10px] text-red-600">Total Invoiced − Sum of Payments</span>
               </div>
-              <span className="text-base font-bold font-mono text-red-700">KES {formatMoney(balanceDue)}</span>
+              <div className="text-right">
+                <span className="font-mono font-black text-base text-red-600">
+                  KES {formatMoney(outstandingBalance)}
+                </span>
+              </div>
             </div>
-
-            <button
-              type="submit"
-              disabled={isGenerating || !clientName.trim()}
-              className="w-full mt-2 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-3 rounded-xl transition-all shadow-md shadow-red-600/20 disabled:opacity-40 cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-              <span>Download Branded Invoice</span>
-            </button>
           </div>
         </div>
+
+        {/* Action Controls */}
+        <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-charcoal/5">
+          {selectedProjectId && (
+            <button
+              type="button"
+              onClick={async () => {
+                const ok = await recordPaymentsToProjectTracker();
+                if (ok) {
+                  setSyncMessage('Payments successfully written to Project Tracker!');
+                  setTimeout(() => setSyncMessage(null), 5000);
+                } else {
+                  alert('Failed to sync payments to project tracker.');
+                }
+              }}
+              className="w-full sm:w-auto px-5 py-3 rounded-xl border border-charcoal/20 text-xs font-bold text-charcoal hover:bg-cream transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Check className="w-4 h-4 text-emerald-600" />
+              <span>Sync to Project Tracker Now</span>
+            </button>
+          )}
+
+          <button
+            type="submit"
+            disabled={isGenerating || !clientName.trim()}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-8 py-3 rounded-xl transition-all shadow-lg shadow-red-600/20 disabled:opacity-40 cursor-pointer"
+          >
+            {isGenerating ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Generating Invoice PDF...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                <span>Download Official Invoice</span>
+              </>
+            )}
+          </button>
+        </div>
       </form>
+
+      {/* Catalog Manager Modal */}
+      <CatalogManagerModal
+        isOpen={isCatalogOpen}
+        onClose={() => {
+          setIsCatalogOpen(false);
+          setActiveItemIndexForCatalog(null);
+        }}
+        onSelectItem={handleCatalogSelect}
+      />
     </div>
   );
 }

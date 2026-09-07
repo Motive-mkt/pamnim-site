@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, isAdmin } = useAuth();
+  const { user, isStaff, profile } = useAuth();
   const { content, loading } = useCMS();
   const location = useLocation();
 
@@ -107,7 +107,7 @@ export default function Header() {
                 {link.name}
               </Link>
             ))}
-            {isAdmin && (
+            {user && isStaff && (
               <Link 
                 to="/admin" 
                 id="cmd-dashboard-desktop"
@@ -117,6 +117,18 @@ export default function Header() {
                 )}
               >
                 ✦ COMMAND DASHBOARD
+              </Link>
+            )}
+            {user && profile?.role === 'client' && (
+              <Link 
+                to="/client-portal" 
+                id="client-portal-desktop"
+                className={cn(
+                  "font-bold text-xs uppercase tracking-[0.2em] transition-all relative py-1", 
+                  displayLight ? "text-white/80 hover:text-white" : "text-charcoal/80 hover:text-charcoal"
+                )}
+              >
+                ✦ CLIENT PORTAL
               </Link>
             )}
           </nav>
@@ -229,7 +241,7 @@ export default function Header() {
                       </Link>
                     </motion.div>
                   ))}
-                  {isAdmin && (
+                  {user && isStaff && (
                     <motion.div
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -237,9 +249,25 @@ export default function Header() {
                     >
                       <Link
                         to="/admin"
+                        id="cmd-dashboard-mobile"
                         className="font-bold text-xs uppercase tracking-[0.2em] text-ochre/80 hover:text-ochre transition-colors block py-2"
                       >
                         ✦ COMMAND DASHBOARD
+                      </Link>
+                    </motion.div>
+                  )}
+                  {user && profile?.role === 'client' && (
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: navLinks.length * 0.08 }}
+                    >
+                      <Link
+                        to="/client-portal"
+                        id="client-portal-mobile"
+                        className="font-bold text-xs uppercase tracking-[0.2em] text-ochre/80 hover:text-ochre transition-colors block py-2"
+                      >
+                        ✦ CLIENT PORTAL
                       </Link>
                     </motion.div>
                   )}

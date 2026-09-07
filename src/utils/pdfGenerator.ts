@@ -3,8 +3,12 @@ import jsPDF from 'jspdf';
 export interface PDFLineItem {
   id: string;
   description: string;
-  quantity: number;
-  unitPrice: number;
+  quantity?: number;
+  unitPrice?: number;
+  paymentType?: 'Partial' | 'Full' | string;
+  amount?: number;
+  refCode?: string;
+  date?: string;
 }
 
 export interface PDFDocumentData {
@@ -16,7 +20,9 @@ export interface PDFDocumentData {
   clientPhone?: string;
   projectName?: string;
   items: PDFLineItem[];
+  totalInvoiced?: number; // For invoices
   amountPaid?: number; // For invoices
+  balanceDue?: number; // Calculated: totalInvoiced - amountPaid
   notes?: string;
   currencySymbol?: string; // Default 'KES' or '$'
   companyInfo?: {
@@ -203,70 +209,135 @@ export async function generateDocumentPDF(
   yPos = cardY + cardHeight + 8;
 
   // 4. Line Items Table
-  const colDescX = margin;
-  const colDescW = 95;
-  const colQtyX = margin + colDescW;
-  const colQtyW = 20;
-  const colUnitPriceX = colQtyX + colQtyW;
-  const colUnitPriceW = 32;
-  const colTotalX = colUnitPriceX + colUnitPriceW;
-  const colTotalW = 33;
-
-  // Table Header
-  doc.setFillColor(charcoal[0], charcoal[1], charcoal[2]);
-  doc.rect(margin, yPos, contentWidth, 7, 'F');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(255, 255, 255);
-  doc.text('DESCRIPTION', colDescX + 3, yPos + 4.8);
-  doc.text('QTY', colQtyX + colQtyW / 2, yPos + 4.8, { align: 'center' });
-  doc.text('UNIT PRICE', colUnitPriceX + colUnitPriceW - 3, yPos + 4.8, { align: 'right' });
-  doc.text('TOTAL', colTotalX + colTotalW - 3, yPos + 4.8, { align: 'right' });
-
-  yPos += 7;
-
   let subtotal = 0;
 
-  // Table Rows
-  data.items.forEach((item, index) => {
-    const itemQty = Number(item.quantity) || 1;
-    const itemUnitPrice = Number(item.unitPrice) || 0;
-    const itemTotal = itemQty * itemUnitPrice;
-    subtotal += itemTotal;
+  if (isInvoice) {
+    // Invoice Columns: Name / Item (70mm), Payment Type (25mm), Ref Code (35mm), Date (25mm), Amount (25mm)
+    const colNameX = margin;
+    const colNameW = 70;
+    const colTypeX = colNameX + colNameW;
+    const colTypeW = 25;
+    const colRefX = colTypeX + colTypeW;
+    const colRefW = 35;
+    const colDateX = colRefX + colRefW;
+    const colDateW = 25;
+    const colAmountX = colDateX + colDateW;
+    const colAmountW = 25;
 
-    // Check if new page is needed
-    if (yPos > pageHeight - 65) {
-      doc.addPage();
-      yPos = margin;
-    }
-
-    const isEven = index % 2 === 0;
-    if (isEven) {
-      doc.setFillColor(lightGrayBg[0], lightGrayBg[1], lightGrayBg[2]);
-      doc.rect(margin, yPos, contentWidth, 7.5, 'F');
-    }
-
-    doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
-    doc.setLineWidth(0.2);
-    doc.line(margin, yPos + 7.5, pageWidth - margin, yPos + 7.5);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
-
-    // Truncate long descriptions if needed
-    const descText = doc.splitTextToSize(item.description || 'Service/Item', colDescW - 6);
-    doc.text(descText[0], colDescX + 3, yPos + 5);
-
-    doc.text(itemQty.toString(), colQtyX + colQtyW / 2, yPos + 5, { align: 'center' });
-    doc.text(formatMoney(itemUnitPrice), colUnitPriceX + colUnitPriceW - 3, yPos + 5, { align: 'right' });
+    // Header
+    doc.setFillColor(charcoal[0], charcoal[1], charcoal[2]);
+    doc.rect(margin, yPos, contentWidth, 7, 'F');
 
     doc.setFont('helvetica', 'bold');
-    doc.text(formatMoney(itemTotal), colTotalX + colTotalW - 3, yPos + 5, { align: 'right' });
+    doc.setFontSize(7.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text('CLIENT / ITEM', colNameX + 3, yPos + 4.8);
+    doc.text('PAYMENT TYPE', colTypeX + colTypeW / 2, yPos + 4.8, { align: 'center' });
+    doc.text('REF CODE', colRefX + 3, yPos + 4.8);
+    doc.text('DATE', colDateX + colDateW / 2, yPos + 4.8, { align: 'center' });
+    doc.text('AMOUNT', colAmountX + colAmountW - 3, yPos + 4.8, { align: 'right' });
 
-    yPos += 7.5;
-  });
+    yPos += 7;
+
+    // Rows
+    data.items.forEach((item, index) => {
+      const itemAmount = typeof item.amount === 'number' ? item.amount : (Number(item.quantity || 1) * Number(item.unitPrice || 0));
+      subtotal += itemAmount;
+
+      if (yPos > pageHeight - 65) {
+        doc.addPage();
+        yPos = margin;
+      }
+
+      const isEven = index % 2 === 0;
+      if (isEven) {
+        doc.setFillColor(lightGrayBg[0], lightGrayBg[1], lightGrayBg[2]);
+        doc.rect(margin, yPos, contentWidth, 7.5, 'F');
+      }
+
+      doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
+      doc.setLineWidth(0.2);
+      doc.line(margin, yPos + 7.5, pageWidth - margin, yPos + 7.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+
+      const nameText = doc.splitTextToSize(item.description || 'Payment Item', colNameW - 6);
+      doc.text(nameText[0], colNameX + 3, yPos + 5);
+
+      doc.text(item.paymentType || 'Partial', colTypeX + colTypeW / 2, yPos + 5, { align: 'center' });
+      doc.text(item.refCode || '—', colRefX + 3, yPos + 5);
+      doc.text(item.date || '—', colDateX + colDateW / 2, yPos + 5, { align: 'center' });
+
+      doc.setFont('helvetica', 'bold');
+      doc.text(formatMoney(itemAmount), colAmountX + colAmountW - 3, yPos + 5, { align: 'right' });
+
+      yPos += 7.5;
+    });
+  } else {
+    // Quote Columns: Description (95mm), Qty (20mm), Unit Price (32mm), Total (33mm)
+    const colDescX = margin;
+    const colDescW = 95;
+    const colQtyX = margin + colDescW;
+    const colQtyW = 20;
+    const colUnitPriceX = colQtyX + colQtyW;
+    const colUnitPriceW = 32;
+    const colTotalX = colUnitPriceX + colUnitPriceW;
+    const colTotalW = 33;
+
+    // Table Header
+    doc.setFillColor(charcoal[0], charcoal[1], charcoal[2]);
+    doc.rect(margin, yPos, contentWidth, 7, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(255, 255, 255);
+    doc.text('DESCRIPTION / SCOPE', colDescX + 3, yPos + 4.8);
+    doc.text('QTY', colQtyX + colQtyW / 2, yPos + 4.8, { align: 'center' });
+    doc.text('UNIT PRICE', colUnitPriceX + colUnitPriceW - 3, yPos + 4.8, { align: 'right' });
+    doc.text('TOTAL', colTotalX + colTotalW - 3, yPos + 4.8, { align: 'right' });
+
+    yPos += 7;
+
+    // Table Rows
+    data.items.forEach((item, index) => {
+      const itemQty = Number(item.quantity) || 1;
+      const itemUnitPrice = Number(item.unitPrice) || 0;
+      const itemTotal = itemQty * itemUnitPrice;
+      subtotal += itemTotal;
+
+      if (yPos > pageHeight - 65) {
+        doc.addPage();
+        yPos = margin;
+      }
+
+      const isEven = index % 2 === 0;
+      if (isEven) {
+        doc.setFillColor(lightGrayBg[0], lightGrayBg[1], lightGrayBg[2]);
+        doc.rect(margin, yPos, contentWidth, 7.5, 'F');
+      }
+
+      doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
+      doc.setLineWidth(0.2);
+      doc.line(margin, yPos + 7.5, pageWidth - margin, yPos + 7.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+
+      const descText = doc.splitTextToSize(item.description || 'Service/Item', colDescW - 6);
+      doc.text(descText[0], colDescX + 3, yPos + 5);
+
+      doc.text(itemQty.toString(), colQtyX + colQtyW / 2, yPos + 5, { align: 'center' });
+      doc.text(formatMoney(itemUnitPrice), colUnitPriceX + colUnitPriceW - 3, yPos + 5, { align: 'right' });
+
+      doc.setFont('helvetica', 'bold');
+      doc.text(formatMoney(itemTotal), colTotalX + colTotalW - 3, yPos + 5, { align: 'right' });
+
+      yPos += 7.5;
+    });
+  }
 
   yPos += 4;
 
@@ -274,28 +345,35 @@ export async function generateDocumentPDF(
   const summaryBoxW = 75;
   const summaryBoxX = pageWidth - margin - summaryBoxW;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
-  doc.text('Subtotal:', summaryBoxX, yPos + 4);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
-  doc.text(formatMoney(subtotal), pageWidth - margin, yPos + 4, { align: 'right' });
-
-  yPos += 7;
-
   if (isInvoice) {
-    const amountPaid = Number(data.amountPaid) || 0;
-    const balanceDue = subtotal - amountPaid;
+    const totalInvoiced = typeof data.totalInvoiced === 'number' && data.totalInvoiced > 0 
+      ? data.totalInvoiced 
+      : subtotal;
+    const totalPaid = typeof data.amountPaid === 'number' 
+      ? data.amountPaid 
+      : subtotal;
+    const balanceDue = typeof data.balanceDue === 'number' 
+      ? data.balanceDue 
+      : (totalInvoiced - totalPaid);
 
     doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
     doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
-    doc.text('Amount Paid:', summaryBoxX, yPos + 4);
+    doc.text('Total Invoiced:', summaryBoxX, yPos + 4);
 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
-    doc.text(formatMoney(amountPaid), pageWidth - margin, yPos + 4, { align: 'right' });
+    doc.text(formatMoney(totalInvoiced), pageWidth - margin, yPos + 4, { align: 'right' });
+
+    yPos += 7;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+    doc.text('Payments Logged:', summaryBoxX, yPos + 4);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+    doc.text(formatMoney(totalPaid), pageWidth - margin, yPos + 4, { align: 'right' });
 
     yPos += 7;
 
@@ -309,12 +387,23 @@ export async function generateDocumentPDF(
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(crimsonRed[0], crimsonRed[1], crimsonRed[2]);
-    doc.text('Balance Due:', summaryBoxX + 2, yPos + 5.8);
-    doc.text(formatMoney(balanceDue), pageWidth - margin - 2, yPos + 5.8, { align: 'right' });
+    doc.text('Outstanding Balance:', summaryBoxX + 2, yPos + 5.8);
+    doc.text(formatMoney(Math.max(0, balanceDue)), pageWidth - margin - 2, yPos + 5.8, { align: 'right' });
 
     yPos += 14;
   } else {
     // Total for Quote (Gold)
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+    doc.text('Subtotal:', summaryBoxX, yPos + 4);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+    doc.text(formatMoney(subtotal), pageWidth - margin, yPos + 4, { align: 'right' });
+
+    yPos += 7;
+
     doc.setFillColor(254, 249, 239); // Light ochre
     doc.roundedRect(summaryBoxX - 2, yPos, summaryBoxW + 2, 8.5, 1.5, 1.5, 'F');
     doc.setDrawColor(goldOchre[0], goldOchre[1], goldOchre[2]);

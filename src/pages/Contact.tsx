@@ -11,6 +11,7 @@ export default function ContactPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
     projectType: 'Residential Interior',
     message: ''
   });
@@ -139,18 +140,30 @@ export default function ContactPage() {
                         />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase text-charcoal/40">Project Type</label>
-                      <select 
-                        value={formData.projectType}
-                        onChange={(e) => setFormData({...formData, projectType: e.target.value})}
-                        className="w-full bg-cream border-none p-5 rounded-2xl focus:ring-2 focus:ring-ochre outline-none appearance-none"
-                      >
-                        <option>Residential Interior</option>
-                        <option>Commercial Space</option>
-                        <option>Outdoor Living</option>
-                        <option>Other</option>
-                      </select>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase text-charcoal/40">Project Type</label>
+                        <select 
+                          value={formData.projectType}
+                          onChange={(e) => setFormData({...formData, projectType: e.target.value})}
+                          className="w-full bg-cream border-none p-5 rounded-2xl focus:ring-2 focus:ring-ochre outline-none appearance-none"
+                        >
+                          <option>Residential Interior</option>
+                          <option>Commercial Space</option>
+                          <option>Outdoor Living</option>
+                          <option>Other</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase text-charcoal/40">Phone / WhatsApp Number</label>
+                        <input 
+                          type="tel"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                          className="w-full bg-cream border-none p-5 rounded-2xl focus:ring-2 focus:ring-ochre outline-none" 
+                          placeholder="e.g. 0714 984 268" 
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-bold uppercase text-charcoal/40">Message</label>

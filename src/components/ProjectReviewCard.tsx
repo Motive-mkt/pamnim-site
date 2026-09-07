@@ -51,10 +51,8 @@ export default function ProjectReviewCard({ project }: ProjectReviewCardProps) {
     checkExistingReview();
   }, [project.id, profile?.uid]);
 
-  const placeId = (import.meta as any).env?.VITE_GOOGLE_PLACE_ID as string | undefined;
-  const googleReviewUrl = placeId && placeId.trim()
-    ? `https://search.google.com/local/writereview?placeid=${placeId.trim()}`
-    : 'https://www.google.com/maps/search/?api=1&query=Pamnim+Interior+Designers+Nairobi';
+  const placeId = ((import.meta as any).env?.VITE_GOOGLE_PLACE_ID as string | undefined) || 'ChIJl37WkPj_sokRNChh2NN5__o';
+  const googleReviewUrl = `https://search.google.com/local/writereview?placeid=${placeId.trim()}`;
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();

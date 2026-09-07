@@ -17,6 +17,7 @@ import ServicesPage from './pages/Services';
 import CategoryDetailPage from './pages/CategoryDetail';
 import ServiceDetailPage from './pages/ServiceDetail';
 import ProjectTrackerPage from './pages/ProjectTrackerPage';
+import ClientPortal from './pages/dashboards/ClientPortal';
 import { useAuth } from './hooks/useAuth';
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
@@ -53,6 +54,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/client-portal" 
+          element={
+            <ProtectedRoute>
+              <ClientPortal />
             </ProtectedRoute>
           } 
         />

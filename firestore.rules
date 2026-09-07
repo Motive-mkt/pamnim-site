@@ -55,7 +55,7 @@ service cloud.firestore {
              data.name is string && data.name.size() <= 200 &&
              data.email is string && data.email.size() <= 200 &&
              data.message is string && data.message.size() <= 5000 &&
-             data.status in ['new', 'read', 'responded'] &&
+             data.status in ['new', 'read', 'responded', 'replied'] &&
              data.createdAt is string && data.createdAt.size() <= 100;
     }
 
@@ -178,6 +178,20 @@ service cloud.firestore {
     match /inquiries/{inquiryId} {
       allow create: if isValidInquiry(request.resource.data);
       allow read, update, delete: if isStaff();
+    }
+    
+    // Services & Materials Catalog (Owner / Staff access only)
+    match /servicesMaterials/{itemId} {
+      allow read, write: if isStaff();
+    }
+
+    // Invoices & Quotes Archives (Owner / Staff access only)
+    match /invoices/{invoiceId} {
+      allow read, write: if isStaff();
+    }
+
+    match /quotes/{quoteId} {
+      allow read, write: if isStaff();
     }
     
     // Detailed Services

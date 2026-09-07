@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
-import { collection, query, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, getDoc, orderBy, where } from 'firebase/firestore';
+import { collection, query, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, getDoc, orderBy, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
 import { 
@@ -274,10 +274,52 @@ export default function OwnerDashboard() {
     setManualSlideUrl('');
   };
 
+  const isProjectActive = (p: any) => {
+    const isComplete = p.currentStageName?.toLowerCase() === 'complete' ||
+                       p.currentStageName?.toLowerCase() === 'finished' ||
+                       p.currentStageIndex === 3 ||
+                       p.isFinished === true ||
+                       p.status === 'complete' ||
+                       p.status === 'finished';
+    return !isComplete;
+  };
+
   const [stats, setStats] = useState({
     activeProjects: 0,
     totalClients: 0
   });
+
+  // WhatsApp Reply state
+  const [whatsAppModalInquiry, setWhatsAppModalInquiry] = useState<any | null>(null);
+  const [whatsAppPhone, setWhatsAppPhone] = useState<string>('');
+  const [whatsAppMessage, setWhatsAppMessage] = useState<string>('');
+
+  // Live real-time listener for projects & active projects count
+  useEffect(() => {
+    const q = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setProjects(list);
+      const activeCount = list.filter(isProjectActive).length;
+      setStats(prev => ({
+        ...prev,
+        activeProjects: activeCount
+      }));
+    }, (err) => console.error('Error listening to projects:', err));
+
+    return () => unsub();
+  }, []);
+
+  // Live real-time listener for inquiries
+  useEffect(() => {
+    const q = query(collection(db, 'inquiries'), orderBy('createdAt', 'desc'));
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setInquiries(list);
+    }, (err) => console.error('Error listening to inquiries:', err));
+
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -310,7 +352,7 @@ export default function OwnerDashboard() {
       setClients(profilesList.filter(p => p.role === 'client'));
 
       setStats({
-        activeProjects: projectsList.filter(p => p.status === 'active').length,
+        activeProjects: projectsList.filter(isProjectActive).length,
         totalClients: profilesList.filter(p => p.role === 'client').length
       });
 
@@ -674,6 +716,47 @@ export default function OwnerDashboard() {
     await updateDoc(doc(db, 'inquiries', id), { status });
     const snap = await getDocs(query(collection(db, 'inquiries'), orderBy('createdAt', 'desc')));
     setInquiries(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+  };
+
+  const handleOpenWhatsAppReply = (inquiry: any) => {
+    setWhatsAppModalInquiry(inquiry);
+    const rawPhone = inquiry.phone || '';
+    setWhatsAppPhone(rawPhone);
+    const defaultMsg = `Hello ${inquiry.name || 'there'}, thank you for reaching out to Pamnim Interior Designers regarding your ${inquiry.projectType || 'interior design'} inquiry! We would love to discuss your space and answer any questions. When would be a good time for a quick discovery call or consultation?`;
+    setWhatsAppMessage(defaultMsg);
+  };
+
+  const handleSendWhatsAppReply = async () => {
+    if (!whatsAppModalInquiry) return;
+    
+    // Format phone: remove non-digits
+    let cleanPhone = whatsAppPhone.replace(/[^0-9]/g, '');
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = '254' + cleanPhone.slice(1);
+    } else if (!cleanPhone.startsWith('254') && cleanPhone.length === 9) {
+      cleanPhone = '254' + cleanPhone;
+    }
+
+    if (!cleanPhone || cleanPhone.length < 9) {
+      alert('Please enter a valid phone number for WhatsApp (e.g. 0714 984 268 or 254714984268).');
+      return;
+    }
+
+    // Auto status update: update inquiry status in Firestore to 'replied' at the exact moment button is clicked
+    try {
+      await updateDoc(doc(db, 'inquiries', whatsAppModalInquiry.id), { 
+        status: 'replied',
+        repliedAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('Error auto-updating inquiry status on WhatsApp reply:', err);
+    }
+
+    // Manual-send handoff: opens WhatsApp link in a new tab with pre-filled message
+    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(whatsAppMessage)}`;
+    window.open(waUrl, '_blank');
+
+    setWhatsAppModalInquiry(null);
   };
 
   const handleCreateProject = async (e: React.FormEvent) => {
@@ -1388,49 +1471,125 @@ export default function OwnerDashboard() {
       )}
 
       {activeTab === 'inquiries' && (
-        <div className="bg-white rounded-3xl p-8 border border-charcoal/5 shadow-sm">
-           <h2 className="text-2xl font-bold mb-8">Customer Inquiries</h2>
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-charcoal/5 shadow-sm">
+           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+             <div>
+               <h2 className="text-2xl font-bold">Customer Inquiries</h2>
+               <p className="text-xs text-charcoal/60 mt-0.5">
+                 Review potential clients, reply instantly via WhatsApp, and manage inquiry statuses.
+               </p>
+             </div>
+             <div className="text-xs text-charcoal/50 font-medium">
+               {inquiries.filter(i => i.status === 'new').length} new inquiry(ies)
+             </div>
+           </div>
+
            <div className="space-y-4">
               {inquiries.map(inquiry => (
                 <div key={inquiry.id} className={cn(
-                  "p-6 rounded-2xl border transition-all",
-                  inquiry.status === 'new' ? "bg-ochre/5 border-ochre/20" : "bg-cream/30 border-charcoal/5"
+                  "p-5 sm:p-6 rounded-2xl border transition-all",
+                  inquiry.status === 'new' 
+                    ? "bg-ochre/5 border-ochre/30 shadow-sm" 
+                    : inquiry.status === 'replied'
+                    ? "bg-emerald-50/40 border-emerald-200"
+                    : "bg-cream/30 border-charcoal/5"
                 )}>
-                   <div className="flex justify-between items-start mb-4">
+                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
                       <div>
-                         <div className="flex items-center gap-3 mb-1">
-                            <h3 className="font-bold text-lg">{inquiry.name}</h3>
+                         <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+                            <h3 className="font-bold text-lg text-charcoal">{inquiry.name}</h3>
                             {inquiry.status === 'new' && (
-                              <span className="bg-ochre text-white text-[10px] px-2 py-0.5 rounded-full font-black uppercase">New</span>
+                              <span className="bg-ochre text-white text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+                                New
+                              </span>
+                            )}
+                            {inquiry.status === 'replied' && (
+                              <span className="bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider flex items-center gap-1">
+                                <Check className="w-3 h-3" />
+                                <span>Replied</span>
+                              </span>
+                            )}
+                            {inquiry.status === 'responded' && (
+                              <span className="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+                                Responded
+                              </span>
+                            )}
+                            {inquiry.status === 'read' && (
+                              <span className="bg-charcoal/20 text-charcoal/70 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                                Read
+                              </span>
                             )}
                          </div>
-                         <p className="text-sm text-charcoal/60">{inquiry.email} • {inquiry.projectType}</p>
+
+                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-charcoal/60 font-medium">
+                            <span className="text-charcoal/90 font-semibold">{inquiry.email}</span>
+                            {inquiry.phone && (
+                              <>
+                                <span>•</span>
+                                <span className="font-mono text-emerald-700 font-bold">{inquiry.phone}</span>
+                              </>
+                            )}
+                            <span>•</span>
+                            <span className="text-ochre-dark font-semibold">{inquiry.projectType}</span>
+                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+
+                      {/* Action controls */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                         {/* Reply on WhatsApp Button */}
+                         <button 
+                           type="button"
+                           onClick={() => handleOpenWhatsAppReply(inquiry)}
+                           className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all shadow-sm shadow-emerald-600/20 cursor-pointer"
+                           title="Opens WhatsApp in a new tab with pre-filled message"
+                         >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>Reply on WhatsApp</span>
+                            <span className="text-[9px] bg-emerald-800/80 text-emerald-100 px-1 py-0.5 rounded font-normal">
+                              opens WhatsApp
+                            </span>
+                         </button>
+
                          <select 
-                           value={inquiry.status}
+                           value={inquiry.status || 'new'}
                            onChange={(e) => handleUpdateInquiryStatus(inquiry.id, e.target.value)}
-                           className="text-xs font-bold uppercase p-2 border-none bg-white rounded-lg focus:ring-0 cursor-pointer"
+                           className="text-xs font-bold uppercase p-2 border border-charcoal/10 bg-white rounded-xl focus:ring-0 cursor-pointer"
                          >
                             <option value="new">Mark as New</option>
                             <option value="read">Mark as Read</option>
+                            <option value="replied">Replied</option>
                             <option value="responded">Responded</option>
                          </select>
+
                          <button 
+                           type="button"
                            onClick={() => handleDeleteInquiry(inquiry.id)}
-                           className="p-2 text-charcoal/20 hover:text-red-500 transition-colors"
+                           className="p-2 text-charcoal/30 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                           title="Delete inquiry"
                          >
                             <Trash2 className="w-4 h-4" />
                          </button>
                       </div>
                    </div>
-                   <p className="text-charcoal/80 leading-relaxed bg-white/50 p-4 rounded-xl italic">"{inquiry.message}"</p>
-                   <p className="text-[10px] text-charcoal/30 mt-4 uppercase font-bold tracking-widest">{new Date(inquiry.createdAt).toLocaleString()}</p>
+
+                   <p className="text-charcoal/80 leading-relaxed bg-white/70 p-4 rounded-xl italic text-xs sm:text-sm border border-charcoal/5">
+                     "{inquiry.message}"
+                   </p>
+
+                   <div className="flex items-center justify-between mt-3 text-[10px] text-charcoal/40 uppercase font-bold tracking-widest">
+                     <span>{new Date(inquiry.createdAt).toLocaleString()}</span>
+                     {inquiry.repliedAt && (
+                       <span className="text-emerald-600 font-semibold normal-case">
+                         Replied on {new Date(inquiry.repliedAt).toLocaleDateString()}
+                       </span>
+                     )}
+                   </div>
                 </div>
               ))}
+
               {inquiries.length === 0 && (
                 <div className="py-20 text-center border-2 border-dashed border-charcoal/10 rounded-3xl">
-                  <p className="text-charcoal/30 font-bold">No inquiries yet.</p>
+                  <p className="text-charcoal/30 font-bold">No customer inquiries yet.</p>
                 </div>
               )}
            </div>
@@ -2550,6 +2709,97 @@ export default function OwnerDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp Reply Modal (Manual-send handoff) */}
+      {whatsAppModalInquiry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-charcoal/10 space-y-6">
+            <div className="flex items-center justify-between border-b border-charcoal/5 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-charcoal">Reply via WhatsApp</h3>
+                  <p className="text-xs text-charcoal/50">Manual-send handoff to {whatsAppModalInquiry.name}</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setWhatsAppModalInquiry(null)}
+                className="p-2 text-charcoal/40 hover:text-charcoal hover:bg-cream rounded-xl transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase text-charcoal/60 mb-1.5">
+                  Client WhatsApp Phone Number *
+                </label>
+                <input 
+                  type="tel"
+                  placeholder="e.g. 0714 984 268 or +254 714 984 268"
+                  value={whatsAppPhone}
+                  onChange={(e) => setWhatsAppPhone(e.target.value)}
+                  className="w-full p-3 bg-cream/40 border border-charcoal/10 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-emerald-600"
+                />
+                <p className="text-[11px] text-charcoal/50 mt-1">
+                  Accepts Kenyan format (07... / 01...) or international (+254...).
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-charcoal/60 mb-1.5">
+                  Pre-filled Message
+                </label>
+                <textarea 
+                  rows={4}
+                  value={whatsAppMessage}
+                  onChange={(e) => setWhatsAppMessage(e.target.value)}
+                  className="w-full p-3 bg-cream/40 border border-charcoal/10 rounded-xl text-xs text-charcoal/80 focus:outline-none focus:border-emerald-600 font-sans leading-relaxed"
+                />
+                <p className="text-[11px] text-charcoal/50 mt-1">
+                  You can fine-tune this text here or adjust it directly inside WhatsApp after it opens.
+                </p>
+              </div>
+
+              <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200/70 text-xs text-emerald-900 space-y-1">
+                <p className="font-bold flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Manual-send handoff notice:</span>
+                </p>
+                <p className="text-[11px] text-emerald-800/90 leading-relaxed">
+                  Clicking the button below opens WhatsApp in a new tab with your pre-filled message. You still tap the send button inside WhatsApp. At that moment, this inquiry will automatically be marked as <strong>Replied</strong> in Firestore.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setWhatsAppModalInquiry(null)}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-charcoal/10 text-xs font-bold text-charcoal/70 hover:bg-cream transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSendWhatsAppReply}
+                disabled={!whatsAppPhone.trim()}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-40 cursor-pointer"
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span>Open in WhatsApp & Mark Replied</span>
+                <span className="text-[10px] bg-emerald-800 text-emerald-100 px-1.5 py-0.5 rounded font-normal">
+                  opens WhatsApp
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       )}

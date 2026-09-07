@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import { collection, query, getDocs, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -9,12 +9,23 @@ import ProjectChat from '../../components/ProjectChat';
 
 export default function ClientPortal() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { profile } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [chatTaggedContext, setChatTaggedContext] = useState<string | undefined>();
   const [activeTab, setActiveTab] = useState<'tracker' | 'chat'>('tracker');
+
+  const isProjectActive = (p: any) => {
+    const isComplete = p.currentStageName?.toLowerCase() === 'complete' ||
+                       p.currentStageName?.toLowerCase() === 'finished' ||
+                       p.currentStageIndex === 3 ||
+                       p.isFinished === true ||
+                       p.status === 'complete' ||
+                       p.status === 'finished';
+    return !isComplete;
+  };
 
   useEffect(() => {
     if (profile?.uid) {
@@ -30,6 +41,14 @@ export default function ClientPortal() {
       const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setProjects(list);
       if (list.length > 0) setSelectedProject(list[0]);
+
+      // If exactly one active project, route straight into that project's tracker
+      const activeList = list.filter(isProjectActive);
+      const showListOnly = searchParams.get('list') === 'true';
+      if (!showListOnly && activeList.length === 1) {
+        navigate(`/tracker/${activeList[0].id}`, { replace: true });
+        return;
+      }
     } catch (err) {
       console.error('Error fetching client project:', err);
     } finally {
