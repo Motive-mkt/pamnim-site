@@ -8,7 +8,6 @@ import {
   AlertCircle, ChevronRight, Lock, MessageSquare, Play, Trash2, Edit3, ArrowRight, Upload
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import ExpenseTracker from './ExpenseTracker';
 
 export const STAGES = ['Started', 'In Progress', 'Almost Done', 'Complete'] as const;
 export type StageType = typeof STAGES[number];
@@ -601,11 +600,6 @@ export default function ProjectTracker({
           </div>
         )}
       </div>
-
-      {/* Internal Expense Tracker (Staff & Owner Only) */}
-      {!isReadOnly && (
-        <ExpenseTracker projectId={project.id} isReadOnly={isReadOnly} />
-      )}
     </div>
   );
 }

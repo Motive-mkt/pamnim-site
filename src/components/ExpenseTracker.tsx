@@ -208,9 +208,9 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
             <div className="w-8 h-8 rounded-xl bg-ochre/10 text-ochre flex items-center justify-center">
               <Receipt className="w-4 h-4" />
             </div>
-            <h3 className="text-xl font-bold text-charcoal">Project Expenses</h3>
+            <h3 className="text-xl font-bold text-charcoal">Internal Project Expenses — Staff Only</h3>
             <span className="text-[10px] font-bold uppercase tracking-wider bg-charcoal/5 text-charcoal/60 px-2 py-0.5 rounded-md">
-              Internal Only
+              Staff Only
             </span>
           </div>
           <p className="text-xs text-charcoal/60">

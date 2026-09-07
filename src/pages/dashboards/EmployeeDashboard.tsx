@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import { collection, query, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
-import { Briefcase, MessageSquare, Plus, Users } from 'lucide-react';
+import { Briefcase, MessageSquare, Plus, Users, ArrowRight, Calendar, User } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import ProjectTracker from '../../components/ProjectTracker';
 import ProjectChat from '../../components/ProjectChat';
 import StartProjectModal from '../../components/StartProjectModal';
 import UserManagementView from '../../components/UserManagementView';
 
 export default function EmployeeDashboard() {
+  const navigate = useNavigate();
   const { profile, canApproveSignups } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
@@ -134,62 +135,49 @@ export default function EmployeeDashboard() {
                 No active projects found. Click "Start Project" above to create one.
               </div>
             ) : (
-              <div className="grid lg:grid-cols-3 gap-8">
-                {/* Projects Sidebar Selector */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-charcoal/40 uppercase tracking-widest px-1">Projects</h4>
-                  {projects.map((proj) => {
-                    const isSelected = (selectedProject?.id || projects[0]?.id) === proj.id;
-                    return (
-                      <button
-                        key={proj.id}
-                        onClick={() => setSelectedProject(proj)}
-                        className={cn(
-                          "w-full text-left p-5 rounded-2xl border transition-all text-sm",
-                          isSelected
-                            ? "bg-ochre text-white border-ochre shadow-md shadow-ochre/20"
-                            : "bg-white border-charcoal/10 hover:border-ochre/50 hover:bg-cream/50"
-                        )}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full uppercase", isSelected ? "bg-white/20 text-white" : "bg-ochre/10 text-ochre")}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {projects.map((proj) => {
+                  return (
+                    <div
+                      key={proj.id}
+                      className="bg-white rounded-3xl p-6 border border-charcoal/10 shadow-sm flex flex-col justify-between space-y-5 hover:shadow-md transition-shadow"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-ochre/10 text-ochre border border-ochre/20">
                             {proj.currentStageName || 'Started'}
                           </span>
-                          <span className={cn("text-xs font-semibold truncate max-w-[160px]", isSelected ? "text-white/80" : "text-charcoal/50")}>
+                          <span className="text-[10px] font-semibold text-charcoal/50 truncate max-w-[150px]">
                             {proj.selectedServices && proj.selectedServices.length > 0
-                              ? `${proj.selectedServices.length} Included Scopes`
-                              : (proj.serviceName || proj.categoryTitle || 'Service')}
+                              ? `${proj.selectedServices.length} Scopes`
+                              : (proj.serviceName || proj.categoryTitle || 'Interior')}
                           </span>
                         </div>
-                        <h5 className="font-bold text-base mb-1">{proj.name}</h5>
-                        <p className={cn("text-xs", isSelected ? "text-white/80" : "text-charcoal/60")}>
-                          Client: {proj.clientName}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
 
-                {/* Tracker Component */}
-                <div className="lg:col-span-2">
-                  {(() => {
-                    const activeProj = selectedProject || projects[0];
-                    if (!activeProj) return null;
-                    return (
-                      <ProjectTracker
-                        project={activeProj}
-                        isReadOnly={false}
-                        onOpenChatWithTag={(taggedCtx) => {
-                          setChatTaggedContext(taggedCtx);
-                          const clientMatch = clients.find(c => c.uid === activeProj.clientId || c.id === activeProj.clientId);
-                          if (clientMatch) setSelectedChatClient(clientMatch);
-                          setActiveTab('chat');
-                        }}
-                        onProjectUpdated={fetchData}
-                      />
-                    );
-                  })()}
-                </div>
+                        <div>
+                          <h4 className="font-bold text-lg text-charcoal mb-1">{proj.name}</h4>
+                          <p className="text-xs text-charcoal/60 flex items-center gap-1.5">
+                            <User className="w-3.5 h-3.5 text-ochre" /> Client: <span className="font-semibold text-charcoal">{proj.clientName}</span>
+                          </p>
+                        </div>
+
+                        {proj.createdAt && (
+                          <p className="text-[11px] text-charcoal/40 flex items-center gap-1">
+                            <Calendar className="w-3 h-3" /> Started: {new Date(proj.createdAt).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => navigate(`/tracker/${proj.id}`)}
+                        className="w-full py-2.5 px-4 rounded-xl bg-ochre text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm hover:bg-ochre-dark transition-all cursor-pointer"
+                      >
+                        <span>View Tracker</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 

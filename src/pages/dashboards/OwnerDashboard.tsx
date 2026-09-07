@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import { collection, query, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, getDoc, orderBy, where } from 'firebase/firestore';
 import { db, auth } from '../../lib/firebase';
@@ -7,13 +8,12 @@ import {
   Plus, Users, Briefcase, Edit2, Trash2, CheckCircle2, Clock, Globe, UserPlus, Mail,
   Home, Palette, LayoutGrid, PaintBucket, RefreshCcw, MessageSquare, HelpCircle, Film, Sparkles,
   Image as ImageIcon, Copy, Check, ArrowUp, ArrowDown, Upload, X, Sparkle, DollarSign, Save, AlertCircle,
-  FileText, FileSignature
+  FileText, FileSignature, ArrowRight
 } from 'lucide-react';
 import { useCMS } from '../../hooks/useCMS';
 import { refineDraftCopy } from '../../services/geminiService';
 import { getCloudinaryVideoPoster } from '../../services/cloudinaryService';
 import { serviceCategories } from '../../data/servicesData';
-import ProjectTracker from '../../components/ProjectTracker';
 import ProjectChat from '../../components/ProjectChat';
 import StartProjectModal from '../../components/StartProjectModal';
 import UserManagementView from '../../components/UserManagementView';
@@ -66,6 +66,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 }
 
 export default function OwnerDashboard() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'invoices' | 'quotes' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat'>('overview');
   const [projects, setProjects] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
@@ -1029,13 +1030,11 @@ export default function OwnerDashboard() {
                             </td>
                             <td className="p-4 text-right">
                               <button
-                                onClick={() => setSelectedProject(proj)}
-                                className={cn(
-                                  "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all",
-                                  isSelected ? "bg-ochre text-white shadow-sm" : "bg-cream text-charcoal hover:bg-ochre hover:text-white"
-                                )}
+                                onClick={() => navigate(`/tracker/${proj.id}`)}
+                                className="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-ochre text-white hover:bg-ochre-dark shadow-sm flex items-center gap-1.5 ml-auto cursor-pointer"
                               >
-                                {isSelected ? 'Viewing Tracker' : 'Select / Edit'}
+                                <span>View Tracker</span>
+                                <ArrowRight className="w-3.5 h-3.5" />
                               </button>
                             </td>
                           </tr>
@@ -1049,15 +1048,11 @@ export default function OwnerDashboard() {
                 <div className="block md:hidden space-y-4">
                   <h3 className="text-xs font-bold text-charcoal/40 uppercase tracking-widest px-1">Projects List</h3>
                   {projects.map((proj) => {
-                    const isSelected = (selectedProject?.id || projects[0]?.id) === proj.id;
                     const projStaff = staff.filter(s => proj.employeeIds?.includes(s.uid || s.id) || proj.assignedStaffUids?.includes(s.uid || s.id));
                     return (
                       <div 
                         key={proj.id}
-                        className={cn(
-                          "p-5 rounded-2xl border transition-all space-y-3",
-                          isSelected ? "bg-cream/60 border-ochre shadow-md" : "bg-white border-charcoal/10"
-                        )}
+                        className="p-5 rounded-2xl border bg-white border-charcoal/10 shadow-sm space-y-3"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div>
@@ -1087,64 +1082,16 @@ export default function OwnerDashboard() {
                           </div>
 
                           <button
-                            onClick={() => setSelectedProject(proj)}
-                            className={cn(
-                              "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5",
-                              isSelected ? "bg-ochre text-white shadow-sm" : "bg-cream text-charcoal hover:bg-ochre hover:text-white"
-                            )}
+                            onClick={() => navigate(`/tracker/${proj.id}`)}
+                            className="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 bg-ochre text-white hover:bg-ochre-dark shadow-sm cursor-pointer"
                           >
-                            <Edit2 className="w-3.5 h-3.5" />
-                            {isSelected ? 'Active Tracker' : 'Edit Project'}
+                            <span>View Tracker</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
                     );
                   })}
-                </div>
-
-                {/* Selected Project Interactive Tracker Component */}
-                <div className="space-y-6">
-                  {(() => {
-                    const activeProj = selectedProject || projects[0];
-                    if (!activeProj) return null;
-                    return (
-                      <>
-                        {/* Project Financials & Total Cost Settings */}
-                        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-charcoal/10 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-xl bg-ochre/10 text-ochre flex items-center justify-center">
-                                <DollarSign className="w-4 h-4" />
-                              </div>
-                              <h3 className="text-lg font-bold text-charcoal">Total Project Cost</h3>
-                            </div>
-                            <p className="text-xs text-charcoal/60 max-w-xl">
-                              Set or update the agreed contract price for <span className="font-semibold text-charcoal">{activeProj.name}</span>. This value is used by the payment tracker to compute balances and milestone payments.
-                            </p>
-                          </div>
-
-                          <ProjectCostEditor
-                            project={activeProj}
-                            onSaveCost={handleSaveProjectCost}
-                            isSaving={savingCostProjectId === activeProj.id}
-                            feedback={costSaveFeedback?.id === activeProj.id ? costSaveFeedback : null}
-                          />
-                        </div>
-
-                        <ProjectTracker
-                          project={activeProj}
-                          isReadOnly={false}
-                          onOpenChatWithTag={(taggedCtx) => {
-                            setChatTaggedContext(taggedCtx);
-                            const clientMatch = clients.find(c => c.uid === activeProj.clientId || c.id === activeProj.clientId);
-                            if (clientMatch) setSelectedChatClient(clientMatch);
-                            setActiveTab('chat');
-                          }}
-                          onProjectUpdated={fetchData}
-                        />
-                      </>
-                    );
-                  })()}
                 </div>
               </div>
             )}
@@ -2620,116 +2567,6 @@ function StatCard({ label, value, icon: Icon, color }: any) {
       <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center", color)}>
         <Icon className="w-8 h-8" />
       </div>
-    </div>
-  );
-}
-
-function ProjectCostEditor({ 
-  project, 
-  onSaveCost, 
-  isSaving, 
-  feedback 
-}: { 
-  project: any; 
-  onSaveCost: (projectId: string, cost: string | number) => Promise<void>; 
-  isSaving: boolean; 
-  feedback: { type: 'success' | 'error'; message: string } | null;
-}) {
-  const [costInput, setCostInput] = useState<string>(String(project.totalCost ?? 0));
-  const [localError, setLocalError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setCostInput(String(project.totalCost ?? 0));
-    setLocalError(null);
-  }, [project.id, project.totalCost]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLocalError(null);
-
-    const trimmed = costInput.trim();
-    if (trimmed === '') {
-      setLocalError('Cost cannot be empty. Please enter a valid number.');
-      return;
-    }
-    const num = Number(trimmed);
-    if (isNaN(num)) {
-      setLocalError('Please enter a valid numeric value.');
-      return;
-    }
-    if (num < 0) {
-      setLocalError('Total Project Cost cannot be negative.');
-      return;
-    }
-
-    onSaveCost(project.id, num);
-  };
-
-  const currentSavedCost = project.totalCost ?? 0;
-  const hasChanged = Number(costInput) !== currentSavedCost;
-
-  return (
-    <div className="flex flex-col gap-2 shrink-0">
-      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-        <div className="relative">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/40 font-bold text-sm select-none">$</span>
-          <input
-            type="number"
-            min="0"
-            step="any"
-            value={costInput}
-            onChange={(e) => {
-              setCostInput(e.target.value);
-              setLocalError(null);
-            }}
-            placeholder="0.00"
-            aria-label="Total Project Cost"
-            className={cn(
-              "w-full sm:w-44 pl-8 pr-3 py-2.5 bg-cream/50 border rounded-xl text-sm font-bold text-charcoal focus:outline-none transition-all",
-              localError || feedback?.type === 'error' ? "border-red-400 focus:border-red-500 bg-red-50/30" : "border-charcoal/15 focus:border-ochre focus:bg-white"
-            )}
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={isSaving}
-          className={cn(
-            "px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-sm cursor-pointer",
-            isSaving 
-              ? "bg-charcoal/20 text-charcoal/60 cursor-not-allowed" 
-              : hasChanged 
-                ? "bg-ochre text-white hover:bg-ochre-dark shadow-ochre/20" 
-                : "bg-charcoal text-white hover:bg-charcoal/80"
-          )}
-        >
-          {isSaving ? (
-            <>
-              <RefreshCcw className="w-3.5 h-3.5 animate-spin" />
-              <span>Saving...</span>
-            </>
-          ) : (
-            <>
-              <Save className="w-3.5 h-3.5" />
-              <span>Save Cost</span>
-            </>
-          )}
-        </button>
-      </form>
-
-      {(localError || feedback) && (
-        <div className={cn(
-          "text-xs font-medium px-2.5 py-1.5 rounded-lg flex items-center gap-1.5",
-          (localError || feedback?.type === 'error') ? "text-red-700 bg-red-50 border border-red-200" : "text-emerald-800 bg-emerald-50 border border-emerald-200"
-        )}>
-          {(localError || feedback?.type === 'error') ? (
-            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600" />
-          ) : (
-            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
-          )}
-          <span>{localError || feedback?.message}</span>
-        </div>
-      )}
     </div>
   );
 }

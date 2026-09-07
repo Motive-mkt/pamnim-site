@@ -115,6 +115,21 @@
         "images": { "type": "array", "items": { "type": "string" } }
       },
       "required": ["slug", "categoryId", "name", "desc"]
+    },
+    "Review": {
+      "title": "Customer Review",
+      "description": "Reviews and ratings submitted by clients.",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "projectName": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "rating": { "type": "number", "minimum": 1, "maximum": 5 },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["projectId", "clientId", "rating"]
     }
   },
   "firestore": {
@@ -149,6 +164,10 @@
     "detailedServices": {
       "schema": "DetailedService",
       "description": "CMS content for the 12 dynamic sub-services."
+    },
+    "reviews": {
+      "schema": "Review",
+      "description": "Client project feedback and star ratings."
     }
   }
 }

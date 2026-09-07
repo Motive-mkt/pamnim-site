@@ -26,6 +26,9 @@ export default function StartProjectModal({ isOpen, onClose, clients, onProjectS
   const [selectedClientId, setSelectedClientId] = useState('');
   const [selectedItems, setSelectedItems] = useState<SelectedScopeItem[]>([]);
   const [projectNameOverride, setProjectNameOverride] = useState('');
+  const [initialPaymentAmount, setInitialPaymentAmount] = useState('');
+  const [initialPaymentMethod, setInitialPaymentMethod] = useState<'mpesa' | 'bank' | 'cash' | 'card'>('mpesa');
+  const [initialPaymentReference, setInitialPaymentReference] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -112,7 +115,7 @@ export default function StartProjectModal({ isOpen, onClose, clients, onProjectS
     setError('');
 
     try {
-      await addDoc(collection(db, 'projects'), {
+      const projectDocRef = await addDoc(collection(db, 'projects'), {
         name: finalProjectName,
         clientId: client.uid || client.id,
         clientName: client.name,
@@ -124,12 +127,26 @@ export default function StartProjectModal({ isOpen, onClose, clients, onProjectS
         currentStageName: 'Started',
         stages: ['Started', 'In Progress', 'Almost Done', 'Complete'],
         isFinished: false,
+        totalCost: 0,
         startedByUid: profile?.uid,
         startedByName: profile?.name || 'Staff',
         employeeIds: [profile?.uid],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
+
+      // Write initial partial payment if specified
+      const initialAmt = parseFloat(initialPaymentAmount);
+      if (!isNaN(initialAmt) && initialAmt > 0) {
+        await addDoc(collection(db, 'projects', projectDocRef.id, 'payments'), {
+          amount: Number(initialAmt),
+          date: new Date().toISOString(),
+          method: initialPaymentMethod,
+          reference: initialPaymentReference.trim() || '',
+          recordedBy: profile?.name || 'Staff',
+          note: 'Initial deposit / partial payment recorded at project start'
+        });
+      }
 
       onProjectStarted();
       onClose();
@@ -324,10 +341,74 @@ export default function StartProjectModal({ isOpen, onClose, clients, onProjectS
             </div>
           </div>
 
-          {/* Step 4: Custom Project Title */}
+          {/* Step 4: Initial Partial Payment (Optional) */}
+          <div className="bg-cream/40 p-4 sm:p-5 rounded-2xl border border-charcoal/10 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-charcoal/70 uppercase tracking-widest">
+                4. Amount already received (Partial Payment - Optional)
+              </label>
+              <span className="text-[10px] uppercase font-bold text-ochre bg-ochre/10 px-2 py-0.5 rounded-full">
+                Deposit
+              </span>
+            </div>
+            <p className="text-xs text-charcoal/50">
+              If the client has already made a commitment deposit or milestone payment, record it here to initialize the project payment ledger.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div>
+                <label className="block text-[11px] font-bold text-charcoal/60 uppercase tracking-wider mb-1">
+                  Amount ($)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/40 font-bold text-xs select-none">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="0.00"
+                    value={initialPaymentAmount}
+                    onChange={e => setInitialPaymentAmount(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs font-bold text-charcoal focus:outline-none focus:border-ochre"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-charcoal/60 uppercase tracking-wider mb-1">
+                  Payment Method
+                </label>
+                <select
+                  value={initialPaymentMethod}
+                  onChange={e => setInitialPaymentMethod(e.target.value as any)}
+                  className="w-full px-3 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs font-medium text-charcoal focus:outline-none focus:border-ochre"
+                >
+                  <option value="mpesa">M-Pesa</option>
+                  <option value="bank">Bank Transfer</option>
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-charcoal/60 uppercase tracking-wider mb-1">
+                  Reference Code
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. QJD78819X"
+                  value={initialPaymentReference}
+                  onChange={e => setInitialPaymentReference(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs font-medium text-charcoal focus:outline-none focus:border-ochre"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Step 5: Custom Project Title */}
           <div>
             <label className="block text-xs font-bold text-charcoal/60 uppercase tracking-widest mb-2">
-              4. Custom Project Title (Optional)
+              5. Custom Project Title (Optional)
             </label>
             <input
               type="text"

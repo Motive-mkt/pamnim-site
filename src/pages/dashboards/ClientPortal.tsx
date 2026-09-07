@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import { collection, query, getDocs, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
-import { Sparkles, MessageSquare, Compass, Phone } from 'lucide-react';
-import ProjectTracker from '../../components/ProjectTracker';
+import { Sparkles, MessageSquare, Compass, Phone, ArrowRight, ExternalLink, Calendar } from 'lucide-react';
 import ProjectChat from '../../components/ProjectChat';
 
 export default function ClientPortal() {
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
@@ -101,40 +102,43 @@ export default function ClientPortal() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-6">
-                {projects.length > 1 && (
-                  <div className="flex items-center gap-3 overflow-x-auto pb-2">
-                    <span className="text-xs font-bold text-charcoal/40 uppercase tracking-widest shrink-0">Your Projects:</span>
-                    {projects.map(p => (
-                      <button
-                        key={p.id}
-                        onClick={() => setSelectedProject(p)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all shrink-0 ${
-                          (selectedProject?.id || projects[0]?.id) === p.id
-                            ? 'bg-ochre text-white border-ochre shadow-sm'
-                            : 'bg-white text-charcoal border-charcoal/15 hover:border-ochre'
-                        }`}
-                      >
-                        {p.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {projects.map((proj) => (
+                  <div
+                    key={proj.id}
+                    className="bg-white rounded-3xl p-6 sm:p-8 border border-charcoal/10 shadow-sm flex flex-col justify-between space-y-6 hover:shadow-md transition-shadow"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="text-[10px] font-bold uppercase tracking-wider bg-ochre/10 text-ochre px-3 py-1 rounded-full border border-ochre/20">
+                          Stage: {proj.currentStageName || 'Started'}
+                        </span>
+                        {proj.categoryTitle && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider bg-charcoal/5 text-charcoal/60 px-3 py-1 rounded-full">
+                            {proj.categoryTitle}
+                          </span>
+                        )}
+                      </div>
 
-                {(() => {
-                  const proj = selectedProject || projects[0];
-                  if (!proj) return null;
-                  return (
-                    <ProjectTracker
-                      project={proj}
-                      isReadOnly={true}
-                      onOpenChatWithTag={(taggedCtx) => {
-                        setChatTaggedContext(taggedCtx);
-                        setActiveTab('chat');
-                      }}
-                    />
-                  );
-                })()}
+                      <h3 className="text-xl font-bold text-charcoal">{proj.name}</h3>
+
+                      {proj.createdAt && (
+                        <div className="flex items-center gap-1.5 text-xs text-charcoal/40">
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>Started: {new Date(proj.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => navigate(`/tracker/${proj.id}`)}
+                      className="w-full py-3 px-4 rounded-2xl bg-ochre text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-ochre/20 hover:bg-ochre-dark transition-all cursor-pointer"
+                    >
+                      <span>View Project Tracker</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </div>

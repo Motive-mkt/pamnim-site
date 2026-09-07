@@ -16,6 +16,7 @@ import ContactPage from './pages/Contact';
 import ServicesPage from './pages/Services';
 import CategoryDetailPage from './pages/CategoryDetail';
 import ServiceDetailPage from './pages/ServiceDetail';
+import ProjectTrackerPage from './pages/ProjectTrackerPage';
 import { useAuth } from './hooks/useAuth';
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
@@ -60,6 +61,14 @@ function AppContent() {
           element={
             <ProtectedRoute adminOnly={true}>
               <OwnerDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/tracker/:projectId" 
+          element={
+            <ProtectedRoute>
+              <ProjectTrackerPage />
             </ProtectedRoute>
           } 
         />
