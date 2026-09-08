@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, addDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { useAuth } from '../hooks/useAuth';
 import { 
   CreditCard, Plus, Calendar, DollarSign, 
-  CheckCircle2, AlertCircle, FileText, User, Hash, X, ArrowUpRight, ShieldCheck
+  CheckCircle2, AlertCircle, FileText, User, Hash, X, ArrowUpRight, ShieldCheck,
+  Pencil, Trash2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -42,8 +43,11 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Add Payment Form state
+  // Add / Edit Payment Form state
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<PaymentItem | null>(null);
+  const [paymentToDelete, setPaymentToDelete] = useState<PaymentItem | null>(null);
+  const [isDeletingPayment, setIsDeletingPayment] = useState(false);
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [method, setMethod] = useState<'mpesa' | 'bank' | 'cash' | 'card'>('mpesa');
@@ -85,7 +89,29 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
   const totalPaid = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   const balance = totalCost - totalPaid;
 
-  const handleAddPayment = async (e: React.FormEvent) => {
+  const handleStartEditPayment = (p: PaymentItem) => {
+    setEditingPayment(p);
+    setAmount(String(p.amount));
+    setDate(p.date ? new Date(p.date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
+    setMethod((p.method as any) || 'mpesa');
+    setReference(p.reference || '');
+    setNote(p.note || '');
+    setFormError('');
+    setShowAddForm(true);
+  };
+
+  const handleCancelForm = () => {
+    setShowAddForm(false);
+    setEditingPayment(null);
+    setAmount('');
+    setDate(new Date().toISOString().slice(0, 10));
+    setMethod('mpesa');
+    setReference('');
+    setNote('');
+    setFormError('');
+  };
+
+  const handleSavePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
 
@@ -103,27 +129,49 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
     setIsSubmitting(true);
     try {
       const paymentDate = new Date(date).toISOString();
-      await addDoc(collection(db, 'projects', projectId, 'payments'), {
-        amount: numericAmount,
-        date: paymentDate,
-        method,
-        reference: reference.trim() || '',
-        recordedBy: profile?.name || 'Staff',
-        note: note.trim() || ''
-      });
 
-      // Reset form
-      setAmount('');
-      setDate(new Date().toISOString().slice(0, 10));
-      setMethod('mpesa');
-      setReference('');
-      setNote('');
-      setShowAddForm(false);
+      if (editingPayment) {
+        await updateDoc(doc(db, 'projects', projectId, 'payments', editingPayment.id), {
+          amount: numericAmount,
+          date: paymentDate,
+          method,
+          reference: reference.trim() || '',
+          note: note.trim() || '',
+          updatedAt: new Date().toISOString(),
+          updatedBy: profile?.name || 'Staff'
+        });
+      } else {
+        await addDoc(collection(db, 'projects', projectId, 'payments'), {
+          amount: numericAmount,
+          date: paymentDate,
+          method,
+          reference: reference.trim() || '',
+          recordedBy: profile?.name || 'Staff',
+          note: note.trim() || '',
+          createdAt: new Date().toISOString()
+        });
+      }
+
+      handleCancelForm();
     } catch (err: any) {
-      console.error('Error adding payment:', err);
+      console.error('Error saving payment:', err);
       setFormError(err.message || 'Failed to record payment.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleConfirmDeletePayment = async () => {
+    if (!paymentToDelete) return;
+    setIsDeletingPayment(true);
+    try {
+      await deleteDoc(doc(db, 'projects', projectId, 'payments', paymentToDelete.id));
+      setPaymentToDelete(null);
+    } catch (err: any) {
+      console.error('Error deleting payment:', err);
+      alert('Failed to delete payment: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setIsDeletingPayment(false);
     }
   };
 
@@ -224,8 +272,11 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
           {isStaff && (
             <button
               onClick={() => {
-                setShowAddForm(!showAddForm);
-                setFormError('');
+                if (showAddForm) {
+                  handleCancelForm();
+                } else {
+                  setShowAddForm(true);
+                }
               }}
               className="px-5 py-2.5 rounded-2xl bg-ochre text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-ochre/20 hover:bg-ochre-dark transition-all cursor-pointer shrink-0 self-start sm:self-auto"
             >
@@ -244,14 +295,24 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
           )}
         </div>
 
-        {/* Add Payment Form (Staff Only) */}
+        {/* Add / Edit Payment Form (Staff Only) */}
         {isStaff && showAddForm && (
-          <form onSubmit={handleAddPayment} className="bg-cream/40 p-5 sm:p-6 rounded-2xl border border-charcoal/10 space-y-4 animate-fade-in">
+          <form onSubmit={handleSavePayment} className="bg-cream/40 p-5 sm:p-6 rounded-2xl border border-charcoal/10 space-y-4 animate-fade-in">
             <div className="flex items-center justify-between pb-2 border-b border-charcoal/5">
               <h4 className="text-sm font-bold text-charcoal flex items-center gap-2">
-                <Plus className="w-4 h-4 text-ochre" /> Record New Client Payment
+                {editingPayment ? (
+                  <>
+                    <Pencil className="w-4 h-4 text-ochre" /> Edit Recorded Payment
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 text-ochre" /> Record New Client Payment
+                  </>
+                )}
               </h4>
-              <span className="text-[10px] uppercase font-bold text-charcoal/40 tracking-wider">Staff Entry</span>
+              <span className="text-[10px] uppercase font-bold text-charcoal/40 tracking-wider">
+                {editingPayment ? 'Modify Record' : 'Staff Entry'}
+              </span>
             </div>
 
             {formError && (
@@ -345,7 +406,7 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setShowAddForm(false)}
+                onClick={handleCancelForm}
                 className="px-4 py-2 rounded-xl border border-charcoal/15 text-charcoal font-semibold text-xs hover:bg-cream"
               >
                 Cancel
@@ -355,7 +416,7 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
                 disabled={isSubmitting}
                 className="px-6 py-2 rounded-xl bg-ochre text-white font-bold text-xs shadow-md shadow-ochre/20 hover:bg-ochre-dark transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
               >
-                {isSubmitting ? 'Saving...' : 'Save Payment'}
+                {isSubmitting ? 'Saving...' : editingPayment ? 'Update Payment' : 'Save Payment'}
               </button>
             </div>
           </form>
@@ -423,10 +484,30 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
                       </div>
                     </div>
 
-                    <div className="self-end sm:self-auto shrink-0">
+                    <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                       <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
                         <CheckCircle2 className="w-4 h-4" />
                       </div>
+                      {isStaff && (
+                        <div className="flex items-center gap-1 border-l border-charcoal/10 pl-2">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditPayment(p)}
+                            className="p-1.5 rounded-lg text-charcoal/40 hover:text-ochre hover:bg-cream transition-colors cursor-pointer"
+                            title="Edit payment"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPaymentToDelete(p)}
+                            className="p-1.5 rounded-lg text-charcoal/40 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                            title="Delete payment"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -435,6 +516,41 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
           )}
         </div>
       </div>
+
+      {/* Delete Payment Confirmation Modal */}
+      {paymentToDelete && (
+        <div className="fixed inset-0 z-50 bg-charcoal/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-charcoal/10 space-y-4 animate-fade-in">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-charcoal">Delete Payment Record?</h3>
+              <p className="text-xs text-charcoal/60 mt-1">
+                Are you sure you want to delete this payment of <span className="font-bold text-charcoal">${Number(paymentToDelete.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span> recorded on {new Date(paymentToDelete.date).toLocaleDateString('en-US')}? This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                disabled={isDeletingPayment}
+                onClick={() => setPaymentToDelete(null)}
+                className="px-4 py-2.5 rounded-xl border border-charcoal/15 text-charcoal font-semibold text-xs hover:bg-cream"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingPayment}
+                onClick={handleConfirmDeletePayment}
+                className="px-5 py-2.5 rounded-xl bg-red-600 text-white font-bold text-xs shadow-md shadow-red-600/20 hover:bg-red-700 transition-all disabled:opacity-50"
+              >
+                {isDeletingPayment ? 'Deleting...' : 'Confirm Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -7,11 +7,11 @@ import ProjectTracker from '../components/ProjectTracker';
 import PaymentLog from '../components/PaymentLog';
 import ExpenseTracker from '../components/ExpenseTracker';
 import ProjectChat from '../components/ProjectChat';
-import ProjectReviewCard from '../components/ProjectReviewCard';
 import ProjectCostEditor from '../components/ProjectCostEditor';
+import DeleteProjectModal from '../components/DeleteProjectModal';
 import { 
   ArrowLeft, Activity, CreditCard, MessageSquare, 
-  Calendar, User, CheckCircle2, DollarSign, Clock, ShieldAlert, Layers
+  Calendar, User, CheckCircle2, DollarSign, Clock, ShieldAlert, Layers, Trash2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -23,6 +23,7 @@ export default function ProjectTrackerPage() {
   const [project, setProject] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Tabs: 'progress' | 'payments' | 'chat'
   const [activeTab, setActiveTab] = useState<'progress' | 'payments' | 'chat'>('progress');
@@ -167,13 +168,27 @@ export default function ProjectTrackerPage() {
         
         {/* Navigation & Header */}
         <div className="space-y-4">
-          <button
-            onClick={handleBack}
-            className="inline-flex items-center gap-2 text-xs font-bold text-charcoal/60 hover:text-charcoal transition-colors cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Dashboard</span>
-          </button>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <button
+              onClick={handleBack}
+              className="inline-flex items-center gap-2 text-xs font-bold text-charcoal/60 hover:text-charcoal transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Dashboard</span>
+            </button>
+
+            {/* Staff / Owner Delete Project Action (Never visible to client) */}
+            {isStaff && (
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="px-3.5 py-1.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-600 hover:text-white transition-all text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+                title="Permanently delete this project"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Project</span>
+              </button>
+            )}
+          </div>
 
           {/* Project Banner Card */}
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-charcoal/10 shadow-sm">
@@ -339,11 +354,6 @@ export default function ProjectTrackerPage() {
             {isStaff && (
               <ExpenseTracker projectId={project.id} isReadOnly={false} />
             )}
-
-            {/* Leave a Review (Clients Only) */}
-            {!isStaff && (
-              <ProjectReviewCard project={project} />
-            )}
           </div>
         )}
 
@@ -371,6 +381,17 @@ export default function ProjectTrackerPage() {
         )}
 
       </div>
+
+      {/* Delete Project Confirmation Modal */}
+      <DeleteProjectModal
+        isOpen={showDeleteModal}
+        project={project}
+        onClose={() => setShowDeleteModal(false)}
+        onSuccess={() => {
+          setShowDeleteModal(false);
+          handleBack();
+        }}
+      />
     </div>
   );
 }

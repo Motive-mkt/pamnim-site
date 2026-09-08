@@ -1,21 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import AdminLayout from '../../components/AdminLayout';
+import AdminLayout, { NavItemConfig } from '../../components/AdminLayout';
 import { collection, query, getDocs, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
-import { Sparkles, MessageSquare, Compass, Phone, ArrowRight, ExternalLink, Calendar } from 'lucide-react';
+import { Sparkles, MessageSquare, Compass, Phone, ArrowRight, ExternalLink, Calendar, Briefcase } from 'lucide-react';
 import ProjectChat from '../../components/ProjectChat';
 
 export default function ClientPortal() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { profile } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [chatTaggedContext, setChatTaggedContext] = useState<string | undefined>();
-  const [activeTab, setActiveTab] = useState<'tracker' | 'chat'>('tracker');
+  const initialTab = (searchParams.get('tab') as 'tracker' | 'chat') || 'tracker';
+  const [activeTab, setActiveTab] = useState<'tracker' | 'chat'>(initialTab);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && (tab === 'tracker' || tab === 'chat')) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab as any);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', newTab);
+      return next;
+    }, { replace: true });
+  };
 
   const isProjectActive = (p: any) => {
     const isComplete = p.currentStageName?.toLowerCase() === 'complete' ||
@@ -66,8 +83,13 @@ export default function ClientPortal() {
     );
   }
 
+  const clientNavItems: NavItemConfig[] = [
+    { id: 'tracker', label: 'My Projects & Tracker', icon: Briefcase },
+    { id: 'chat', label: 'Chat with Designers', icon: MessageSquare },
+  ];
+
   return (
-    <AdminLayout activeTab="my-project">
+    <AdminLayout activeTab={activeTab} onTabChange={handleTabChange} navItems={clientNavItems}>
       <div className="space-y-8">
         {/* Welcome Header */}
         <div className="bg-ochre text-white p-6 sm:p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -83,30 +105,6 @@ export default function ClientPortal() {
             </p>
           </div>
           <Sparkles className="absolute -bottom-10 -right-10 w-64 h-64 text-white/5 pointer-events-none" />
-
-          {/* Navigation Tabs */}
-          <div className="relative z-10 flex flex-wrap gap-2 bg-black/20 p-1.5 rounded-2xl shrink-0">
-            <button
-              onClick={() => setActiveTab('tracker')}
-              className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
-                activeTab === 'tracker'
-                  ? 'bg-white text-ochre shadow-md'
-                  : 'text-white/80 hover:text-white'
-              }`}
-            >
-              Progress Tracker
-            </button>
-            <button
-              onClick={() => setActiveTab('chat')}
-              className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
-                activeTab === 'chat'
-                  ? 'bg-white text-ochre shadow-md'
-                  : 'text-white/80 hover:text-white'
-              }`}
-            >
-              Chat Support
-            </button>
-          </div>
         </div>
 
         {/* Tab Switcher Body */}

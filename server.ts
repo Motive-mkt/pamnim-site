@@ -8,7 +8,7 @@ import fs from "fs";
 import { initializeApp as initAdminApp, getApps as getAdminApps } from "firebase-admin/app";
 import { getAuth as getAdminAuth } from "firebase-admin/auth";
 import { initializeApp as initClientApp, getApps as getClientApps } from "firebase/app";
-import { getFirestore, doc, getDoc, deleteDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
 
 dotenv.config();
 
@@ -370,29 +370,14 @@ async function startServer() {
       const idToken = authHeader.split("Bearer ")[1].trim();
       const { auth: adminAuth, db } = getBackendFirebase();
 
-      // 1. Verify caller ID token to identify caller UID
+      // 1. Cryptographically verify caller ID token to identify caller UID (no unverified payload fallback)
       let callerUid: string = "";
       try {
         const decoded = await adminAuth.verifyIdToken(idToken);
         callerUid = decoded.uid;
       } catch (err: any) {
-        // Safe fallback token extraction if local token verification encounters cert cache issues
-        try {
-          const payloadBase64 = idToken.split(".")[1];
-          if (payloadBase64) {
-            const payloadJson = Buffer.from(payloadBase64, "base64").toString("utf-8");
-            const payload = JSON.parse(payloadJson);
-            if (payload && (payload.user_id || payload.sub)) {
-              callerUid = payload.user_id || payload.sub;
-            }
-          }
-        } catch (decodeErr) {
-          console.error("Token decoding fallback error:", decodeErr);
-        }
-
-        if (!callerUid) {
-          return res.status(401).json({ error: "Invalid or expired authorization token: " + (err.message || "") });
-        }
+        console.error("Token verification failed:", err?.message || err);
+        return res.status(401).json({ error: "Invalid or expired authorization token: " + (err?.message || "Unauthorized") });
       }
 
       if (callerUid === targetUid) {
@@ -413,12 +398,16 @@ async function startServer() {
         return res.status(403).json({ error: "Forbidden: Only an Owner or Elevated Employee can remove users." });
       }
 
-      // If target is an owner, only another owner can delete them
+      // If target is an owner or client, verify appropriate permissions
       const targetDocSnap = await getDoc(doc(db, "profiles", targetUid));
       if (targetDocSnap.exists()) {
         const targetData = targetDocSnap.data();
         if (targetData.role === "owner" && !isCallerOwner) {
           return res.status(403).json({ error: "Forbidden: Elevated employees cannot remove an Owner account." });
+        }
+        // Client deletion is restricted to role == 'owner' only
+        if (targetData.role === "client" && !isCallerOwner) {
+          return res.status(403).json({ error: "Forbidden: Only the Owner can delete client accounts." });
         }
       }
 
@@ -439,8 +428,9 @@ async function startServer() {
         }
       }
 
-      // 4. Delete Firestore profile and pending signup documents
+      // 4. Delete Firestore profile, pending signup documents, and client chat thread
       let firestoreDeleted = false;
+      let chatDeleted = false;
       try {
         await deleteDoc(doc(db, "profiles", targetUid));
         try {
@@ -450,6 +440,20 @@ async function startServer() {
         }
         firestoreDeleted = true;
         console.log(`[FIRESTORE SUCCESS] Profile and pending signup docs deleted for UID: ${targetUid}`);
+
+        // Clean up client chat messages subcollection and chat document if exists
+        try {
+          const messagesRef = collection(db, "chats", targetUid, "messages");
+          const msgsSnap = await getDocs(messagesRef);
+          for (const msgDoc of msgsSnap.docs) {
+            await deleteDoc(msgDoc.ref);
+          }
+          await deleteDoc(doc(db, "chats", targetUid));
+          chatDeleted = true;
+          console.log(`[FIRESTORE SUCCESS] Chat thread and messages cleaned up for client UID: ${targetUid}`);
+        } catch (chatErr) {
+          console.warn(`[CHAT CLEANUP NOTICE] Chat cleanup note for UID ${targetUid}:`, chatErr);
+        }
       } catch (fsErr: any) {
         console.error(`[FIRESTORE ERROR] Failed to delete Firestore records for UID: ${targetUid}:`, fsErr);
       }
@@ -459,6 +463,7 @@ async function startServer() {
         message: `User ${targetUid} successfully removed.`,
         authDeleted,
         firestoreDeleted,
+        chatDeleted,
         authNote: authNote || undefined
       });
     } catch (error: any) {

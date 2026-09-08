@@ -92,7 +92,7 @@ service cloud.firestore {
         )
       );
 
-      allow delete: if canManageUsers();
+      allow delete: if isOwner();
     }
 
     // Pending Signups
@@ -120,7 +120,7 @@ service cloud.firestore {
           isSignedIn() && 
           get(/databases/$(database)/documents/projects/$(projectId)).data.clientId == request.auth.uid
         );
-        allow write: if isStaff();
+        allow create, update, delete: if isStaff();
       }
 
       match /progressNotes/{noteId} {
@@ -128,7 +128,7 @@ service cloud.firestore {
           isSignedIn() && 
           get(/databases/$(database)/documents/projects/$(projectId)).data.clientId == request.auth.uid
         );
-        allow write: if isStaff();
+        allow create, update, delete: if isStaff();
       }
 
       match /payments/{paymentId} {
@@ -136,24 +136,27 @@ service cloud.firestore {
           isSignedIn() && 
           get(/databases/$(database)/documents/projects/$(projectId)).data.clientId == request.auth.uid
         );
-        allow write: if isStaff();
+        allow create, update, delete: if isStaff();
       }
 
       match /expenses/{expenseId} {
-        allow read, write: if isStaff();
+        allow read: if isStaff();
+        allow create, update, delete: if isStaff();
       }
     }
 
     // Chats / Messages
-    // Client can only read/send to their own thread; staff can access all
+    // Client can only read/send to their own thread; staff can access all; owner only can delete thread/messages
     match /chats/{clientId} {
       allow read: if isStaff() || (isSignedIn() && request.auth.uid == clientId);
-      allow write: if isStaff() || (isSignedIn() && request.auth.uid == clientId);
+      allow create, update: if isStaff() || (isSignedIn() && request.auth.uid == clientId);
+      allow delete: if isOwner();
       
       match /messages/{messageId} {
         allow read: if isStaff() || (isSignedIn() && request.auth.uid == clientId);
         allow create: if (isStaff() || (isSignedIn() && request.auth.uid == clientId)) && request.resource.data.senderUid == request.auth.uid;
-        allow update, delete: if isStaff();
+        allow update: if isStaff();
+        allow delete: if isOwner();
       }
     }
 

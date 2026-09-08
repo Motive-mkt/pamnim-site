@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import AdminLayout from '../../components/AdminLayout';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import AdminLayout, { NavItemConfig } from '../../components/AdminLayout';
 import { collection, query, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
@@ -12,15 +12,33 @@ import UserManagementView from '../../components/UserManagementView';
 
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { profile, canApproveSignups } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [selectedChatClient, setSelectedChatClient] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'projects' | 'chat' | 'approvals'>('projects');
+  const initialTab = (searchParams.get('tab') as 'projects' | 'chat' | 'approvals') || 'projects';
+  const [activeTab, setActiveTab] = useState<'projects' | 'chat' | 'approvals'>(initialTab);
   const [showStartProjectModal, setShowStartProjectModal] = useState(false);
   const [chatTaggedContext, setChatTaggedContext] = useState<string | undefined>();
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && (tab === 'projects' || tab === 'chat' || tab === 'approvals')) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab as any);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', newTab);
+      return next;
+    }, { replace: true });
+  };
 
   useEffect(() => {
     if (profile?.uid) {
@@ -65,53 +83,15 @@ export default function EmployeeDashboard() {
     );
   }
 
-  return (
-    <AdminLayout activeTab="overview">
-      <div className="space-y-8">
-        {/* Top Header & Navigation Tabs */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-charcoal/10 pb-4 flex-wrap">
-          <div>
-            <h2 className="text-2xl font-bold text-charcoal">Employee Workspace</h2>
-            <p className="text-sm text-charcoal/60">
-              Role: <span className="font-bold text-ochre capitalize">{profile?.role?.replace('_', ' ')}</span>
-            </p>
-          </div>
+  const employeeNavItems: NavItemConfig[] = [
+    { id: 'projects', label: 'Projects & Tracker', icon: Briefcase },
+    { id: 'chat', label: 'Client Messages', icon: MessageSquare },
+    ...(canApproveSignups ? [{ id: 'approvals', label: 'Sign-Up Approvals', icon: Users }] : []),
+  ];
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setActiveTab('projects')}
-              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                activeTab === 'projects'
-                  ? 'bg-ochre text-white shadow-md'
-                  : 'bg-white border text-charcoal hover:bg-cream'
-              }`}
-            >
-              <Briefcase className="w-4 h-4" /> Projects & Tracker
-            </button>
-            <button
-              onClick={() => setActiveTab('chat')}
-              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                activeTab === 'chat'
-                  ? 'bg-ochre text-white shadow-md'
-                  : 'bg-white border text-charcoal hover:bg-cream'
-              }`}
-            >
-              <MessageSquare className="w-4 h-4" /> Client Chat
-            </button>
-            {canApproveSignups && (
-              <button
-                onClick={() => setActiveTab('approvals')}
-                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                  activeTab === 'approvals'
-                    ? 'bg-ochre text-white shadow-md'
-                    : 'bg-white border text-charcoal hover:bg-cream'
-                }`}
-              >
-                <Users className="w-4 h-4" /> Sign-Up Approvals
-              </button>
-            )}
-          </div>
-        </div>
+  return (
+    <AdminLayout activeTab={activeTab} onTabChange={handleTabChange} navItems={employeeNavItems}>
+      <div className="space-y-8">
 
         {/* Tab 1: Projects & 4-Stage Progress Tracker */}
         {activeTab === 'projects' && (

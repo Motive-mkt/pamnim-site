@@ -15,6 +15,7 @@ export interface CMSContent {
     whatsapp: string;
     email: string;
     address: string;
+    paymentDetails?: string;
   };
   services: any[];
   portfolio: any[];
@@ -40,7 +41,8 @@ const DEFAULT_CONTENT: CMSContent = {
     phone: "0714 984 268",
     whatsapp: "254714984268",
     email: "hinteriors01@gmail.com",
-    address: "Nairobi, Kenya"
+    address: "Nairobi, Kenya",
+    paymentDetails: "Bank / M-Pesa Details: Pamnim Interior Designers, Paybill: 247247, Acc: 0714984268."
   },
   services: [
     {
@@ -216,7 +218,10 @@ export function useCMS() {
             ...heroData,
             heroSlideshow
           },
-          contact: data.contact || DEFAULT_CONTENT.contact,
+          contact: {
+            ...DEFAULT_CONTENT.contact,
+            ...(data.contact || {})
+          },
           services: data.services && data.services.length > 0 ? data.services : DEFAULT_CONTENT.services,
           portfolio: data.portfolio || DEFAULT_CONTENT.portfolio,
           luxuryCategories: data.luxuryCategories && data.luxuryCategories.length > 0 ? data.luxuryCategories : DEFAULT_CONTENT.luxuryCategories,

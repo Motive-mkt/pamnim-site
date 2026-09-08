@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { motion, AnimatePresence } from 'motion/react';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Play, Image as ImageIcon, Film } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { Play, Image as ImageIcon, Film, Trash2, AlertTriangle, X, CheckCircle2 } from 'lucide-react';
 import { optimizeCloudinaryUrl, getCloudinaryVideoPoster } from '../services/cloudinaryService';
 
 interface PortfolioItem {
@@ -17,12 +18,33 @@ interface PortfolioItem {
 }
 
 export default function PortfolioPage() {
+  const { isStaff } = useAuth();
   const [projects, setProjects] = useState<PortfolioItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'image' | 'video'>('image');
+  const [deletingItem, setDeletingItem] = useState<PortfolioItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   // Video playback states - mapping item ID to playing boolean
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
+
+  const handleDeleteItem = async () => {
+    if (!deletingItem || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await deleteDoc(doc(db, 'portfolio_assets', deletingItem.id));
+      setProjects(prev => prev.filter(p => p.id !== deletingItem.id));
+      setToast(`"${deletingItem.title || 'Portfolio item'}" deleted successfully.`);
+      setTimeout(() => setToast(null), 4000);
+      setDeletingItem(null);
+    } catch (err: any) {
+      console.error('Error deleting portfolio item:', err);
+      alert('Failed to delete item: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchProjects() {
@@ -135,6 +157,19 @@ export default function PortfolioPage() {
                             {project.title && <h3 className="text-white text-2xl font-bold tracking-tight">{project.title}</h3>}
                           </div>
                         )}
+                        {/* Staff / Owner Quick Delete Button */}
+                        {isStaff && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingItem(project);
+                            }}
+                            className="absolute top-4 right-4 z-30 p-2.5 rounded-full bg-red-600/90 hover:bg-red-600 text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                            title="Delete this portfolio photo"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </motion.div>
                     ))}
                   </div>
@@ -147,8 +182,21 @@ export default function PortfolioPage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        className="bg-white rounded-3xl overflow-hidden border border-charcoal/5 shadow-sm flex flex-col group"
+                        className="bg-white rounded-3xl overflow-hidden border border-charcoal/5 shadow-sm flex flex-col group relative"
                       >
+                        {/* Staff / Owner Quick Delete Button */}
+                        {isStaff && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingItem(project);
+                            }}
+                            className="absolute top-4 right-4 z-30 p-2.5 rounded-full bg-red-600/90 hover:bg-red-600 text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                            title="Delete this portfolio video"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                         {/* Widescreen Video Player Canvas */}
                         <div className="relative aspect-video w-full bg-black overflow-hidden select-none">
                           {playingVideoId === project.id ? (
@@ -211,6 +259,66 @@ export default function PortfolioPage() {
           )}
         </div>
       </main>
+
+      {/* Delete Confirmation Modal for Staff/Owner */}
+      {deletingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white w-full max-w-md rounded-3xl border border-red-200 shadow-2xl overflow-hidden p-6 space-y-4 animate-scale-up">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-charcoal">Delete Portfolio Item</h3>
+                  <p className="text-xs text-red-700 font-medium">Permanent Action</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setDeletingItem(null)}
+                disabled={isDeleting}
+                className="p-1.5 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-charcoal/70 leading-relaxed">
+              Are you sure you want to permanently delete this {deletingItem.type || 'portfolio'} item: <strong className="text-charcoal font-bold">{deletingItem.title || '(Untitled Item)'}</strong>? This cannot be undone.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingItem(null)}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-xl border border-charcoal/20 text-xs font-bold text-charcoal/70 hover:bg-cream transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteItem}
+                disabled={isDeleting}
+                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-red-600/20 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isDeleting ? 'Deleting...' : 'Delete Item'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 animate-fade-in">
+          <div className="p-4 bg-charcoal text-white rounded-2xl shadow-xl flex items-center gap-3 border border-charcoal/20 text-xs font-bold">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            <span>{toast}</span>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

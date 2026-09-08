@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import AdminLayout from '../../components/AdminLayout';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import AdminLayout, { NavItemConfig } from '../../components/AdminLayout';
 import { collection, query, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, getDoc, orderBy, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
 import { 
   Plus, Users, Briefcase, Edit2, Trash2, CheckCircle2, Clock, Globe, UserPlus, Mail,
   Home, Palette, LayoutGrid, PaintBucket, RefreshCcw, MessageSquare, HelpCircle, Film, Sparkles,
-  Image as ImageIcon, Copy, Check, ArrowUp, ArrowDown, Upload, X, Sparkle, DollarSign, Save, AlertCircle,
-  FileText, FileSignature, ArrowRight
+  Image as ImageIcon, Copy, Check, ArrowUp, ArrowDown, Upload, X, Sparkle, DollarSign, Save, AlertCircle, AlertTriangle,
+  FileText, FileSignature, ArrowRight, LayoutDashboard
 } from 'lucide-react';
 import { useCMS } from '../../hooks/useCMS';
 import { refineDraftCopy } from '../../services/geminiService';
@@ -19,6 +19,7 @@ import StartProjectModal from '../../components/StartProjectModal';
 import UserManagementView from '../../components/UserManagementView';
 import InvoiceGenerator from '../../components/InvoiceGenerator';
 import QuoteGenerator from '../../components/QuoteGenerator';
+import DeleteProjectModal from '../../components/DeleteProjectModal';
 
 const iconMap: Record<string, any> = {
   Home,
@@ -67,13 +68,33 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 
 export default function OwnerDashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'invoices' | 'quotes' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat'>('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab') as 'overview' | 'projects' | 'invoices' | 'quotes' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat' | null;
+  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'invoices' | 'quotes' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat'>(urlTab || 'overview');
+
+  useEffect(() => {
+    const currentUrlTab = searchParams.get('tab');
+    if (currentUrlTab && currentUrlTab !== activeTab) {
+      setActiveTab(currentUrlTab as any);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab as any);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', newTab);
+      return next;
+    }, { replace: true });
+  };
   const [projects, setProjects] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [selectedChatClient, setSelectedChatClient] = useState<any | null>(null);
   const [showStartProjectModal, setShowStartProjectModal] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<any | null>(null);
+  const [mediaToDelete, setMediaToDelete] = useState<{ id: string; type: string; title?: string } | null>(null);
   const [chatTaggedContext, setChatTaggedContext] = useState<string | undefined>();
   const [copiedSignupOverview, setCopiedSignupOverview] = useState(false);
 
@@ -697,10 +718,19 @@ export default function OwnerDashboard() {
     }
   };
 
-  const handleDeleteMedia = async (id: string, type: string) => {
-    if (window.confirm('Delete this image?')) {
-      await deleteDoc(doc(db, type, id));
+  const handleDeleteMedia = (id: string, type: string, title?: string) => {
+    setMediaToDelete({ id, type, title });
+  };
+
+  const confirmDeleteMedia = async () => {
+    if (!mediaToDelete) return;
+    try {
+      await deleteDoc(doc(db, mediaToDelete.type, mediaToDelete.id));
       fetchMedia();
+    } catch (err) {
+      console.error('Failed to delete media asset:', err);
+    } finally {
+      setMediaToDelete(null);
     }
   };
 
@@ -965,38 +995,22 @@ export default function OwnerDashboard() {
     }
   };
 
-  const navItems = [
-    { id: 'overview', label: 'Dashboard', icon: Briefcase },
-    { id: 'projects', label: 'Projects & Tracking', icon: Briefcase },
-    { id: 'invoices', label: 'Invoice Generator', icon: FileText },
-    { id: 'quotes', label: 'Quote Generator', icon: FileSignature },
-    { id: 'chat', label: 'Client Chat', icon: MessageSquare },
+  const ownerNavItems: NavItemConfig[] = [
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'projects', label: 'Projects & Tracker', icon: Briefcase },
+    { id: 'invoices', label: 'Invoices & Billing', icon: FileText },
+    { id: 'quotes', label: 'Formal Quotations', icon: FileSignature },
+    { id: 'chat', label: 'Client Messages', icon: MessageSquare },
     { id: 'staff', label: 'Team & Approvals', icon: Users },
-    { id: 'services', label: 'Services', icon: LayoutGrid },
+    { id: 'services', label: 'Core Services', icon: LayoutGrid },
     { id: 'detailed-services', label: 'Sub-Services CMS', icon: Sparkles },
-    { id: 'inquiries', label: 'Inquiries', icon: Mail },
+    { id: 'inquiries', label: 'Contact Inquiries', icon: Mail, badge: inquiries.filter(i => i.status === 'new').length || undefined },
     { id: 'media', label: 'Media Library', icon: Globe },
-    { id: 'content', label: 'Homepage Editor', icon: Globe },
+    { id: 'content', label: 'Homepage Editor', icon: Palette },
   ];
 
   return (
-    <AdminLayout activeTab={activeTab}>
-      {/* Tab Navigation */}
-      <div className="flex gap-2.5 sm:gap-4 mb-6 sm:mb-8 overflow-x-auto pb-2.5 pt-1 px-1 snap-x snap-mandatory scrollbar-thin">
-        {navItems.map(item => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTab(item.id as any)}
-            className={cn(
-              "flex items-center gap-2 px-4 sm:px-6 min-h-[44px] py-2.5 sm:py-3 rounded-xl font-bold whitespace-nowrap transition-all snap-start shrink-0 text-xs sm:text-sm cursor-pointer",
-              activeTab === item.id ? "bg-ochre text-white shadow-lg shadow-ochre/20" : "bg-white border border-charcoal/5 hover:bg-cream"
-            )}
-          >
-            <item.icon className="w-4 h-4 shrink-0" />
-            <span>{item.label}</span>
-          </button>
-        ))}
-      </div>
+    <AdminLayout activeTab={activeTab} onTabChange={handleTabChange} navItems={ownerNavItems}>
 
       {activeTab === 'overview' && (
         <div className="space-y-8">
@@ -1112,13 +1126,22 @@ export default function OwnerDashboard() {
                               </span>
                             </td>
                             <td className="p-4 text-right">
-                              <button
-                                onClick={() => navigate(`/tracker/${proj.id}`)}
-                                className="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-ochre text-white hover:bg-ochre-dark shadow-sm flex items-center gap-1.5 ml-auto cursor-pointer"
-                              >
-                                <span>View Tracker</span>
-                                <ArrowRight className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => setProjectToDelete(proj)}
+                                  className="p-2 rounded-xl text-red-500 hover:text-white hover:bg-red-600 transition-colors cursor-pointer border border-transparent hover:border-red-600"
+                                  title="Delete Project"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => navigate(`/tracker/${proj.id}`)}
+                                  className="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-ochre text-white hover:bg-ochre-dark shadow-sm flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <span>View Tracker</span>
+                                  <ArrowRight className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -1164,13 +1187,22 @@ export default function OwnerDashboard() {
                             </div>
                           </div>
 
-                          <button
-                            onClick={() => navigate(`/tracker/${proj.id}`)}
-                            className="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 bg-ochre text-white hover:bg-ochre-dark shadow-sm cursor-pointer"
-                          >
-                            <span>View Tracker</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setProjectToDelete(proj)}
+                              className="p-2 rounded-xl text-red-500 hover:text-white hover:bg-red-600 transition-colors cursor-pointer border border-transparent hover:border-red-600"
+                              title="Delete Project"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => navigate(`/tracker/${proj.id}`)}
+                              className="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 bg-ochre text-white hover:bg-ochre-dark shadow-sm cursor-pointer"
+                            >
+                              <span>View Tracker</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -1447,8 +1479,9 @@ export default function OwnerDashboard() {
                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-4 z-20">
                         <div className="flex justify-end">
                           <button 
-                            onClick={() => handleDeleteMedia(item.id, mediaType)}
+                            onClick={() => handleDeleteMedia(item.id, mediaType, item.title)}
                             className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 cursor-pointer"
+                            title="Delete media"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -1927,6 +1960,17 @@ export default function OwnerDashboard() {
                      onChange={(e) => setCmsContact({...cmsContact, address: e.target.value})}
                      className="w-full p-3 sm:p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-sm"
                    />
+                </div>
+                <div>
+                   <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Payment Details (Invoices & Quotes)</label>
+                   <textarea 
+                     rows={3}
+                     value={cmsContact.paymentDetails || ''}
+                     onChange={(e) => setCmsContact({...cmsContact, paymentDetails: e.target.value})}
+                     placeholder="Bank / M-Pesa Details: Pamnim Interior Designers, Paybill: 247247, Acc: 0714984268."
+                     className="w-full p-3 sm:p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-sm"
+                   />
+                   <p className="text-[11px] text-charcoal/50 mt-1">Default payment instructions printed on newly generated invoices and quotations.</p>
                 </div>
               </div>
            </div>
@@ -2798,6 +2842,64 @@ export default function OwnerDashboard() {
                 <span className="text-[10px] bg-emerald-800 text-emerald-100 px-1.5 py-0.5 rounded font-normal">
                   opens WhatsApp
                 </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Project Cascade Modal */}
+      <DeleteProjectModal
+        isOpen={!!projectToDelete}
+        project={projectToDelete}
+        onClose={() => setProjectToDelete(null)}
+        onSuccess={() => {
+          setProjectToDelete(null);
+          fetchData();
+        }}
+      />
+
+      {/* Media Deletion Confirmation Modal */}
+      {mediaToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white w-full max-w-md rounded-3xl border border-red-200 shadow-2xl overflow-hidden p-6 space-y-4 animate-scale-up">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-charcoal">Delete Media Asset</h3>
+                  <p className="text-xs text-red-700 font-medium">{mediaToDelete.type === 'gallery' ? 'Home Gallery' : 'Portfolio Catalog'}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setMediaToDelete(null)}
+                className="p-1.5 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-charcoal/70 leading-relaxed">
+              Are you sure you want to permanently delete this media asset{mediaToDelete.title ? ` (${mediaToDelete.title})` : ''} from your {mediaToDelete.type === 'gallery' ? 'Gallery' : 'Portfolio'}? This cannot be undone.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setMediaToDelete(null)}
+                className="px-4 py-2 rounded-xl border border-charcoal/20 text-xs font-bold text-charcoal/70 hover:bg-cream transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteMedia}
+                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-red-600/20 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete Asset</span>
               </button>
             </div>
           </div>

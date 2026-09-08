@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  collection, query, getDocs, where, onSnapshot, addDoc, orderBy 
+  collection, query, getDocs, where, onSnapshot, addDoc, doc, updateDoc, orderBy 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../hooks/useAuth';
@@ -8,11 +8,15 @@ import { useCMS } from '../hooks/useCMS';
 import { 
   Plus, Trash2, Download, FileText, Sparkles, Building2, User, Phone, Mail, 
   DollarSign, Calendar, CheckCircle2, Layers, AlertCircle, RefreshCw, Briefcase,
-  CreditCard, Check, ArrowRight
+  CreditCard, Check, ArrowRight, Save, History, X
 } from 'lucide-react';
 import { generateDocumentPDF, formatMoney } from '../utils/pdfGenerator';
+import { cn } from '../lib/utils';
 import CatalogManagerModal from './CatalogManagerModal';
+import CatalogAutocomplete from './CatalogAutocomplete';
+import SavedInvoicesList from './SavedInvoicesList';
 import { CatalogItem } from '../types/catalog';
+import { SavedInvoice, InvoiceStatus } from '../types/documents';
 
 export interface InvoicePaymentItem {
   id: string;
@@ -49,10 +53,22 @@ export default function InvoiceGenerator() {
   const [existingPayments, setExistingPayments] = useState<any[]>([]);
   const [totalInvoiced, setTotalInvoiced] = useState<number | ''>('');
 
-  // Notes - Default editable text kept as requested
+  // Notes - Default editable text kept as requested (powered by Settings)
+  const defaultPaymentDetails = content.contact.paymentDetails || 'Bank / M-Pesa Details: Pamnim Interior Designers, Paybill: 247247, Acc: 0714984268.';
   const [notes, setNotes] = useState(
-    'Payment Terms: 50% deposit upon contract signing, 40% upon interim milestone, 10% upon final handover.\nBank / M-Pesa Details: Pamnim Interior Designers, Paybill: 247247, Acc: 0714984268.'
+    `Payment Terms: 50% deposit upon contract signing, 40% upon interim milestone, 10% upon final handover.\n${defaultPaymentDetails}`
   );
+
+  useEffect(() => {
+    if (content.contact.paymentDetails) {
+      setNotes(prev => {
+        if (!prev || prev.includes('Paybill: 247247, Acc: 0714984268.')) {
+          return `Payment Terms: 50% deposit upon contract signing, 40% upon interim milestone, 10% upon final handover.\n${content.contact.paymentDetails}`;
+        }
+        return prev;
+      });
+    }
+  }, [content.contact.paymentDetails]);
 
   // Invoice Line Items: Blank by default (no placeholder data)
   const [items, setItems] = useState<InvoicePaymentItem[]>([
@@ -75,6 +91,12 @@ export default function InvoiceGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+
+  // Archive & Edit State
+  const [activeView, setActiveView] = useState<'generator' | 'archive'>('generator');
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
 
   // 1. Fetch Clients
   useEffect(() => {
@@ -231,18 +253,22 @@ export default function InvoiceGenerator() {
   const handleCatalogSelect = (catalogItem: CatalogItem) => {
     if (activeItemIndexForCatalog !== null && items[activeItemIndexForCatalog]) {
       const targetId = items[activeItemIndexForCatalog].id;
-      setItems(items.map(item => {
-        if (item.id === targetId) {
-          return {
-            ...item,
-            name: catalogItem.name,
-            amount: catalogItem.sellingPrice || ''
-          };
-        }
-        return item;
-      }));
+      handleLineItemCatalogSelect(targetId, catalogItem);
     }
     setActiveItemIndexForCatalog(null);
+  };
+
+  const handleLineItemCatalogSelect = (itemId: string, catalogItem: CatalogItem) => {
+    setItems(items.map(item => {
+      if (item.id === itemId) {
+        return {
+          ...item,
+          name: catalogItem.name,
+          amount: catalogItem.sellingPrice || item.amount
+        };
+      }
+      return item;
+    }));
   };
 
   // Link & Sync: write payments directly to projects/{projectId}/payments subcollection
@@ -274,6 +300,112 @@ export default function InvoiceGenerator() {
     }
   };
 
+  const handleCreateNew = () => {
+    setEditingInvoiceId(null);
+    setDocNumber(`INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
+    setDate(todayStr);
+    setSelectedClientId('');
+    setIsCustomClient(false);
+    setClientName('');
+    setClientEmail('');
+    setClientPhone('');
+    setSelectedProjectId('');
+    setSelectedProject(null);
+    setTotalInvoiced('');
+    setItems([{ id: '1', name: '', paymentType: 'Partial', amount: '', refCode: '', date: todayStr }]);
+    setActiveView('generator');
+  };
+
+  const handleLoadInvoice = (inv: SavedInvoice) => {
+    setEditingInvoiceId(inv.id || null);
+    setDocNumber(inv.docNumber || `INV-${new Date().getFullYear()}-001`);
+    setDate(inv.date || todayStr);
+    setSelectedClientId(inv.clientId || '');
+    setIsCustomClient(!inv.clientId);
+    setClientName(inv.clientName || '');
+    setClientEmail(inv.clientEmail || '');
+    setClientPhone(inv.clientPhone || '');
+    setSelectedProjectId(inv.projectId || '');
+    setTotalInvoiced(inv.totalInvoiced || '');
+    setNotes(inv.notes || defaultPaymentDetails);
+    if (inv.items && inv.items.length > 0) {
+      setItems(inv.items);
+    } else {
+      setItems([{ id: '1', name: '', paymentType: 'Partial', amount: '', refCode: '', date: todayStr }]);
+    }
+    setActiveView('generator');
+  };
+
+  const handleDuplicateInvoice = (inv: SavedInvoice) => {
+    setEditingInvoiceId(null);
+    setDocNumber(`INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
+    setDate(todayStr);
+    setSelectedClientId(inv.clientId || '');
+    setIsCustomClient(!inv.clientId);
+    setClientName(inv.clientName || '');
+    setClientEmail(inv.clientEmail || '');
+    setClientPhone(inv.clientPhone || '');
+    setSelectedProjectId(inv.projectId || '');
+    setTotalInvoiced(inv.totalInvoiced || '');
+    setNotes(inv.notes || defaultPaymentDetails);
+    if (inv.items && inv.items.length > 0) {
+      setItems(inv.items.map(i => ({ ...i, id: Math.random().toString(), date: todayStr })));
+    }
+    setActiveView('generator');
+  };
+
+  const saveInvoiceToFirestore = async (customStatus?: InvoiceStatus): Promise<string | null> => {
+    if (!clientName.trim()) {
+      alert('Please provide a client name before saving.');
+      return null;
+    }
+
+    try {
+      setIsSavingDraft(true);
+      const invoiceData: Omit<SavedInvoice, 'id'> = {
+        docNumber,
+        date,
+        clientId: selectedClientId || undefined,
+        clientName: clientName.trim(),
+        clientEmail: clientEmail.trim() || undefined,
+        clientPhone: clientPhone.trim() || undefined,
+        projectId: selectedProjectId || undefined,
+        projectName: selectedProject ? selectedProject.name : undefined,
+        items,
+        totalInvoiced: Number(effectiveTotalInvoiced) || 0,
+        amountPaid: Number(totalPaymentsLogged) || 0,
+        balanceDue: Number(outstandingBalance) || 0,
+        notes,
+        status: customStatus || (outstandingBalance <= 0 && Number(effectiveTotalInvoiced) > 0 ? 'paid' : totalPaymentsLogged > 0 ? 'partial' : 'sent'),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: profile?.name || 'Owner'
+      };
+
+      if (editingInvoiceId) {
+        await updateDoc(doc(db, 'invoices', editingInvoiceId), {
+          ...invoiceData,
+          updatedAt: new Date().toISOString()
+        });
+        setSaveSuccessMessage(`Invoice ${docNumber} updated in archive!`);
+        setTimeout(() => setSaveSuccessMessage(null), 4000);
+        return editingInvoiceId;
+      } else {
+        const docRef = await addDoc(collection(db, 'invoices'), invoiceData);
+        setEditingInvoiceId(docRef.id);
+        setSaveSuccessMessage(`Invoice ${docNumber} saved to archive!`);
+        setTimeout(() => setSaveSuccessMessage(null), 4000);
+        return docRef.id;
+      }
+    } catch (err) {
+      console.error('Error saving invoice to Firestore:', err);
+      alert('Failed to save invoice to archive.');
+      return null;
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
   const handleGenerate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!clientName.trim()) {
@@ -292,6 +424,9 @@ export default function InvoiceGenerator() {
           setTimeout(() => setSyncMessage(null), 5000);
         }
       }
+
+      // Automatically save/update in Firestore archive
+      await saveInvoiceToFirestore();
 
       // Format PDF items matching the invoice columns: Name/Item, Payment Type, Ref Code, Date, Amount
       const pdfItems = items
@@ -357,47 +492,76 @@ export default function InvoiceGenerator() {
             <FileText className="w-4 h-4" />
             <span>Document Studio</span>
           </div>
-          <h2 className="text-2xl font-bold text-charcoal">Invoice Generator</h2>
+          <h2 className="text-2xl font-bold text-charcoal">Invoice Management</h2>
           <p className="text-xs text-charcoal/60 mt-0.5">
-            Create branded invoices with automated balance calculation, project tracker synchronization, and catalog support.
+            Create branded invoices with automated balance calculation, project tracker synchronization, and saved archive.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* View Switcher Tabs */}
+        <div className="flex items-center gap-1.5 bg-cream/50 p-1.5 rounded-2xl border border-charcoal/10">
           <button
             type="button"
-            onClick={() => setIsCatalogOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-charcoal/10 hover:bg-cream text-xs font-bold text-charcoal transition-all cursor-pointer"
+            onClick={() => setActiveView('generator')}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+              activeView === 'generator'
+                ? "bg-white text-charcoal shadow-sm"
+                : "text-charcoal/60 hover:text-charcoal"
+            )}
           >
-            <Layers className="w-4 h-4 text-ochre" />
-            <span>Catalog Manager</span>
+            <FileText className="w-3.5 h-3.5 text-red-600" />
+            <span>{editingInvoiceId ? 'Edit Invoice' : 'New Invoice'}</span>
+            {editingInvoiceId && (
+              <span className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-700 rounded-md font-mono">
+                {docNumber}
+              </span>
+            )}
           </button>
 
           <button
             type="button"
-            onClick={() => handleGenerate()}
-            disabled={isGenerating || !clientName.trim()}
-            className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-red-600/20 disabled:opacity-40 cursor-pointer"
-          >
-            {isGenerating ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Generating...</span>
-              </>
-            ) : downloadSuccess ? (
-              <>
-                <CheckCircle2 className="w-4 h-4 text-white" />
-                <span>Invoice Ready!</span>
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4" />
-                <span>Generate Invoice PDF</span>
-              </>
+            onClick={() => setActiveView('archive')}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+              activeView === 'archive'
+                ? "bg-white text-charcoal shadow-sm"
+                : "text-charcoal/60 hover:text-charcoal"
             )}
+          >
+            <History className="w-3.5 h-3.5 text-ochre" />
+            <span>Saved Invoices</span>
           </button>
         </div>
       </div>
+
+      {/* Editing Saved Invoice Notice Bar */}
+      {activeView === 'generator' && editingInvoiceId && (
+        <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5 text-amber-900 font-medium">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            <span>
+              Currently editing archived invoice <strong className="font-mono">{docNumber}</strong> for <strong>{clientName || 'Client'}</strong>.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleCreateNew}
+            className="text-xs font-bold text-amber-900 hover:text-black underline flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Switch to Blank Invoice</span>
+          </button>
+        </div>
+      )}
+
+      {/* Success Notification Banners */}
+      {saveSuccessMessage && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-bold text-emerald-800 flex items-center gap-2 animate-fade-in">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{saveSuccessMessage}</span>
+        </div>
+      )}
 
       {syncMessage && (
         <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-bold text-emerald-800 flex items-center gap-2">
@@ -406,6 +570,14 @@ export default function InvoiceGenerator() {
         </div>
       )}
 
+      {/* Conditional View: Archive vs Generator Form */}
+      {activeView === 'archive' ? (
+        <SavedInvoicesList
+          onLoadInvoice={handleLoadInvoice}
+          onDuplicateInvoice={handleDuplicateInvoice}
+          onCreateNew={handleCreateNew}
+        />
+      ) : (
       <form onSubmit={handleGenerate} className="space-y-8">
         {/* Document Meta, Client & Project Selectors */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-5 sm:p-6 bg-cream/40 rounded-2xl border border-charcoal/5">
@@ -616,30 +788,20 @@ export default function InvoiceGenerator() {
                 <tbody className="divide-y divide-charcoal/5 text-xs">
                   {items.map((item, index) => (
                     <tr key={item.id} className="hover:bg-cream/20 transition-all">
-                      {/* 1. Name of client / item with optional Catalog Quick Fill */}
+                      {/* 1. Name of client / item with Catalog Autocomplete */}
                       <td className="p-3 pl-4">
-                        <div className="relative">
-                          <input
-                            type="text"
-                            placeholder="e.g. Deposit for living room joinery & gypsum"
-                            value={item.name}
-                            onChange={(e) => handleUpdateItem(item.id, 'name', e.target.value)}
-                            className="w-full p-2 bg-transparent border border-charcoal/10 rounded-lg text-xs font-semibold focus:outline-none focus:border-red-600"
-                          />
-                          {catalogItems.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveItemIndexForCatalog(index);
-                                setIsCatalogOpen(true);
-                              }}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-ochre hover:underline cursor-pointer"
-                              title="Pick from Catalog"
-                            >
-                              Catalog
-                            </button>
-                          )}
-                        </div>
+                        <CatalogAutocomplete
+                          value={item.name}
+                          onChange={(val) => handleUpdateItem(item.id, 'name', val)}
+                          onSelectCatalogItem={(catItem) => handleLineItemCatalogSelect(item.id, catItem)}
+                          catalogItems={catalogItems}
+                          placeholder="e.g. Deposit for living room joinery & gypsum"
+                          inputClassName="focus:border-red-600"
+                          onOpenCatalogModal={() => {
+                            setActiveItemIndexForCatalog(index);
+                            setIsCatalogOpen(true);
+                          }}
+                        />
                       </td>
 
                       {/* 2. Payment Type (Partial / Full dropdown) */}
@@ -796,6 +958,16 @@ export default function InvoiceGenerator() {
           )}
 
           <button
+            type="button"
+            onClick={() => saveInvoiceToFirestore()}
+            disabled={isSavingDraft || !clientName.trim()}
+            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-charcoal text-white hover:bg-charcoal/90 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-40 cursor-pointer"
+          >
+            <Save className="w-4 h-4 text-ochre" />
+            <span>{isSavingDraft ? 'Saving to Archive...' : editingInvoiceId ? 'Update in Archive' : 'Save to Archive'}</span>
+          </button>
+
+          <button
             type="submit"
             disabled={isGenerating || !clientName.trim()}
             className="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-8 py-3 rounded-xl transition-all shadow-lg shadow-red-600/20 disabled:opacity-40 cursor-pointer"
@@ -814,6 +986,7 @@ export default function InvoiceGenerator() {
           </button>
         </div>
       </form>
+      )}
 
       {/* Catalog Manager Modal */}
       <CatalogManagerModal

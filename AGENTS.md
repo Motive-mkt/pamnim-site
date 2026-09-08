@@ -1,3 +1,19 @@
+# Pamnim Interior Designers — Agent Memory & Feature Backlog
+
+## Feature Backlog: "review idea"
+
+> **Activation Trigger:** When the user prompts with **`review idea`** (or phrases requesting to re-add/restore the review feature):
+> That is when the Google Review & Customer Feedback system will be restored, and the user will provide their `VITE_GOOGLE_PLACE_ID`.
+
+### Instructions upon receiving "review idea":
+1. **Declare Environment Variable:**
+   - Add `VITE_GOOGLE_PLACE_ID=` to `.env.example`.
+   - Prompt the user to set their Google Place ID if not already configured in settings.
+
+2. **Re-create `src/components/ProjectReviewCard.tsx`:**
+   Use the verified code below:
+
+```tsx
 import React, { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
@@ -51,8 +67,10 @@ export default function ProjectReviewCard({ project }: ProjectReviewCardProps) {
     checkExistingReview();
   }, [project.id, profile?.uid]);
 
-  const placeId = ((import.meta as any).env?.VITE_GOOGLE_PLACE_ID as string | undefined) || 'ChIJl37WkPj_sokRNChh2NN5__o';
-  const googleReviewUrl = `https://search.google.com/local/writereview?placeid=${placeId.trim()}`;
+  const placeId = ((import.meta as any).env?.VITE_GOOGLE_PLACE_ID as string | undefined) || '';
+  const googleReviewUrl = placeId 
+    ? `https://search.google.com/local/writereview?placeid=${placeId.trim()}`
+    : `https://www.google.com/maps/search/?api=1&query=Pamnim+Interior+Designers`;
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -215,3 +233,14 @@ export default function ProjectReviewCard({ project }: ProjectReviewCardProps) {
     </div>
   );
 }
+```
+
+3. **Mount in `src/pages/ProjectTrackerPage.tsx`:**
+   - Import: `import ProjectReviewCard from '../components/ProjectReviewCard';`
+   - Render inside Tab 1 (`activeTab === 'overview'`) for clients:
+   ```tsx
+   {/* Leave a Review (Clients Only) */}
+   {!isStaff && (
+     <ProjectReviewCard project={project} />
+   )}
+   ```
