@@ -43,10 +43,7 @@ export default function Footer() {
           <div id="footer-area" className="md:col-span-6">
             <p className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase mb-4">STUDIO ADDRESS & LANDMARKS</p>
             <p className="text-lg font-serif font-medium leading-relaxed mb-2">
-              Office No. 229, 2nd Floor, Gera's Imperium Star, EDC Patto Plaza, Panaji, Goa 403001
-            </p>
-            <p className="text-xs text-ochre font-sans tracking-wide">
-              Located right next to the Central Library in the EDC Patto Plaza / Patto Centre commercial hub.
+              {content.contact.address}
             </p>
           </div>
         </div>
@@ -73,6 +70,14 @@ export default function Footer() {
           </Link>
           <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 text-sm text-white/40">
             <p>© 2026 Pamnim Interiors. All rights reserved.</p>
+            <span className="hidden sm:inline h-3 w-[1px] bg-white/10" />
+            <Link to="/privacy" className="hover:text-white transition-colors duration-300 font-sans text-xs tracking-wide">
+              Privacy Policy
+            </Link>
+            <span className="hidden sm:inline h-3 w-[1px] bg-white/10" />
+            <Link to="/terms" className="hover:text-white transition-colors duration-300 font-sans text-xs tracking-wide">
+              Terms of Service
+            </Link>
             <span className="hidden sm:inline h-3 w-[1px] bg-white/10" />
             <Link to="/login" className="hover:text-white transition-colors duration-300 font-sans tracking-wide">
               Client Portal

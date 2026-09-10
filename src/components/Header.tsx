@@ -288,7 +288,7 @@ export default function Header() {
 
                 <div className="bg-charcoal/5 p-4 rounded-2xl">
                   <p className="text-xs text-charcoal/60 leading-relaxed mb-3">
-                    Located at EDC Patto Plaza, Goa, near Central Library. Come visit our studio for materials consultations.
+                    Located in {content.contact.address}. Come visit our studio for materials consultations.
                   </p>
                   <a
                     href={`https://wa.me/${content.contact.whatsapp}?text=Hello%20Pamnim%20Interiors!%20I'd%20like%20to%20schedule%20a%20personal%20meeting.`}

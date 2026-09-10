@@ -8,7 +8,7 @@ import {
   Plus, Users, Briefcase, Edit2, Trash2, CheckCircle2, Clock, Globe, UserPlus, Mail,
   Home, Palette, LayoutGrid, PaintBucket, RefreshCcw, MessageSquare, HelpCircle, Film, Sparkles,
   Image as ImageIcon, Copy, Check, ArrowUp, ArrowDown, Upload, X, Sparkle, DollarSign, Save, AlertCircle, AlertTriangle,
-  FileText, FileSignature, ArrowRight, LayoutDashboard
+  FileText, FileSignature, ArrowRight, LayoutDashboard, Receipt, HardHat
 } from 'lucide-react';
 import { useCMS } from '../../hooks/useCMS';
 import { refineDraftCopy } from '../../services/geminiService';
@@ -20,6 +20,8 @@ import UserManagementView from '../../components/UserManagementView';
 import InvoiceGenerator from '../../components/InvoiceGenerator';
 import QuoteGenerator from '../../components/QuoteGenerator';
 import DeleteProjectModal from '../../components/DeleteProjectModal';
+import TransactionsManager from '../../components/TransactionsManager';
+import HRMSManager from '../../components/HRMSManager';
 
 const iconMap: Record<string, any> = {
   Home,
@@ -69,8 +71,8 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 export default function OwnerDashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const urlTab = searchParams.get('tab') as 'overview' | 'projects' | 'invoices' | 'quotes' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat' | null;
-  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'invoices' | 'quotes' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat'>(urlTab || 'overview');
+  const urlTab = searchParams.get('tab') as 'overview' | 'projects' | 'invoices' | 'quotes' | 'transactions' | 'hrms' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat' | null;
+  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'invoices' | 'quotes' | 'transactions' | 'hrms' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat'>(urlTab || 'overview');
 
   useEffect(() => {
     const currentUrlTab = searchParams.get('tab');
@@ -1000,6 +1002,8 @@ export default function OwnerDashboard() {
     { id: 'projects', label: 'Projects & Tracker', icon: Briefcase },
     { id: 'invoices', label: 'Invoices & Billing', icon: FileText },
     { id: 'quotes', label: 'Formal Quotations', icon: FileSignature },
+    { id: 'transactions', label: 'Transactions & Receipts', icon: Receipt },
+    { id: 'hrms', label: 'Site HRMS & Workers', icon: HardHat },
     { id: 'chat', label: 'Client Messages', icon: MessageSquare },
     { id: 'staff', label: 'Team & Approvals', icon: Users },
     { id: 'services', label: 'Core Services', icon: LayoutGrid },
@@ -1784,7 +1788,7 @@ export default function OwnerDashboard() {
                       <label className="block text-xs font-bold uppercase text-charcoal/40">Sub-headline Description</label>
                       <button
                         type="button"
-                        onClick={() => handleRefineText('heroSub', cmsHero.subheadline, 'Sub-headline / intro copy of high-end interiors firm in Goa')}
+                        onClick={() => handleRefineText('heroSub', cmsHero.subheadline, 'Sub-headline / intro copy of high-end interiors firm in Nairobi, Kenya')}
                         className="text-[10px] font-bold text-ochre hover:text-ochre/80 flex items-center gap-1 bg-ochre/5 hover:bg-ochre/10 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
                       >
                         <span>✦ Refine with AI</span>
@@ -1961,16 +1965,103 @@ export default function OwnerDashboard() {
                      className="w-full p-3 sm:p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-sm"
                    />
                 </div>
-                <div>
-                   <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Payment Details (Invoices & Quotes)</label>
-                   <textarea 
-                     rows={3}
-                     value={cmsContact.paymentDetails || ''}
-                     onChange={(e) => setCmsContact({...cmsContact, paymentDetails: e.target.value})}
-                     placeholder="Bank / M-Pesa Details: Pamnim Interior Designers, Paybill: 247247, Acc: 0714984268."
-                     className="w-full p-3 sm:p-4 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-sm"
-                   />
-                   <p className="text-[11px] text-charcoal/50 mt-1">Default payment instructions printed on newly generated invoices and quotations.</p>
+                <div className="space-y-4 pt-2 border-t border-charcoal/5">
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-charcoal/70 mb-1">Payment Instructions by Method</label>
+                    <p className="text-[11px] text-charcoal/50">These method-specific instructions populate dynamically into invoices and quotations.</p>
+                  </div>
+
+                  {/* 1. Bank Transfer */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-charcoal/70 mb-1 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+                      <span>Bank Transfer Details</span>
+                    </label>
+                    <textarea 
+                      rows={3}
+                      value={cmsContact.paymentDetailsByMethod?.bank ?? (content.contact.paymentDetailsByMethod?.bank || 'Bank Transfer: Equity Bank Kenya\nAccount Name: Pamnim Interior Designers\nAccount No: 0123456789\nBranch: Nairobi Main')}
+                      onChange={(e) => {
+                        const currentMethods = cmsContact.paymentDetailsByMethod || content.contact.paymentDetailsByMethod || {};
+                        const updated = { ...currentMethods, bank: e.target.value };
+                        setCmsContact({
+                          ...cmsContact,
+                          paymentDetailsByMethod: updated,
+                          paymentDetails: [updated.bank, updated.mpesa, updated.cash, updated.cheque].filter(Boolean).join('\n\n')
+                        });
+                      }}
+                      placeholder="Bank Transfer: Bank Name, Account Name, Account No, Branch..."
+                      className="w-full p-3 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-xs font-mono"
+                    />
+                  </div>
+
+                  {/* 2. M-Pesa */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-charcoal/70 mb-1 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                      <span>M-Pesa Details</span>
+                    </label>
+                    <textarea 
+                      rows={3}
+                      value={cmsContact.paymentDetailsByMethod?.mpesa ?? (content.contact.paymentDetailsByMethod?.mpesa || 'M-Pesa Paybill: 247247\nAccount Number: 0714984268\nAccount Name: Pamnim Interior Designers')}
+                      onChange={(e) => {
+                        const currentMethods = cmsContact.paymentDetailsByMethod || content.contact.paymentDetailsByMethod || {};
+                        const updated = { ...currentMethods, mpesa: e.target.value };
+                        setCmsContact({
+                          ...cmsContact,
+                          paymentDetailsByMethod: updated,
+                          paymentDetails: [updated.bank, updated.mpesa, updated.cash, updated.cheque].filter(Boolean).join('\n\n')
+                        });
+                      }}
+                      placeholder="M-Pesa Paybill: 247247, Account: 0714984268..."
+                      className="w-full p-3 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-xs font-mono"
+                    />
+                  </div>
+
+                  {/* 3. Cash */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-charcoal/70 mb-1 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+                      <span>Cash Instructions</span>
+                    </label>
+                    <textarea 
+                      rows={2}
+                      value={cmsContact.paymentDetailsByMethod?.cash ?? (content.contact.paymentDetailsByMethod?.cash || 'Cash payments accepted directly at our Nairobi workshop upon official receipt issue.')}
+                      onChange={(e) => {
+                        const currentMethods = cmsContact.paymentDetailsByMethod || content.contact.paymentDetailsByMethod || {};
+                        const updated = { ...currentMethods, cash: e.target.value };
+                        setCmsContact({
+                          ...cmsContact,
+                          paymentDetailsByMethod: updated,
+                          paymentDetails: [updated.bank, updated.mpesa, updated.cash, updated.cheque].filter(Boolean).join('\n\n')
+                        });
+                      }}
+                      placeholder="Cash payments accepted directly at our Nairobi workshop upon official receipt issue."
+                      className="w-full p-3 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-xs font-mono"
+                    />
+                  </div>
+
+                  {/* 4. Cheque */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-charcoal/70 mb-1 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />
+                      <span>Cheque Instructions</span>
+                    </label>
+                    <textarea 
+                      rows={2}
+                      value={cmsContact.paymentDetailsByMethod?.cheque ?? (content.contact.paymentDetailsByMethod?.cheque || 'Cheques payable to: Pamnim Interior Designers (handed over at our Nairobi offices).')}
+                      onChange={(e) => {
+                        const currentMethods = cmsContact.paymentDetailsByMethod || content.contact.paymentDetailsByMethod || {};
+                        const updated = { ...currentMethods, cheque: e.target.value };
+                        setCmsContact({
+                          ...cmsContact,
+                          paymentDetailsByMethod: updated,
+                          paymentDetails: [updated.bank, updated.mpesa, updated.cash, updated.cheque].filter(Boolean).join('\n\n')
+                        });
+                      }}
+                      placeholder="Cheques payable to: Pamnim Interior Designers..."
+                      className="w-full p-3 bg-cream border border-charcoal/5 rounded-xl focus:outline-none focus:border-ochre text-xs font-mono"
+                    />
+                  </div>
                 </div>
               </div>
            </div>
@@ -2125,6 +2216,20 @@ export default function OwnerDashboard() {
       {activeTab === 'quotes' && (
         <div className="pb-16">
           <QuoteGenerator />
+        </div>
+      )}
+
+      {/* Transactions & Payment Receipts Tab */}
+      {activeTab === 'transactions' && (
+        <div className="pb-16">
+          <TransactionsManager />
+        </div>
+      )}
+
+      {/* Site HRMS & Worker Management Tab */}
+      {activeTab === 'hrms' && (
+        <div className="pb-16">
+          <HRMSManager />
         </div>
       )}
 

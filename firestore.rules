@@ -191,9 +191,31 @@ service cloud.firestore {
     // Invoices & Quotes Archives (Owner / Staff access only)
     match /invoices/{invoiceId} {
       allow read, write: if isStaff();
+      match /paymentReceipts/{receiptId} {
+        allow read, write: if isStaff();
+      }
+    }
+    match /{path=**}/paymentReceipts/{receiptId} {
+      allow read, write: if isStaff();
     }
 
     match /quotes/{quoteId} {
+      allow read, write: if isStaff();
+    }
+
+    // Leads / Manual Customers (Staff / Owner only)
+    match /leads/{leadId} {
+      allow read, write: if isStaff();
+    }
+
+    // HRMS (Workers, Daily Work Logs, Wage Payments)
+    match /workers/{workerId} {
+      allow read, write: if isStaff();
+    }
+    match /workLogs/{logId} {
+      allow read, write: if isStaff();
+    }
+    match /workerPayments/{paymentId} {
       allow read, write: if isStaff();
     }
     
@@ -203,10 +225,10 @@ service cloud.firestore {
       allow create, update, delete: if isStaff();
     }
 
-    // Reviews
+    // Reviews (Public read for testimonials, client create, staff manage)
     match /reviews/{reviewId} {
+      allow read: if true;
       allow create: if isSignedIn() && request.resource.data.clientId == request.auth.uid;
-      allow read: if isStaff() || (isSignedIn() && resource.data.clientId == request.auth.uid);
       allow update, delete: if isStaff();
     }
     

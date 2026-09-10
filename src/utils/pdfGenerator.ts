@@ -15,6 +15,7 @@ export interface PDFDocumentData {
   docNumber: string;
   date: string;
   validUntil?: string; // For quotes
+  invoiceMode?: 'walk_in' | 'pay_later';
   clientName: string;
   clientEmail?: string;
   clientPhone?: string;
@@ -211,8 +212,8 @@ export async function generateDocumentPDF(
   // 4. Line Items Table
   let subtotal = 0;
 
-  if (isInvoice) {
-    // Invoice Columns: Name / Item (70mm), Payment Type (25mm), Ref Code (35mm), Date (25mm), Amount (25mm)
+  if (isInvoice && data.invoiceMode !== 'pay_later') {
+    // Walk-in / Direct Payment Invoice Columns: Name / Item (70mm), Payment Type (25mm), Ref Code (35mm), Date (25mm), Amount (25mm)
     const colNameX = margin;
     const colNameW = 70;
     const colTypeX = colNameX + colNameW;
@@ -303,8 +304,8 @@ export async function generateDocumentPDF(
     // Table Rows
     data.items.forEach((item, index) => {
       const itemQty = Number(item.quantity) || 1;
-      const itemUnitPrice = Number(item.unitPrice) || 0;
-      const itemTotal = itemQty * itemUnitPrice;
+      const itemUnitPrice = Number(item.unitPrice) || (typeof item.amount === 'number' ? item.amount / itemQty : 0);
+      const itemTotal = typeof item.amount === 'number' && item.quantity === undefined ? item.amount : itemQty * itemUnitPrice;
       subtotal += itemTotal;
 
       if (yPos > pageHeight - 65) {
@@ -468,3 +469,260 @@ export async function generateDocumentPDF(
 
   doc.save(filename);
 }
+
+export interface PaymentReceiptData {
+  receiptNumber: string;
+  invoiceNumber: string;
+  date: string;
+  clientName: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  projectName?: string;
+  amount: number;
+  paymentMethod: string;
+  referenceNumber?: string;
+  balanceRemaining?: number;
+  totalInvoiceAmount?: number;
+  notes?: string;
+  recordedBy?: string;
+  companyInfo?: {
+    name?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+  };
+}
+
+export async function generatePaymentReceiptPDF(data: PaymentReceiptData): Promise<void> {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 16;
+  const contentWidth = pageWidth - margin * 2;
+
+  const charcoal = [28, 25, 23];
+  const goldOchre = [197, 148, 59];
+  const mutedText = [100, 95, 90];
+  const borderGray = [220, 215, 210];
+  const lightBg = [250, 248, 245];
+
+  // Header band
+  doc.setFillColor(28, 25, 23);
+  doc.rect(0, 0, pageWidth, 28, 'F');
+
+  // Ochre accent strip
+  doc.setFillColor(197, 148, 59);
+  doc.rect(0, 28, pageWidth, 2.5, 'F');
+
+  // Title in header
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(255, 255, 255);
+  doc.text('OFFICIAL PAYMENT RECEIPT', margin, 15);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(215, 175, 105);
+  doc.text('PAMNIM INTERIOR DESIGNERS · NAIROBI, KENYA', margin, 21);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`Receipt #: ${data.receiptNumber}`, pageWidth - margin, 15, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(200, 200, 200);
+  doc.text(`Date: ${data.date}`, pageWidth - margin, 21, { align: 'right' });
+
+  let yPos = 40;
+
+  // Company and Client 2-column info
+  const colWidth = (contentWidth - 10) / 2;
+
+  // Received From (Client)
+  doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
+  doc.roundedRect(margin, yPos, colWidth, 34, 2, 2, 'F');
+  doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(margin, yPos, colWidth, 34, 2, 2, 'S');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(goldOchre[0], goldOchre[1], goldOchre[2]);
+  doc.text('RECEIVED FROM:', margin + 4, yPos + 6);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+  doc.text(data.clientName || 'Valued Client', margin + 4, yPos + 12);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+  if (data.clientPhone) doc.text(`Phone: ${data.clientPhone}`, margin + 4, yPos + 18);
+  if (data.clientEmail) doc.text(`Email: ${data.clientEmail}`, margin + 4, yPos + 23);
+  if (data.projectName) doc.text(`Project: ${data.projectName}`, margin + 4, yPos + 28);
+
+  // Issued By (Company)
+  const rightColX = margin + colWidth + 10;
+  doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
+  doc.roundedRect(rightColX, yPos, colWidth, 34, 2, 2, 'F');
+  doc.roundedRect(rightColX, yPos, colWidth, 34, 2, 2, 'S');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(goldOchre[0], goldOchre[1], goldOchre[2]);
+  doc.text('PAYMENT RECORDED BY:', rightColX + 4, yPos + 6);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+  doc.text(data.companyInfo?.name || 'Pamnim Interior Designers', rightColX + 4, yPos + 12);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+  doc.text(data.companyInfo?.address || 'Nairobi, Kenya', rightColX + 4, yPos + 18);
+  doc.text(data.companyInfo?.phone || '+254 714 984 268', rightColX + 4, yPos + 23);
+  doc.text(`Recorded By: ${data.recordedBy || 'Administration'}`, rightColX + 4, yPos + 28);
+
+  yPos += 42;
+
+  // Amount Paid Hero Card
+  doc.setFillColor(254, 249, 239);
+  doc.roundedRect(margin, yPos, contentWidth, 26, 3, 3, 'F');
+  doc.setDrawColor(goldOchre[0], goldOchre[1], goldOchre[2]);
+  doc.setLineWidth(0.6);
+  doc.roundedRect(margin, yPos, contentWidth, 26, 3, 3, 'S');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+  doc.text('AMOUNT PAID THIS TRANSACTION:', margin + 6, yPos + 8);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(goldOchre[0], goldOchre[1], goldOchre[2]);
+  doc.text(`KES ${formatMoney(data.amount)}`, margin + 6, yPos + 18);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+  doc.text(`Against Invoice: ${data.invoiceNumber}`, pageWidth - margin - 6, yPos + 9, { align: 'right' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+  if (data.balanceRemaining !== undefined) {
+    const balColor = data.balanceRemaining <= 0 ? [34, 197, 94] : [220, 38, 38];
+    doc.setTextColor(balColor[0], balColor[1], balColor[2]);
+    const balText = data.balanceRemaining <= 0 ? 'STATUS: FULLY PAID (NIL BALANCE)' : `REMAINING BALANCE: KES ${formatMoney(data.balanceRemaining)}`;
+    doc.text(balText, pageWidth - margin - 6, yPos + 18, { align: 'right' });
+  }
+
+  yPos += 34;
+
+  // Payment Breakdown Table
+  doc.setFillColor(charcoal[0], charcoal[1], charcoal[2]);
+  doc.rect(margin, yPos, contentWidth, 7, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text('PAYMENT DETAILS', margin + 4, yPos + 4.8);
+  doc.text('REFERENCE / METHOD SPECIFICATION', margin + 70, yPos + 4.8);
+
+  yPos += 7;
+
+  const rows = [
+    { label: 'Payment Method', val: (data.paymentMethod || 'Bank Transfer').toUpperCase() },
+    { label: 'Reference / Trans ID', val: data.referenceNumber || 'N/A' },
+    { label: 'Original Invoice Ref', val: data.invoiceNumber },
+    { label: 'Total Invoice Amount', val: data.totalInvoiceAmount !== undefined ? `KES ${formatMoney(data.totalInvoiceAmount)}` : 'N/A' },
+    { label: 'Amount Paid (This Slip)', val: `KES ${formatMoney(data.amount)}` },
+    { label: 'Outstanding Balance', val: data.balanceRemaining !== undefined ? `KES ${formatMoney(data.balanceRemaining)}` : 'N/A' },
+  ];
+
+  rows.forEach((r, idx) => {
+    const isAlt = idx % 2 === 1;
+    if (isAlt) {
+      doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
+      doc.rect(margin, yPos, contentWidth, 7, 'F');
+    }
+    doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
+    doc.setLineWidth(0.2);
+    doc.line(margin, yPos + 7, pageWidth - margin, yPos + 7);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+    doc.text(r.label, margin + 4, yPos + 5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+    doc.text(r.val, margin + 70, yPos + 5);
+
+    yPos += 7;
+  });
+
+  yPos += 10;
+
+  if (data.notes && data.notes.trim()) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+    doc.text('TRANSACTION NOTES:', margin, yPos);
+    yPos += 4;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+    const splitNotes = doc.splitTextToSize(data.notes.trim(), contentWidth);
+    doc.text(splitNotes, margin, yPos);
+    yPos += splitNotes.length * 4 + 6;
+  }
+
+  // Verification watermark badge
+  doc.setDrawColor(goldOchre[0], goldOchre[1], goldOchre[2]);
+  doc.setLineWidth(0.8);
+  doc.roundedRect(margin, yPos + 4, 65, 18, 2, 2, 'S');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(goldOchre[0], goldOchre[1], goldOchre[2]);
+  doc.text('PAMNIM VERIFIED RECEIPT', margin + 32.5, yPos + 11, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+  doc.text('Electronic Document Record', margin + 32.5, yPos + 16, { align: 'center' });
+
+  // Signature Block
+  const sigX = pageWidth - margin - 60;
+  doc.setDrawColor(charcoal[0], charcoal[1], charcoal[2]);
+  doc.setLineWidth(0.4);
+  doc.line(sigX, yPos + 18, pageWidth - margin, yPos + 18);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+  doc.text('Authorized Signature & Stamp', sigX + 30, yPos + 22, { align: 'center' });
+
+  // Footer
+  const footerY = pageHeight - margin - 4;
+  doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
+  doc.setLineWidth(0.3);
+  doc.line(margin, footerY - 2, pageWidth - margin, footerY - 2);
+
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7.5);
+  doc.setTextColor(goldOchre[0], goldOchre[1], goldOchre[2]);
+  doc.text('Thank you for partnering with Pamnim Interior Designers', pageWidth / 2, footerY + 2, { align: 'center' });
+
+  const sanitizedClient = (data.clientName || 'Client').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const sanitizedReceipt = (data.receiptNumber || 'Receipt').replace(/[^a-zA-Z0-9_-]/g, '_');
+  doc.save(`Receipt_${sanitizedReceipt}_${sanitizedClient}.pdf`);
+}
+

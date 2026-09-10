@@ -18,6 +18,8 @@ import CategoryDetailPage from './pages/CategoryDetail';
 import ServiceDetailPage from './pages/ServiceDetail';
 import ProjectTrackerPage from './pages/ProjectTrackerPage';
 import ClientPortal from './pages/dashboards/ClientPortal';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 import { useAuth } from './hooks/useAuth';
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
@@ -49,6 +51,8 @@ function AppContent() {
         <Route path="/services/:categoryId" element={<CategoryDetailPage />} />
         <Route path="/services/:categoryId/:serviceSlug" element={<ServiceDetailPage />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
         <Route 
           path="/dashboard" 
           element={

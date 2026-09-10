@@ -16,7 +16,7 @@ import CatalogManagerModal from './CatalogManagerModal';
 import CatalogAutocomplete from './CatalogAutocomplete';
 import SavedInvoicesList from './SavedInvoicesList';
 import { CatalogItem } from '../types/catalog';
-import { SavedInvoice, InvoiceStatus } from '../types/documents';
+import { SavedInvoice, InvoiceStatus, InvoiceMode, Lead } from '../types/documents';
 
 export interface InvoicePaymentItem {
   id: string;
@@ -37,9 +37,11 @@ export default function InvoiceGenerator() {
   // Document Info
   const [docNumber, setDocNumber] = useState(defaultInvoiceNumber);
   const [date, setDate] = useState(todayStr);
+  const [invoiceMode, setInvoiceMode] = useState<InvoiceMode>('pay_later');
 
   // Client Selection
   const [clientsList, setClientsList] = useState<any[]>([]);
+  const [leadsList, setLeadsList] = useState<Lead[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [isCustomClient, setIsCustomClient] = useState<boolean>(false);
   const [clientName, setClientName] = useState('');
@@ -113,6 +115,21 @@ export default function InvoiceGenerator() {
     fetchClients();
   }, []);
 
+  // 1b. Fetch Leads
+  useEffect(() => {
+    const fetchLeads = async () => {
+      try {
+        const q = query(collection(db, 'leads'), orderBy('createdAt', 'desc'));
+        const snap = await getDocs(q);
+        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Lead[];
+        setLeadsList(list);
+      } catch (err) {
+        console.error('Error fetching leads for invoice:', err);
+      }
+    };
+    fetchLeads();
+  }, []);
+
   // 2. Fetch Projects (all staff projects)
   useEffect(() => {
     const fetchProjects = async () => {
@@ -179,6 +196,16 @@ export default function InvoiceGenerator() {
       setClientEmail('');
       setClientPhone('');
       setSelectedProjectId('');
+    } else if (clientId.startsWith('LEAD_')) {
+      setIsCustomClient(false);
+      const leadId = clientId.replace('LEAD_', '');
+      const lead = leadsList.find(l => l.id === leadId);
+      if (lead) {
+        setClientName(lead.name || '');
+        setClientEmail(lead.email || '');
+        setClientPhone(lead.phone || '');
+        setSelectedProjectId('');
+      }
     } else {
       setIsCustomClient(false);
       const found = clientsList.find(c => c.id === clientId || c.uid === clientId);
@@ -304,6 +331,7 @@ export default function InvoiceGenerator() {
     setEditingInvoiceId(null);
     setDocNumber(`INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
     setDate(todayStr);
+    setInvoiceMode('pay_later');
     setSelectedClientId('');
     setIsCustomClient(false);
     setClientName('');
@@ -320,6 +348,7 @@ export default function InvoiceGenerator() {
     setEditingInvoiceId(inv.id || null);
     setDocNumber(inv.docNumber || `INV-${new Date().getFullYear()}-001`);
     setDate(inv.date || todayStr);
+    setInvoiceMode(inv.invoiceMode || 'pay_later');
     setSelectedClientId(inv.clientId || '');
     setIsCustomClient(!inv.clientId);
     setClientName(inv.clientName || '');
@@ -340,6 +369,7 @@ export default function InvoiceGenerator() {
     setEditingInvoiceId(null);
     setDocNumber(`INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
     setDate(todayStr);
+    setInvoiceMode(inv.invoiceMode || 'pay_later');
     setSelectedClientId(inv.clientId || '');
     setIsCustomClient(!inv.clientId);
     setClientName(inv.clientName || '');
@@ -365,6 +395,7 @@ export default function InvoiceGenerator() {
       const invoiceData: Omit<SavedInvoice, 'id'> = {
         docNumber,
         date,
+        invoiceMode,
         clientId: selectedClientId || undefined,
         clientName: clientName.trim(),
         clientEmail: clientEmail.trim() || undefined,
@@ -445,6 +476,7 @@ export default function InvoiceGenerator() {
       await generateDocumentPDF('invoice', {
         docNumber,
         date,
+        invoiceMode,
         clientName: clientName.trim(),
         clientEmail: clientEmail.trim() || undefined,
         clientPhone: clientPhone.trim() || undefined,
@@ -607,6 +639,36 @@ export default function InvoiceGenerator() {
                 className="w-full p-2.5 bg-white border border-charcoal/10 rounded-xl text-xs focus:outline-none focus:border-red-600"
               />
             </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Invoice Mode</label>
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-white border border-charcoal/10 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setInvoiceMode('pay_later')}
+                  className={cn(
+                    "py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all text-center cursor-pointer",
+                    invoiceMode === 'pay_later'
+                      ? "bg-ochre text-white shadow-xs"
+                      : "text-charcoal/60 hover:text-charcoal"
+                  )}
+                >
+                  Pay Later
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInvoiceMode('walk_in')}
+                  className={cn(
+                    "py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all text-center cursor-pointer",
+                    invoiceMode === 'walk_in'
+                      ? "bg-ochre text-white shadow-xs"
+                      : "text-charcoal/60 hover:text-charcoal"
+                  )}
+                >
+                  Walk-in
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Column 2: Client Dropdown (+ New Client free text option) */}
@@ -621,15 +683,30 @@ export default function InvoiceGenerator() {
               <select
                 value={isCustomClient ? 'NEW_CLIENT' : selectedClientId}
                 onChange={(e) => handleClientSelect(e.target.value)}
-                className="w-full p-2.5 bg-white border border-charcoal/10 rounded-xl text-xs font-semibold focus:outline-none focus:border-red-600"
+                className="w-full p-2.5 bg-white border border-charcoal/10 rounded-xl text-xs font-semibold focus:outline-none focus:border-red-600 cursor-pointer"
               >
-                <option value="">-- Choose Existing Client --</option>
-                {clientsList.map((c) => (
-                  <option key={c.id || c.uid} value={c.id || c.uid}>
-                    {c.name || c.displayName || c.email} {c.phone ? `(${c.phone})` : ''}
-                  </option>
-                ))}
-                <option value="NEW_CLIENT">+ New client (Enter details manually)</option>
+                <option value="">-- Choose Existing Client / Lead --</option>
+                {clientsList.length > 0 && (
+                  <optgroup label="Registered Clients">
+                    {clientsList.map((c) => (
+                      <option key={c.id || c.uid} value={c.id || c.uid}>
+                        {c.name || c.displayName || c.email} {c.phone ? `(${c.phone})` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {leadsList.length > 0 && (
+                  <optgroup label="Website Inquiries & Leads">
+                    {leadsList.map((lead) => (
+                      <option key={lead.id} value={`LEAD_${lead.id}`}>
+                        {lead.name} {lead.phone ? `(${lead.phone})` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                <optgroup label="Custom / Other">
+                  <option value="NEW_CLIENT">+ New client (Enter details manually)</option>
+                </optgroup>
               </select>
             </div>
 
@@ -873,9 +950,34 @@ export default function InvoiceGenerator() {
         <div className="flex flex-col md:flex-row items-start justify-between gap-6 p-6 bg-cream/30 rounded-2xl border border-charcoal/10">
           {/* Notes & Payment Instructions (Kept as editable default) */}
           <div className="w-full md:w-1/2 space-y-2">
-            <label className="block text-xs font-bold uppercase tracking-wider text-charcoal/70">
-              Payment Instructions & Notes
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal/70">
+                Payment Instructions & Notes
+              </label>
+              {content.contact?.paymentDetailsByMethod && (
+                <div className="flex items-center gap-1.5 text-[10px]">
+                  <span className="text-charcoal/40 font-bold uppercase">Insert:</span>
+                  {content.contact.paymentDetailsByMethod.mpesa && (
+                    <button
+                      type="button"
+                      onClick={() => setNotes(prev => `${prev}\n\n${content.contact.paymentDetailsByMethod?.mpesa}`.trim())}
+                      className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold hover:bg-emerald-100 cursor-pointer"
+                    >
+                      M-Pesa
+                    </button>
+                  )}
+                  {content.contact.paymentDetailsByMethod.bank && (
+                    <button
+                      type="button"
+                      onClick={() => setNotes(prev => `${prev}\n\n${content.contact.paymentDetailsByMethod?.bank}`.trim())}
+                      className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200 font-bold hover:bg-blue-100 cursor-pointer"
+                    >
+                      Bank
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
             <textarea
               rows={4}
               value={notes}

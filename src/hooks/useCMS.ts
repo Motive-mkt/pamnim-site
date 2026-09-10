@@ -16,6 +16,12 @@ export interface CMSContent {
     email: string;
     address: string;
     paymentDetails?: string;
+    paymentDetailsByMethod?: {
+      bank?: string;
+      mpesa?: string;
+      cash?: string;
+      cheque?: string;
+    };
   };
   services: any[];
   portfolio: any[];
@@ -42,7 +48,13 @@ const DEFAULT_CONTENT: CMSContent = {
     whatsapp: "254714984268",
     email: "hinteriors01@gmail.com",
     address: "Nairobi, Kenya",
-    paymentDetails: "Bank / M-Pesa Details: Pamnim Interior Designers, Paybill: 247247, Acc: 0714984268."
+    paymentDetails: "Bank / M-Pesa Details: Pamnim Interior Designers, Paybill: 247247, Acc: 0714984268.",
+    paymentDetailsByMethod: {
+      bank: "Bank Transfer: Equity Bank Kenya\nAccount Name: Pamnim Interior Designers\nAccount No: 0123456789\nBranch: Nairobi Main",
+      mpesa: "M-Pesa Paybill: 247247\nAccount Number: 0714984268\nAccount Name: Pamnim Interior Designers",
+      cash: "Cash payments accepted directly at our Nairobi workshop upon official receipt issue.",
+      cheque: "Cheques payable to: Pamnim Interior Designers (handed over at our Nairobi offices)."
+    }
   },
   services: [
     {
@@ -220,7 +232,11 @@ export function useCMS() {
           },
           contact: {
             ...DEFAULT_CONTENT.contact,
-            ...(data.contact || {})
+            ...(data.contact || {}),
+            paymentDetailsByMethod: {
+              ...DEFAULT_CONTENT.contact.paymentDetailsByMethod,
+              ...(data.contact?.paymentDetailsByMethod || {})
+            }
           },
           services: data.services && data.services.length > 0 ? data.services : DEFAULT_CONTENT.services,
           portfolio: data.portfolio || DEFAULT_CONTENT.portfolio,
