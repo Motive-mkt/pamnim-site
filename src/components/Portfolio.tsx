@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { useState, useEffect, useRef } from 'react';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
@@ -64,21 +64,29 @@ export default function Portfolio() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchGallery() {
-      try {
-        const q = query(collection(db, 'gallery'), orderBy('createdAt', 'desc'));
-        const snap = await getDocs(q);
+    const unsubscribe = onSnapshot(
+      collection(db, 'gallery'),
+      (snap) => {
         const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any);
         
+        // Sort newest first
+        items.sort((a, b) => {
+          const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return timeB - timeA;
+        });
+
         // Show only the 3 most recent curated items
         setGallery(items.slice(0, 3));
-      } catch (err) {
-        console.error("Error fetching gallery:", err);
-      } finally {
+        setLoading(false);
+      },
+      (err) => {
+        console.error("Error subscribing to gallery:", err);
         setLoading(false);
       }
-    }
-    fetchGallery();
+    );
+
+    return () => unsubscribe();
   }, []);
 
   return (

@@ -1441,6 +1441,9 @@ export default function OwnerDashboard() {
            <div className="flex justify-between items-center mb-8">
               <div>
                 <h2 className="text-2xl font-bold">Media Library</h2>
+                <p className="text-xs text-charcoal/60 mt-1">
+                  Photos & cinematic videos added to <strong className="text-charcoal font-semibold">Home Gallery</strong> automatically reflect at the very top of the Portfolio catalog.
+                </p>
                 <div className="flex gap-4 mt-4">
                   <button 
                     onClick={() => setMediaType('gallery')}

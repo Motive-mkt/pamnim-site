@@ -198,6 +198,9 @@ service cloud.firestore {
     match /{path=**}/paymentReceipts/{receiptId} {
       allow read, write: if isStaff();
     }
+    match /{path=**}/expenses/{expenseId} {
+      allow read, write: if isStaff();
+    }
 
     match /quotes/{quoteId} {
       allow read, write: if isStaff();

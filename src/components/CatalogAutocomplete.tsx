@@ -125,7 +125,7 @@ export default function CatalogAutocomplete({
           }}
           onKeyDown={handleKeyDown}
           className={cn(
-            "w-full pr-16 pl-3 py-2 bg-transparent border border-charcoal/10 rounded-lg text-xs font-semibold focus:outline-none focus:border-ochre text-charcoal",
+            "w-full pr-14 sm:pr-28 pl-3 py-2 bg-transparent border border-charcoal/10 rounded-lg text-xs font-semibold focus:outline-none focus:border-ochre text-charcoal",
             inputClassName
           )}
         />
@@ -184,7 +184,7 @@ export default function CatalogAutocomplete({
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-xs font-bold text-charcoal">{item.name}</span>
                         {item.category && (
-                          <span className="text-[10px] px-1.5 py-0.2 bg-charcoal/5 text-charcoal/60 rounded border border-charcoal/10 font-medium">
+                          <span className="text-[10px] px-1.5 py-0.5 bg-charcoal/5 text-charcoal/60 rounded border border-charcoal/10 font-medium">
                             {item.category}
                           </span>
                         )}

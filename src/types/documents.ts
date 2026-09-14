@@ -32,6 +32,7 @@ export interface SavedInvoice {
   id?: string;
   docNumber: string;
   date: string;
+  dueDate?: string;
   invoiceMode?: InvoiceMode;
   clientId?: string;
   clientName: string;
@@ -41,6 +42,12 @@ export interface SavedInvoice {
   projectId?: string;
   projectName?: string;
   items: InvoicePaymentItem[];
+  subtotal?: number;
+  discount?: number;
+  discountType?: 'amount' | 'percentage';
+  discountValue?: number;
+  taxRate?: number;
+  taxAmount?: number;
   totalInvoiced: number;
   amountPaid: number;
   balanceDue: number;

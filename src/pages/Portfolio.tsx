@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import PortfolioContactForm from '../components/PortfolioContactForm';
 import { motion, AnimatePresence } from 'motion/react';
-import { collection, query, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../hooks/useAuth';
-import { Play, Image as ImageIcon, Film, Trash2, AlertTriangle, X, CheckCircle2 } from 'lucide-react';
+import { Play, Image as ImageIcon, Film, Trash2, AlertTriangle, X, CheckCircle2, Sparkles } from 'lucide-react';
 import { optimizeCloudinaryUrl, getCloudinaryVideoPoster } from '../services/cloudinaryService';
 
 interface PortfolioItem {
@@ -15,6 +16,8 @@ interface PortfolioItem {
   image: string; // url (could be image or video path)
   type?: 'image' | 'video';
   createdAt?: any;
+  source?: 'gallery' | 'portfolio_assets';
+  isGallery?: boolean;
 }
 
 export default function PortfolioPage() {
@@ -33,9 +36,10 @@ export default function PortfolioPage() {
     if (!deletingItem || isDeleting) return;
     setIsDeleting(true);
     try {
-      await deleteDoc(doc(db, 'portfolio_assets', deletingItem.id));
+      const collectionName = deletingItem.source || (deletingItem.isGallery ? 'gallery' : 'portfolio_assets');
+      await deleteDoc(doc(db, collectionName, deletingItem.id));
       setProjects(prev => prev.filter(p => p.id !== deletingItem.id));
-      setToast(`"${deletingItem.title || 'Portfolio item'}" deleted successfully.`);
+      setToast(`"${deletingItem.title || 'Item'}" deleted successfully.`);
       setTimeout(() => setToast(null), 4000);
       setDeletingItem(null);
     } catch (err: any) {
@@ -47,31 +51,112 @@ export default function PortfolioPage() {
   };
 
   useEffect(() => {
-    async function fetchProjects() {
-      try {
-        const q = query(collection(db, 'portfolio_assets'), orderBy('createdAt', 'desc'));
-        const snap = await getDocs(q);
-        const fetched = snap.docs.map(doc => {
+    let galleryList: PortfolioItem[] = [];
+    let portfolioList: PortfolioItem[] = [];
+    let galleryLoaded = false;
+    let portfolioLoaded = false;
+
+    const updateCombined = () => {
+      // Sort gallery items newest first
+      const sortedGallery = [...galleryList].sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeB - timeA;
+      });
+
+      // Sort portfolio assets newest first
+      const sortedPortfolio = [...portfolioList].sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeB - timeA;
+      });
+
+      // Deduplicate images and place all gallery section items at the very top
+      const combined: PortfolioItem[] = [];
+      const seenUrls = new Set<string>();
+
+      // 1. Gallery items always placed at the very top
+      for (const item of sortedGallery) {
+        if (item.image && !seenUrls.has(item.image)) {
+          seenUrls.add(item.image);
+          combined.push(item);
+        }
+      }
+
+      // 2. Followed by dedicated portfolio assets
+      for (const item of sortedPortfolio) {
+        if (item.image && !seenUrls.has(item.image)) {
+          seenUrls.add(item.image);
+          combined.push(item);
+        }
+      }
+
+      setProjects(combined);
+      if (galleryLoaded && portfolioLoaded) {
+        setLoading(false);
+      }
+    };
+
+    // Real-time listener for Gallery collection
+    const unsubGallery = onSnapshot(
+      collection(db, 'gallery'),
+      (snap) => {
+        galleryList = snap.docs.map(doc => {
           const data = doc.data();
-          // Auto-classify URL as video if filename contains mp4 or type is video
-          const isVideo = data.type === 'video' || (data.image && data.image.includes('.mp4'));
+          const isVideo = data.type === 'video' || (data.image && (data.image.includes('.mp4') || data.image.includes('/video/upload/')));
+          return {
+            id: doc.id,
+            title: data.title || '',
+            category: data.category || 'Featured Gallery',
+            image: data.image || '',
+            type: isVideo ? 'video' : 'image',
+            createdAt: data.createdAt,
+            source: 'gallery',
+            isGallery: true
+          } as PortfolioItem;
+        });
+        galleryLoaded = true;
+        updateCombined();
+      },
+      (err) => {
+        console.error('Error subscribing to gallery collection:', err);
+        galleryLoaded = true;
+        updateCombined();
+      }
+    );
+
+    // Real-time listener for Portfolio Assets collection
+    const unsubPortfolio = onSnapshot(
+      collection(db, 'portfolio_assets'),
+      (snap) => {
+        portfolioList = snap.docs.map(doc => {
+          const data = doc.data();
+          const isVideo = data.type === 'video' || (data.image && (data.image.includes('.mp4') || data.image.includes('/video/upload/')));
           return {
             id: doc.id,
             title: data.title || '',
             category: data.category || 'Luxury Spaces',
             image: data.image || '',
             type: isVideo ? 'video' : 'image',
-            createdAt: data.createdAt
+            createdAt: data.createdAt,
+            source: 'portfolio_assets',
+            isGallery: false
           } as PortfolioItem;
         });
-        setProjects(fetched);
-      } catch (err) {
-        console.error("Error fetching portfolio:", err);
-      } finally {
-        setLoading(false);
+        portfolioLoaded = true;
+        updateCombined();
+      },
+      (err) => {
+        console.error('Error subscribing to portfolio_assets collection:', err);
+        portfolioLoaded = true;
+        updateCombined();
       }
-    }
-    fetchProjects();
+    );
+
+    return () => {
+      unsubGallery();
+      unsubPortfolio();
+    };
   }, []);
 
   const filteredProjects = projects.filter(p => p.type === activeTab);
@@ -151,6 +236,12 @@ export default function PortfolioPage() {
                           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                           referrerPolicy="no-referrer"
                         />
+                        {project.isGallery && (
+                          <div className="absolute top-4 left-4 z-20 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5 shadow-sm pointer-events-none">
+                            <Sparkles className="w-3 h-3 text-ochre" />
+                            <span>Featured Gallery</span>
+                          </div>
+                        )}
                         {(project.category || project.title) && (
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent flex flex-col justify-end p-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                             {project.category && <span className="text-ochre-light text-xs font-bold uppercase tracking-widest mb-1">{project.category}</span>}
@@ -184,6 +275,12 @@ export default function PortfolioPage() {
                         transition={{ delay: index * 0.05 }}
                         className="bg-white rounded-3xl overflow-hidden border border-charcoal/5 shadow-sm flex flex-col group relative"
                       >
+                        {project.isGallery && (
+                          <div className="absolute top-4 left-4 z-30 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5 shadow-sm pointer-events-none">
+                            <Sparkles className="w-3 h-3 text-ochre" />
+                            <span>Featured Gallery</span>
+                          </div>
+                        )}
                         {/* Staff / Owner Quick Delete Button */}
                         {isStaff && (
                           <button
@@ -258,6 +355,9 @@ export default function PortfolioPage() {
             </div>
           )}
         </div>
+
+        {/* Contact Form Section at the Bottom of the Portfolio Page */}
+        <PortfolioContactForm />
       </main>
 
       {/* Delete Confirmation Modal for Staff/Owner */}
@@ -270,8 +370,8 @@ export default function PortfolioPage() {
                   <AlertTriangle className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-charcoal">Delete Portfolio Item</h3>
-                  <p className="text-xs text-red-700 font-medium">Permanent Action</p>
+                  <h3 className="text-base font-bold text-charcoal">Delete Item</h3>
+                  <p className="text-xs text-red-700 font-medium">Permanent Action ({deletingItem.isGallery ? 'Home Gallery Item' : 'Portfolio Catalog'})</p>
                 </div>
               </div>
               <button

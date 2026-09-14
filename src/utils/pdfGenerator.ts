@@ -14,6 +14,7 @@ export interface PDFLineItem {
 export interface PDFDocumentData {
   docNumber: string;
   date: string;
+  dueDate?: string; // For invoices
   validUntil?: string; // For quotes
   invoiceMode?: 'walk_in' | 'pay_later';
   clientName: string;
@@ -21,6 +22,10 @@ export interface PDFDocumentData {
   clientPhone?: string;
   projectName?: string;
   items: PDFLineItem[];
+  subtotal?: number; // Base subtotal before discount/tax
+  discount?: number; // Discount amount in KES
+  taxRate?: number; // e.g. 16 for 16%
+  taxAmount?: number; // Calculated tax in KES
   totalInvoiced?: number; // For invoices
   amountPaid?: number; // For invoices
   balanceDue?: number; // Calculated: totalInvoiced - amountPaid
@@ -54,10 +59,10 @@ export function formatMoney(val: number): string {
   });
 }
 
-export async function generateDocumentPDF(
+export async function buildDocumentPDF(
   type: 'invoice' | 'quote',
   data: PDFDocumentData
-): Promise<void> {
+): Promise<{ doc: jsPDF; filename: string }> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -163,13 +168,17 @@ export async function generateDocumentPDF(
   doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
   doc.text(`Date: ${data.date}`, pageWidth - margin, yPos + 5.5, { align: 'right' });
 
-  if (!isInvoice && data.validUntil) {
+  if (isInvoice && data.dueDate) {
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(crimsonRed[0], crimsonRed[1], crimsonRed[2]);
+    doc.text(`Due Date: ${data.dueDate}`, pageWidth - margin, yPos + 10, { align: 'right' });
+  } else if (!isInvoice && data.validUntil) {
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(goldOchre[0], goldOchre[1], goldOchre[2]);
     doc.text(`Valid Until: ${data.validUntil}`, pageWidth - margin, yPos + 10, { align: 'right' });
   }
 
-  yPos += 14;
+  yPos += 15;
 
   // 3. "Bill To" / "Prepared For" Section
   const cardY = yPos;
@@ -347,15 +356,61 @@ export async function generateDocumentPDF(
   const summaryBoxX = pageWidth - margin - summaryBoxW;
 
   if (isInvoice) {
+    const rawSubtotal = typeof data.subtotal === 'number' && data.subtotal > 0
+      ? data.subtotal
+      : subtotal;
+
+    const discountVal = Number(data.discount) || 0;
+    const taxVal = Number(data.taxAmount) || 0;
+
     const totalInvoiced = typeof data.totalInvoiced === 'number' && data.totalInvoiced > 0 
       ? data.totalInvoiced 
-      : subtotal;
+      : Math.max(0, rawSubtotal - discountVal + taxVal);
     const totalPaid = typeof data.amountPaid === 'number' 
       ? data.amountPaid 
-      : subtotal;
+      : 0;
     const balanceDue = typeof data.balanceDue === 'number' 
       ? data.balanceDue 
-      : (totalInvoiced - totalPaid);
+      : Math.max(0, totalInvoiced - totalPaid);
+
+    // If discount or tax is present, show breakdown: Subtotal -> Discount -> Tax/VAT -> Total Invoiced
+    if (discountVal > 0 || taxVal > 0) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+      doc.text('Subtotal:', summaryBoxX, yPos + 4);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+      doc.text(formatMoney(rawSubtotal), pageWidth - margin, yPos + 4, { align: 'right' });
+
+      yPos += 6;
+
+      if (discountVal > 0) {
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+        doc.text('Discount:', summaryBoxX, yPos + 4);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(crimsonRed[0], crimsonRed[1], crimsonRed[2]);
+        doc.text(`- ${formatMoney(discountVal)}`, pageWidth - margin, yPos + 4, { align: 'right' });
+
+        yPos += 6;
+      }
+
+      if (taxVal > 0) {
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+        const vatLabel = data.taxRate ? `Tax / VAT (${data.taxRate}%):` : 'Tax / VAT:';
+        doc.text(vatLabel, summaryBoxX, yPos + 4);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+        doc.text(`+ ${formatMoney(taxVal)}`, pageWidth - margin, yPos + 4, { align: 'right' });
+
+        yPos += 6;
+      }
+    }
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
@@ -460,14 +515,88 @@ export async function generateDocumentPDF(
     doc.text('This quotation is an estimate subject to site inspection, material pricing, and scope adjustments.', pageWidth / 2, footerY + 5.5, { align: 'center' });
   }
 
-  // 8. Save & Trigger Download
+  // 8. Return doc & filename
   const sanitizedClient = (data.clientName || 'Client').replace(/[^a-zA-Z0-9_-]/g, '_');
   const sanitizedDoc = (data.docNumber || 'Doc').replace(/[^a-zA-Z0-9_-]/g, '_');
   const filename = isInvoice
     ? `Invoice_${sanitizedDoc}_${sanitizedClient}.pdf`
     : `Quote_${sanitizedDoc}_${sanitizedClient}.pdf`;
 
+  return { doc, filename };
+}
+
+export async function generateDocumentPDF(
+  type: 'invoice' | 'quote',
+  data: PDFDocumentData
+): Promise<void> {
+  const { doc, filename } = await buildDocumentPDF(type, data);
   doc.save(filename);
+}
+
+export async function shareDocumentPDF(
+  type: 'invoice' | 'quote',
+  data: PDFDocumentData
+): Promise<{ success: boolean; method: 'native_share' | 'whatsapp' }> {
+  const { doc, filename } = await buildDocumentPDF(type, data);
+  const blob = doc.output('blob');
+
+  const isInvoice = type === 'invoice';
+  const totalAmount = isInvoice
+    ? (typeof data.totalInvoiced === 'number' && data.totalInvoiced > 0
+        ? data.totalInvoiced
+        : data.items.reduce((s, i) => s + (Number(i.amount) || Number(i.unitPrice) || 0), 0))
+    : data.items.reduce((s, i) => s + (Number(i.amount) || (Number(i.quantity || 1) * Number(i.unitPrice || 0))), 0);
+
+  const balance = typeof data.balanceDue === 'number'
+    ? data.balanceDue
+    : Math.max(0, totalAmount - (data.amountPaid || 0));
+
+  let messageText = '';
+  if (isInvoice) {
+    messageText = `Hello ${data.clientName || 'Valued Client'}, here is your official Invoice (${data.docNumber}) from Pamnim Interior Designers for KES ${formatMoney(totalAmount)}. ${balance > 0 ? `Outstanding Balance: KES ${formatMoney(balance)}. ` : 'Status: Fully Paid. '}Please find the PDF attached.`;
+  } else {
+    messageText = `Hello ${data.clientName || 'Valued Client'}, here is your official Quotation (${data.docNumber}) from Pamnim Interior Designers for KES ${formatMoney(totalAmount)}. Please find the PDF estimate attached.`;
+  }
+
+  // Format phone number for WhatsApp
+  let phone = (data.clientPhone || '').replace(/[^0-9+]/g, '');
+  if (phone.startsWith('+')) {
+    phone = phone.substring(1);
+  } else if (phone.startsWith('07') || phone.startsWith('01')) {
+    phone = '254' + phone.substring(1);
+  }
+
+  // 1. Try native Web Share API with PDF file
+  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    try {
+      const file = new File([blob], filename, { type: 'application/pdf' });
+      if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: filename,
+          text: messageText
+        });
+        return { success: true, method: 'native_share' };
+      }
+    } catch (shareErr: any) {
+      if (shareErr?.name === 'AbortError') {
+        return { success: false, method: 'native_share' };
+      }
+      console.warn('Native file share failed or canceled, falling back:', shareErr);
+    }
+  }
+
+  // 2. Fallback for desktop or non-file-sharing browsers:
+  // Trigger file download so user has the PDF to attach in WhatsApp
+  doc.save(filename);
+
+  // Open WhatsApp link with prefilled message
+  const waMessage = `${messageText}\n\n(Official PDF has been downloaded to your device and is ready to attach).`;
+  const encoded = encodeURIComponent(waMessage);
+  const waUrl = phone ? `https://wa.me/${phone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+  window.open(waUrl, '_blank', 'noopener,noreferrer');
+
+  return { success: true, method: 'whatsapp' };
 }
 
 export interface PaymentReceiptData {

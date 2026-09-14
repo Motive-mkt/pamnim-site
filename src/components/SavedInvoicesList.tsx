@@ -7,9 +7,9 @@ import { SavedInvoice, InvoiceStatus, PaymentReceipt } from '../types/documents'
 import { 
   FileText, Search, Download, Edit2, Copy, Trash2, CheckCircle2, 
   Clock, AlertCircle, RefreshCw, Plus, ExternalLink, Filter, Calendar,
-  CreditCard, Receipt, DollarSign, X, Check
+  CreditCard, Receipt, DollarSign, X, Check, Share2
 } from 'lucide-react';
-import { generateDocumentPDF, generatePaymentReceiptPDF, formatMoney } from '../utils/pdfGenerator';
+import { generateDocumentPDF, shareDocumentPDF, generatePaymentReceiptPDF, formatMoney } from '../utils/pdfGenerator';
 import { useCMS } from '../hooks/useCMS';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
@@ -40,6 +40,7 @@ export default function SavedInvoicesList({
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [sharingId, setSharingId] = useState<string | null>(null);
   const [invoiceToDelete, setInvoiceToDelete] = useState<SavedInvoice | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -108,6 +109,8 @@ export default function SavedInvoicesList({
       await generateDocumentPDF('invoice', {
         docNumber: inv.docNumber,
         date: inv.date,
+        dueDate: inv.dueDate,
+        invoiceMode: inv.invoiceMode,
         clientName: inv.clientName,
         clientEmail: inv.clientEmail,
         clientPhone: inv.clientPhone,
@@ -122,6 +125,10 @@ export default function SavedInvoicesList({
           quantity: 1,
           unitPrice: 0
         }],
+        subtotal: inv.subtotal,
+        discount: inv.discount,
+        taxRate: inv.taxRate,
+        taxAmount: inv.taxAmount,
         totalInvoiced: inv.totalInvoiced,
         amountPaid: inv.amountPaid,
         balanceDue: inv.balanceDue,
@@ -140,6 +147,67 @@ export default function SavedInvoicesList({
       alert('Failed to generate PDF.');
     } finally {
       setDownloadingId(null);
+    }
+  };
+
+  const handleSharePDF = async (inv: SavedInvoice) => {
+    if (!inv.id) return;
+    setSharingId(inv.id);
+    try {
+      const pdfItems = (inv.items || [])
+        .filter(i => i.name?.trim() || Number(i.amount) > 0)
+        .map(i => ({
+          id: i.id,
+          description: i.name || 'Payment Item',
+          paymentType: i.paymentType,
+          refCode: i.refCode || '—',
+          date: i.date || inv.date,
+          amount: Number(i.amount) || 0,
+          quantity: 1,
+          unitPrice: Number(i.amount) || 0
+        }));
+
+      await shareDocumentPDF('invoice', {
+        docNumber: inv.docNumber,
+        date: inv.date,
+        dueDate: inv.dueDate,
+        invoiceMode: inv.invoiceMode,
+        clientName: inv.clientName,
+        clientEmail: inv.clientEmail,
+        clientPhone: inv.clientPhone,
+        projectName: inv.projectName,
+        items: pdfItems.length > 0 ? pdfItems : [{
+          id: '1',
+          description: 'Payment Item',
+          paymentType: 'Partial',
+          refCode: '—',
+          date: inv.date,
+          amount: 0,
+          quantity: 1,
+          unitPrice: 0
+        }],
+        subtotal: inv.subtotal,
+        discount: inv.discount,
+        taxRate: inv.taxRate,
+        taxAmount: inv.taxAmount,
+        totalInvoiced: inv.totalInvoiced,
+        amountPaid: inv.amountPaid,
+        balanceDue: inv.balanceDue,
+        notes: inv.notes,
+        currencySymbol: 'KES',
+        companyInfo: {
+          name: 'Pamnim Interior Designers',
+          address: content.contact?.address || 'Nairobi, Kenya',
+          phone: content.contact?.phone || '0714 984 268',
+          email: content.contact?.email || 'hinteriors01@gmail.com',
+          tagline: 'Shinning outside, beautiful inside'
+        }
+      });
+    } catch (err) {
+      console.error('PDF share error:', err);
+      alert('Failed to share invoice PDF.');
+    } finally {
+      setSharingId(null);
     }
   };
 
@@ -449,7 +517,7 @@ export default function SavedInvoicesList({
                 <tr className="bg-charcoal text-white text-[11px] font-bold uppercase tracking-wider">
                   <th className="p-3.5 pl-5">Invoice #</th>
                   <th className="p-3.5">Client & Project</th>
-                  <th className="p-3.5">Date</th>
+                  <th className="p-3.5">Date / Due</th>
                   <th className="p-3.5 text-right">Invoiced (KES)</th>
                   <th className="p-3.5 text-right">Paid (KES)</th>
                   <th className="p-3.5 text-right">Balance Due (KES)</th>
@@ -461,6 +529,8 @@ export default function SavedInvoicesList({
                 {filtered.map((inv) => {
                   const statusInfo = STATUS_CONFIG[inv.status || 'draft'] || STATUS_CONFIG.draft;
                   const isDownloading = downloadingId === inv.id;
+                  const isSharing = sharingId === inv.id;
+                  const isOverdue = inv.dueDate && inv.status !== 'paid' && new Date(inv.dueDate) < new Date();
 
                   return (
                     <tr key={inv.id} className="hover:bg-cream/20 transition-colors">
@@ -482,9 +552,17 @@ export default function SavedInvoicesList({
                         )}
                       </td>
 
-                      {/* Date */}
-                      <td className="p-3.5 text-charcoal/60 whitespace-nowrap">
-                        {inv.date}
+                      {/* Date & Due */}
+                      <td className="p-3.5 whitespace-nowrap">
+                        <div className="text-charcoal/80 font-medium">{inv.date}</div>
+                        {inv.dueDate && (
+                          <div className={cn(
+                            "text-[10px] font-semibold mt-0.5",
+                            isOverdue ? "text-red-600 font-bold" : "text-charcoal/50"
+                          )}>
+                            Due: {inv.dueDate} {isOverdue && '⚠️'}
+                          </div>
+                        )}
                       </td>
 
                       {/* Invoiced */}
@@ -544,6 +622,17 @@ export default function SavedInvoicesList({
                             className="p-2 rounded-lg bg-charcoal/5 hover:bg-charcoal/10 text-charcoal/70 hover:text-charcoal transition-colors cursor-pointer"
                           >
                             <Receipt className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Share via WhatsApp / Web Share */}
+                          <button
+                            type="button"
+                            onClick={() => handleSharePDF(inv)}
+                            disabled={isSharing}
+                            title="Share Invoice (WhatsApp / Web Share)"
+                            className="p-2 rounded-lg bg-charcoal/5 hover:bg-emerald-50 text-charcoal hover:text-emerald-600 transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            <Share2 className="w-3.5 h-3.5" />
                           </button>
 
                           {/* Print / Download PDF */}

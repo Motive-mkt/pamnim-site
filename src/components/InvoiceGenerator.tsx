@@ -8,9 +8,9 @@ import { useCMS } from '../hooks/useCMS';
 import { 
   Plus, Trash2, Download, FileText, Sparkles, Building2, User, Phone, Mail, 
   DollarSign, Calendar, CheckCircle2, Layers, AlertCircle, RefreshCw, Briefcase,
-  CreditCard, Check, ArrowRight, Save, History, X
+  CreditCard, Check, ArrowRight, Save, History, X, Share2
 } from 'lucide-react';
-import { generateDocumentPDF, formatMoney } from '../utils/pdfGenerator';
+import { generateDocumentPDF, shareDocumentPDF, formatMoney } from '../utils/pdfGenerator';
 import { cn } from '../lib/utils';
 import CatalogManagerModal from './CatalogManagerModal';
 import CatalogAutocomplete from './CatalogAutocomplete';
@@ -33,11 +33,19 @@ export default function InvoiceGenerator() {
 
   const defaultInvoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
   const todayStr = new Date().toISOString().split('T')[0];
+  const defaultDueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   // Document Info
   const [docNumber, setDocNumber] = useState(defaultInvoiceNumber);
   const [date, setDate] = useState(todayStr);
+  const [dueDate, setDueDate] = useState(defaultDueDate);
   const [invoiceMode, setInvoiceMode] = useState<InvoiceMode>('pay_later');
+
+  // Adjustments: Discount & Tax/VAT
+  const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('fixed');
+  const [discountValue, setDiscountValue] = useState<number | ''>('');
+  const [taxRate, setTaxRate] = useState<number | ''>(''); // e.g. 16 for 16% VAT
+  const [isSharing, setIsSharing] = useState(false);
 
   // Client Selection
   const [clientsList, setClientsList] = useState<any[]>([]);
@@ -227,10 +235,25 @@ export default function InvoiceGenerator() {
   const newPaymentsSum = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
   const existingPaymentsSum = existingPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   
-  // Total Invoiced: if user entered custom or linked to project totalCost, otherwise sum of items
-  const effectiveTotalInvoiced = typeof totalInvoiced === 'number' && totalInvoiced > 0
+  // Base Subtotal before discounts and tax
+  const baseSubtotal = typeof totalInvoiced === 'number' && totalInvoiced > 0
     ? totalInvoiced
     : (newPaymentsSum + existingPaymentsSum);
+
+  // Discount Calculation
+  const numericDiscountVal = Number(discountValue) || 0;
+  const discountAmount = discountType === 'percentage'
+    ? (baseSubtotal * Math.min(100, Math.max(0, numericDiscountVal))) / 100
+    : Math.min(baseSubtotal, Math.max(0, numericDiscountVal));
+
+  const afterDiscount = Math.max(0, baseSubtotal - discountAmount);
+
+  // Tax/VAT Calculation (e.g. 16% in Kenya)
+  const numericTaxRate = Number(taxRate) || 0;
+  const taxAmount = (afterDiscount * Math.max(0, numericTaxRate)) / 100;
+
+  // Effective Total Invoiced (Subtotal - Discount + Tax)
+  const effectiveTotalInvoiced = Math.round((afterDiscount + taxAmount) * 100) / 100;
 
   const totalPaymentsLogged = existingPaymentsSum + newPaymentsSum;
   // Automatically calculated: Total Invoiced - sum of payments logged against that invoice/project
@@ -331,6 +354,7 @@ export default function InvoiceGenerator() {
     setEditingInvoiceId(null);
     setDocNumber(`INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
     setDate(todayStr);
+    setDueDate(defaultDueDate);
     setInvoiceMode('pay_later');
     setSelectedClientId('');
     setIsCustomClient(false);
@@ -340,6 +364,9 @@ export default function InvoiceGenerator() {
     setSelectedProjectId('');
     setSelectedProject(null);
     setTotalInvoiced('');
+    setDiscountType('fixed');
+    setDiscountValue('');
+    setTaxRate('');
     setItems([{ id: '1', name: '', paymentType: 'Partial', amount: '', refCode: '', date: todayStr }]);
     setActiveView('generator');
   };
@@ -348,6 +375,7 @@ export default function InvoiceGenerator() {
     setEditingInvoiceId(inv.id || null);
     setDocNumber(inv.docNumber || `INV-${new Date().getFullYear()}-001`);
     setDate(inv.date || todayStr);
+    setDueDate(inv.dueDate || defaultDueDate);
     setInvoiceMode(inv.invoiceMode || 'pay_later');
     setSelectedClientId(inv.clientId || '');
     setIsCustomClient(!inv.clientId);
@@ -355,7 +383,10 @@ export default function InvoiceGenerator() {
     setClientEmail(inv.clientEmail || '');
     setClientPhone(inv.clientPhone || '');
     setSelectedProjectId(inv.projectId || '');
-    setTotalInvoiced(inv.totalInvoiced || '');
+    setTotalInvoiced(inv.subtotal || inv.totalInvoiced || '');
+    setDiscountType(inv.discountType || 'fixed');
+    setDiscountValue(inv.discountValue !== undefined ? inv.discountValue : (inv.discount || ''));
+    setTaxRate(inv.taxRate !== undefined ? inv.taxRate : '');
     setNotes(inv.notes || defaultPaymentDetails);
     if (inv.items && inv.items.length > 0) {
       setItems(inv.items);
@@ -369,6 +400,7 @@ export default function InvoiceGenerator() {
     setEditingInvoiceId(null);
     setDocNumber(`INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
     setDate(todayStr);
+    setDueDate(defaultDueDate);
     setInvoiceMode(inv.invoiceMode || 'pay_later');
     setSelectedClientId(inv.clientId || '');
     setIsCustomClient(!inv.clientId);
@@ -376,7 +408,10 @@ export default function InvoiceGenerator() {
     setClientEmail(inv.clientEmail || '');
     setClientPhone(inv.clientPhone || '');
     setSelectedProjectId(inv.projectId || '');
-    setTotalInvoiced(inv.totalInvoiced || '');
+    setTotalInvoiced(inv.subtotal || inv.totalInvoiced || '');
+    setDiscountType(inv.discountType || 'fixed');
+    setDiscountValue(inv.discountValue !== undefined ? inv.discountValue : (inv.discount || ''));
+    setTaxRate(inv.taxRate !== undefined ? inv.taxRate : '');
     setNotes(inv.notes || defaultPaymentDetails);
     if (inv.items && inv.items.length > 0) {
       setItems(inv.items.map(i => ({ ...i, id: Math.random().toString(), date: todayStr })));
@@ -395,6 +430,7 @@ export default function InvoiceGenerator() {
       const invoiceData: Omit<SavedInvoice, 'id'> = {
         docNumber,
         date,
+        dueDate,
         invoiceMode,
         clientId: selectedClientId || undefined,
         clientName: clientName.trim(),
@@ -403,6 +439,12 @@ export default function InvoiceGenerator() {
         projectId: selectedProjectId || undefined,
         projectName: selectedProject ? selectedProject.name : undefined,
         items,
+        subtotal: baseSubtotal,
+        discount: discountAmount,
+        discountType,
+        discountValue: typeof discountValue === 'number' ? discountValue : undefined,
+        taxRate: typeof taxRate === 'number' ? taxRate : undefined,
+        taxAmount,
         totalInvoiced: Number(effectiveTotalInvoiced) || 0,
         amountPaid: Number(totalPaymentsLogged) || 0,
         balanceDue: Number(outstandingBalance) || 0,
@@ -473,9 +515,10 @@ export default function InvoiceGenerator() {
           unitPrice: Number(i.amount) || 0
         }));
 
-      await generateDocumentPDF('invoice', {
+      const pdfData = {
         docNumber,
         date,
+        dueDate,
         invoiceMode,
         clientName: clientName.trim(),
         clientEmail: clientEmail.trim() || undefined,
@@ -484,13 +527,17 @@ export default function InvoiceGenerator() {
         items: pdfItems.length > 0 ? pdfItems : [{
           id: '1',
           description: 'Payment Item',
-          paymentType: 'Partial',
+          paymentType: 'Partial' as const,
           refCode: '—',
           date,
           amount: 0,
           quantity: 1,
           unitPrice: 0
         }],
+        subtotal: baseSubtotal,
+        discount: discountAmount,
+        taxRate: typeof taxRate === 'number' ? taxRate : undefined,
+        taxAmount,
         totalInvoiced: Number(effectiveTotalInvoiced),
         amountPaid: Number(totalPaymentsLogged),
         balanceDue: Number(outstandingBalance),
@@ -503,7 +550,9 @@ export default function InvoiceGenerator() {
           email: content.contact?.email || 'hinteriors01@gmail.com',
           tagline: 'Shinning outside, beautiful inside'
         }
-      });
+      };
+
+      await generateDocumentPDF('invoice', pdfData);
 
       setDownloadSuccess(true);
       setTimeout(() => setDownloadSuccess(false), 4000);
@@ -512,6 +561,83 @@ export default function InvoiceGenerator() {
       alert('Failed to generate PDF. Please try again.');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!clientName.trim()) {
+      alert('Please provide a client name.');
+      return;
+    }
+
+    try {
+      setIsSharing(true);
+
+      // If tied to a project, write payment line items into projects/{projectId}/payments subcollection
+      if (selectedProjectId) {
+        await recordPaymentsToProjectTracker();
+      }
+
+      // Automatically save/update in Firestore archive
+      await saveInvoiceToFirestore();
+
+      // Format PDF items matching the invoice columns
+      const pdfItems = items
+        .filter(i => i.name.trim() || Number(i.amount) > 0)
+        .map(i => ({
+          id: i.id,
+          description: i.name || 'Payment Item',
+          paymentType: i.paymentType,
+          refCode: i.refCode || '—',
+          date: i.date,
+          amount: Number(i.amount) || 0,
+          quantity: 1,
+          unitPrice: Number(i.amount) || 0
+        }));
+
+      const pdfData = {
+        docNumber,
+        date,
+        dueDate,
+        invoiceMode,
+        clientName: clientName.trim(),
+        clientEmail: clientEmail.trim() || undefined,
+        clientPhone: clientPhone.trim() || undefined,
+        projectName: selectedProject ? selectedProject.name : undefined,
+        items: pdfItems.length > 0 ? pdfItems : [{
+          id: '1',
+          description: 'Payment Item',
+          paymentType: 'Partial' as const,
+          refCode: '—',
+          date,
+          amount: 0,
+          quantity: 1,
+          unitPrice: 0
+        }],
+        subtotal: baseSubtotal,
+        discount: discountAmount,
+        taxRate: typeof taxRate === 'number' ? taxRate : undefined,
+        taxAmount,
+        totalInvoiced: Number(effectiveTotalInvoiced),
+        amountPaid: Number(totalPaymentsLogged),
+        balanceDue: Number(outstandingBalance),
+        notes,
+        currencySymbol: 'KES',
+        companyInfo: {
+          name: 'Pamnim Interior Designers',
+          address: content.contact?.address || 'Nairobi, Kenya',
+          phone: content.contact?.phone || '0714 984 268',
+          email: content.contact?.email || 'hinteriors01@gmail.com',
+          tagline: 'Shinning outside, beautiful inside'
+        }
+      };
+
+      await shareDocumentPDF('invoice', pdfData);
+    } catch (err) {
+      console.error('Invoice share failed:', err);
+      alert('Could not initiate share. Please try again.');
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -630,14 +756,25 @@ export default function InvoiceGenerator() {
               />
             </div>
 
-            <div>
-              <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Invoice Date</label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full p-2.5 bg-white border border-charcoal/10 rounded-xl text-xs focus:outline-none focus:border-red-600"
-              />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Invoice Date</label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-charcoal/10 rounded-xl text-xs focus:outline-none focus:border-red-600"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Due Date</label>
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-charcoal/10 rounded-xl text-xs focus:outline-none focus:border-red-600"
+                />
+              </div>
             </div>
 
             <div>
@@ -955,7 +1092,7 @@ export default function InvoiceGenerator() {
                 Payment Instructions & Notes
               </label>
               {content.contact?.paymentDetailsByMethod && (
-                <div className="flex items-center gap-1.5 text-[10px]">
+                <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
                   <span className="text-charcoal/40 font-bold uppercase">Insert:</span>
                   {content.contact.paymentDetailsByMethod.mpesa && (
                     <button
@@ -975,6 +1112,24 @@ export default function InvoiceGenerator() {
                       Bank
                     </button>
                   )}
+                  {content.contact.paymentDetailsByMethod.cash && (
+                    <button
+                      type="button"
+                      onClick={() => setNotes(prev => `${prev}\n\n${content.contact.paymentDetailsByMethod?.cash}`.trim())}
+                      className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-bold hover:bg-amber-100 cursor-pointer"
+                    >
+                      Cash
+                    </button>
+                  )}
+                  {content.contact.paymentDetailsByMethod.cheque && (
+                    <button
+                      type="button"
+                      onClick={() => setNotes(prev => `${prev}\n\n${content.contact.paymentDetailsByMethod?.cheque}`.trim())}
+                      className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-800 border border-purple-200 font-bold hover:bg-purple-100 cursor-pointer"
+                    >
+                      Cheque
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -991,9 +1146,110 @@ export default function InvoiceGenerator() {
 
           {/* Calculated Totals Box */}
           <div className="w-full md:w-80 space-y-3 bg-white p-5 rounded-2xl border border-charcoal/10 shadow-sm shrink-0">
+            {/* Base Subtotal */}
             <div className="flex items-center justify-between text-xs text-charcoal/60">
-              <span>Total Invoiced:</span>
+              <span>Subtotal:</span>
               <span className="font-mono font-bold text-charcoal">
+                KES {formatMoney(baseSubtotal)}
+              </span>
+            </div>
+
+            {/* Discount adjustment */}
+            <div className="pt-2 border-t border-charcoal/5 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-charcoal/60">
+                  Discount
+                </label>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setDiscountType('fixed')}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-all",
+                      discountType === 'fixed' ? "bg-charcoal text-white" : "bg-cream text-charcoal/60 hover:text-charcoal"
+                    )}
+                  >
+                    KES
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDiscountType('percentage')}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-all",
+                      discountType === 'percentage' ? "bg-charcoal text-white" : "bg-cream text-charcoal/60 hover:text-charcoal"
+                    )}
+                  >
+                    %
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder={discountType === 'percentage' ? 'e.g. 5%' : '0'}
+                  value={discountValue}
+                  onChange={(e) => setDiscountValue(e.target.value ? parseFloat(e.target.value) : '')}
+                  className="w-full p-2 bg-cream/40 border border-charcoal/10 rounded-lg text-xs font-mono font-semibold focus:outline-none focus:border-red-600 text-right"
+                />
+                {discountAmount > 0 && (
+                  <span className="text-xs font-mono font-bold text-emerald-700 whitespace-nowrap">
+                    -KES {formatMoney(discountAmount)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Tax / VAT adjustment */}
+            <div className="pt-2 border-t border-charcoal/5 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-charcoal/60">
+                  Tax / VAT Rate (%)
+                </label>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setTaxRate('')}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-all",
+                      !taxRate ? "bg-charcoal text-white" : "bg-cream text-charcoal/60 hover:text-charcoal"
+                    )}
+                  >
+                    0%
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTaxRate(16)}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-all",
+                      taxRate === 16 ? "bg-charcoal text-white" : "bg-cream text-charcoal/60 hover:text-charcoal"
+                    )}
+                  >
+                    16% VAT
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  placeholder="0 (e.g. 16 for VAT)"
+                  value={taxRate}
+                  onChange={(e) => setTaxRate(e.target.value ? parseFloat(e.target.value) : '')}
+                  className="w-full p-2 bg-cream/40 border border-charcoal/10 rounded-lg text-xs font-mono font-semibold focus:outline-none focus:border-red-600 text-right"
+                />
+                {taxAmount > 0 && (
+                  <span className="text-xs font-mono font-bold text-amber-700 whitespace-nowrap">
+                    +KES {formatMoney(taxAmount)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-xs font-bold text-charcoal pt-2 border-t border-charcoal/10">
+              <span>Total Invoiced:</span>
+              <span className="font-mono font-black text-charcoal text-sm">
                 KES {formatMoney(effectiveTotalInvoiced)}
               </span>
             </div>
@@ -1067,6 +1323,25 @@ export default function InvoiceGenerator() {
           >
             <Save className="w-4 h-4 text-ochre" />
             <span>{isSavingDraft ? 'Saving to Archive...' : editingInvoiceId ? 'Update in Archive' : 'Save to Archive'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleShare}
+            disabled={isSharing || isGenerating || !clientName.trim()}
+            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-40 cursor-pointer"
+          >
+            {isSharing ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Sharing...</span>
+              </>
+            ) : (
+              <>
+                <Share2 className="w-4 h-4" />
+                <span>Share Invoice</span>
+              </>
+            )}
           </button>
 
           <button
