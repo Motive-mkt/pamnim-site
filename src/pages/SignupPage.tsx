@@ -15,6 +15,9 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
 
+  // Worker registration steps
+  const [workerStep, setWorkerStep] = useState<'signup' | 'profile'>('signup');
+
   // Common fields
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -27,12 +30,44 @@ export default function SignupPage() {
   // Worker-only fields
   const [mpesaPhone, setMpesaPhone] = useState('');
   const [idNumber, setIdNumber] = useState('');
+  const [appliedSkill, setAppliedSkill] = useState('Masonry');
+  const [emergencyContact, setEmergencyContact] = useState('');
+  const [workerNotes, setWorkerNotes] = useState('');
 
   useEffect(() => {
     if (searchParams.get('role') === 'worker') {
       setSignupType('worker');
     }
   }, [searchParams]);
+
+  // Handle worker Step 1 -> Step 2
+  const handleProceedToWorkerProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!name.trim()) {
+      setError('Please enter your full name.');
+      return;
+    }
+    if (!mpesaPhone.trim()) {
+      setError('Please enter your M-Pesa phone number.');
+      return;
+    }
+    if (!idNumber.trim()) {
+      setError('Please enter your National ID number.');
+      return;
+    }
+    if (!email.trim()) {
+      setError('Please enter your email address.');
+      return;
+    }
+    if (!password || password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
+
+    setWorkerStep('profile');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,13 +123,36 @@ export default function SignupPage() {
           email: email.trim().toLowerCase(),
           phone: mpesaPhone.trim(),
           idNumber: idNumber.trim(),
+          appliedSkill: appliedSkill,
+          emergencyContact: emergencyContact.trim(),
+          notes: workerNotes.trim(),
           role: 'worker' as const,
           status: 'pending' as const,
           createdAt: new Date().toISOString()
         };
 
+        // Create pending profile document
         await setDoc(doc(db, 'profiles', user.uid), workerRequestData);
+        // Create in pending_signups collection for owner approval queue
         await setDoc(doc(db, 'pending_signups', user.uid), workerRequestData);
+        // Create initial worker document in workers collection with pending status
+        await setDoc(doc(db, 'workers', user.uid), {
+          id: user.uid,
+          userId: user.uid,
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          phone: mpesaPhone.trim(),
+          idNumber: idNumber.trim(),
+          skill: appliedSkill,
+          emergencyContact: emergencyContact.trim(),
+          notes: workerNotes.trim(),
+          dailyRate: 0, // Configured only by owner on approval
+          status: 'pending',
+          createdAt: new Date().toISOString()
+        });
+
+        // Sign out immediately so worker cannot log in yet
+        await auth.signOut();
       } else {
         // Check if an owner profile document exists in profiles collection
         let isFirstOwner = false;
@@ -133,9 +191,10 @@ export default function SignupPage() {
 
           // Save pending profile document
           await setDoc(doc(db, 'profiles', user.uid), requestData);
-
           // Save to pending_signups collection for easy admin querying
           await setDoc(doc(db, 'pending_signups', user.uid), requestData);
+          // Sign out pending user
+          await auth.signOut();
         }
       }
 
@@ -217,23 +276,152 @@ export default function SignupPage() {
               <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
-              <h2 className="text-2xl font-bold text-charcoal">Request sent</h2>
+              <h2 className="text-2xl font-bold text-charcoal">Request sent, pending approval</h2>
               <p className="text-sm text-charcoal/70 leading-relaxed">
                 {signupType === 'worker'
-                  ? 'Your worker registration has been submitted as pending. You cannot log in until the site owner approves and sets up your site profile.'
+                  ? 'Your worker registration has been submitted and is pending owner approval. You cannot log in yet. The site owner will review your details, set your trade and daily wage rate, and activate your account.'
                   : 'An administrator will review your details and send your approved access notification.'}
               </p>
-              <div className="pt-4">
+              <div className="pt-4 space-y-2">
                 <Link
                   to="/login"
                   className="inline-block px-8 py-3 bg-ochre text-white font-bold text-sm rounded-2xl shadow-lg shadow-ochre/20 hover:bg-ochre-dark transition-all"
                 >
-                  Go to Login Page
+                  Back to Login
                 </Link>
+                <p className="text-xs text-charcoal/50">
+                  You will receive SMS/WhatsApp notification once your profile is activated.
+                </p>
               </div>
             </div>
-          ) : (
+          ) : signupType === 'worker' && workerStep === 'profile' ? (
+            /* STEP 2: COMPLETE YOUR WORKER PROFILE */
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="p-3 bg-ochre/10 rounded-2xl border border-ochre/20 text-xs text-charcoal flex items-center justify-between">
+                <span className="font-bold text-ochre">Step 2 of 2: Complete Your Profile</span>
+                <button
+                  type="button"
+                  onClick={() => setWorkerStep('signup')}
+                  className="text-ochre hover:underline font-bold cursor-pointer"
+                >
+                  Edit Step 1
+                </button>
+              </div>
+
+              {error && (
+                <div className="p-4 rounded-2xl bg-red-50 text-red-700 text-xs font-medium border border-red-200">
+                  {error}
+                </div>
+              )}
+
+              {/* Pre-filled read/editable credentials overview */}
+              <div className="p-4 bg-cream/40 rounded-2xl border border-charcoal/10 space-y-2 text-xs">
+                <div className="font-bold text-charcoal uppercase tracking-wider text-[10px]">Pre-filled Registration Details</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-charcoal/50 block">Name:</span>
+                    <span className="font-bold text-charcoal">{name}</span>
+                  </div>
+                  <div>
+                    <span className="text-charcoal/50 block">Phone (M-Pesa):</span>
+                    <span className="font-bold text-charcoal">{mpesaPhone}</span>
+                  </div>
+                  <div>
+                    <span className="text-charcoal/50 block">National ID:</span>
+                    <span className="font-bold text-charcoal">{idNumber}</span>
+                  </div>
+                  <div>
+                    <span className="text-charcoal/50 block">Email:</span>
+                    <span className="font-bold text-charcoal truncate block">{email}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Worker Fillable: Applied Trade / Skill */}
+              <div>
+                <label className="block text-xs font-bold text-charcoal/60 uppercase tracking-widest mb-1.5">
+                  Trade / Skill You Believe Applies <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={appliedSkill}
+                  onChange={e => setAppliedSkill(e.target.value)}
+                  className="w-full px-4 py-3.5 rounded-2xl border border-charcoal/15 focus:border-ochre outline-none text-sm bg-white font-medium cursor-pointer"
+                >
+                  <option value="Masonry">Masonry</option>
+                  <option value="Carpentry">Carpentry</option>
+                  <option value="Painting">Painting</option>
+                  <option value="Electrical">Electrical</option>
+                  <option value="Plumbing">Plumbing</option>
+                  <option value="Welding">Welding / Fabrication</option>
+                  <option value="Gypsum">Gypsum & Ceiling</option>
+                  <option value="Tiling">Tiling & Flooring</option>
+                  <option value="Interior Finishing">Interior Finishing</option>
+                  <option value="General Labor">General Labor</option>
+                  <option value="Other">Other Craftsmanship</option>
+                </select>
+                <span className="text-[10px] text-charcoal/40 mt-1 block">
+                  The owner will review this and configure your official wage grade.
+                </span>
+              </div>
+
+              {/* Emergency Contact Name & Phone */}
+              <div>
+                <label className="block text-xs font-bold text-charcoal/60 uppercase tracking-widest mb-1.5">
+                  Emergency Contact / Next of Kin
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Mary Mwangi (Wife) - 0711 223344"
+                  value={emergencyContact}
+                  onChange={e => setEmergencyContact(e.target.value)}
+                  className="w-full px-4 py-3.5 rounded-2xl border border-charcoal/15 focus:border-ochre outline-none text-sm bg-cream/30 font-medium"
+                />
+              </div>
+
+              {/* Notes / Experience */}
+              <div>
+                <label className="block text-xs font-bold text-charcoal/60 uppercase tracking-widest mb-1.5">
+                  Experience & Additional Notes (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. 5 years experience in gypsum board ceiling installations in Nairobi..."
+                  value={workerNotes}
+                  onChange={e => setWorkerNotes(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl border border-charcoal/15 focus:border-ochre outline-none text-xs bg-cream/30 font-medium resize-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setWorkerStep('signup')}
+                  className="w-1/3 py-3.5 rounded-2xl border border-charcoal/20 text-charcoal font-bold text-xs hover:bg-cream transition-all cursor-pointer"
+                >
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-2/3 py-3.5 rounded-2xl bg-ochre text-white font-bold text-sm shadow-xl shadow-ochre/20 hover:bg-ochre-dark transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {loading ? 'Submitting...' : 'Submit Profile Request'}
+                </button>
+              </div>
+
+              <p className="text-[11px] text-center text-charcoal/50 pt-1">
+                Submitting creates your pending profile. You cannot log in yet until owner approval.
+              </p>
+            </form>
+          ) : (
+            /* STEP 1: SIGNUP FORM */
+            <form onSubmit={signupType === 'worker' ? handleProceedToWorkerProfile : handleSubmit} className="space-y-4">
+              {signupType === 'worker' && (
+                <div className="p-3 bg-ochre/10 rounded-2xl border border-ochre/20 text-xs text-charcoal font-bold">
+                  Step 1 of 2: Worker Account & Credentials
+                </div>
+              )}
+
               {error && (
                 <div className="p-4 rounded-2xl bg-red-50 text-red-700 text-xs font-medium border border-red-200">
                   {error}
@@ -377,7 +565,7 @@ export default function SignupPage() {
                 disabled={loading}
                 className="w-full py-4 rounded-2xl bg-ochre text-white font-bold text-sm shadow-xl shadow-ochre/20 hover:bg-ochre-dark transition-all disabled:opacity-50 mt-4 cursor-pointer"
               >
-                {loading ? 'Submitting Request...' : signupType === 'worker' ? 'Submit Worker Request' : 'Submit Request'}
+                {signupType === 'worker' ? 'Continue: Complete Your Profile' : loading ? 'Submitting Request...' : 'Submit Request'}
               </button>
 
               <div className="text-center pt-4 border-t border-charcoal/10">

@@ -55,6 +55,13 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
     return getWeekId(selectedDate);
   }, [selectedDate]);
 
+  // Trade category filter state
+  const [selectedTradeFilter, setSelectedTradeFilter] = useState<string>('all');
+  const [showSettleAllModal, setShowSettleAllModal] = useState(false);
+  const [settleAllMethod, setSettleAllMethod] = useState<'M-Pesa' | 'Cash' | 'Bank Transfer'>('M-Pesa');
+  const [settleAllMpesaRef, setSettleAllMpesaRef] = useState('');
+  const [submittingSettleAll, setSubmittingSettleAll] = useState(false);
+
   const weekDates = useMemo(() => {
     return getWeekDates(selectedDate);
   }, [selectedDate]);
@@ -126,9 +133,9 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
     setSelectedDate(new Date());
   };
 
-  // Compute Weekly Ledger per Worker
+  // Compute Weekly Ledger per Worker (Active approved workers only)
   const workerLedgers = useMemo(() => {
-    return workers.filter(w => w.status !== 'inactive').map(w => {
+    return workers.filter(w => w.status === 'active').map(w => {
       const wId = w.id || '';
       const uId = w.userId || '';
 
@@ -291,10 +298,70 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
     document.body.removeChild(link);
   };
 
-  const filteredLedgers = workerLedgers.filter(l => 
-    l.worker.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    l.worker.skill.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Available Trades from active workers
+  const availableTrades = useMemo(() => {
+    const trades = new Set<string>();
+    workerLedgers.forEach(l => {
+      if (l.worker.skill) trades.add(l.worker.skill);
+    });
+    return Array.from(trades);
+  }, [workerLedgers]);
+
+  const filteredLedgers = useMemo(() => {
+    return workerLedgers.filter(l => {
+      const matchesSearch = l.worker.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        l.worker.skill.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesTrade = selectedTradeFilter === 'all' || l.worker.skill === selectedTradeFilter;
+      return matchesSearch && matchesTrade;
+    });
+  }, [workerLedgers, searchTerm, selectedTradeFilter]);
+
+  // Unsettled workers in current trade filter
+  const pendingSettlementInFilter = useMemo(() => {
+    return filteredLedgers.filter(l => !l.isFullySettled && l.netDue > 0);
+  }, [filteredLedgers]);
+
+  const totalBatchAmount = useMemo(() => {
+    return pendingSettlementInFilter.reduce((sum, l) => sum + l.netDue, 0);
+  }, [pendingSettlementInFilter]);
+
+  // Batch Settle All
+  const handleConfirmSettleAll = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pendingSettlementInFilter.length === 0) return;
+    setSubmittingSettleAll(true);
+    try {
+      const promises = pendingSettlementInFilter.map(l => {
+        const wId = l.worker.id;
+        const uId = l.worker.userId;
+        return addDoc(collection(db, 'workerPayments'), {
+          workerId: uId || wId,
+          workerDocId: wId,
+          workerName: l.worker.name,
+          projectId: l.worker.assignedProjectId || '',
+          projectName: projects.find(p => p.id === l.worker.assignedProjectId)?.name || '',
+          amount: l.netDue,
+          paymentMethod: settleAllMethod,
+          type: 'wage',
+          referenceCode: settleAllMpesaRef.trim() || undefined,
+          date: new Date().toISOString().split('T')[0],
+          weekId: weekId,
+          notes: `Batch weekly settlement for ${weekId} (${selectedTradeFilter === 'all' ? 'All Trades' : selectedTradeFilter})`,
+          recordedBy: profile?.name || 'Owner',
+          createdAt: new Date().toISOString()
+        });
+      });
+
+      await Promise.all(promises);
+      setShowSettleAllModal(false);
+      setSettleAllMpesaRef('');
+    } catch (err) {
+      console.error('Error in batch settlement:', err);
+      alert('Could not complete batch settlement. Please try again.');
+    } finally {
+      setSubmittingSettleAll(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -390,16 +457,43 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
           </div>
         </div>
 
-        {/* Search */}
-        <div className="relative pt-2">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal/40" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Search worker by name or trade..."
-            className="w-full pl-11 pr-4 py-2.5 rounded-2xl bg-cream/20 border border-charcoal/15 text-xs font-medium text-charcoal outline-none focus:border-ochre focus:bg-white"
-          />
+        {/* Search & Category Filter Toolbar */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal/40" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Search worker by name or trade..."
+              className="w-full pl-11 pr-4 py-2.5 rounded-2xl bg-cream/20 border border-charcoal/15 text-xs font-medium text-charcoal outline-none focus:border-ochre focus:bg-white"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <select
+              value={selectedTradeFilter}
+              onChange={e => setSelectedTradeFilter(e.target.value)}
+              className="px-3 py-2.5 rounded-2xl bg-cream/30 border border-charcoal/15 text-xs font-semibold text-charcoal outline-none focus:border-ochre cursor-pointer w-full sm:w-auto"
+            >
+              <option value="all">All Trades ({workerLedgers.length})</option>
+              {availableTrades.map(trade => (
+                <option key={trade} value={trade}>{trade}</option>
+              ))}
+            </select>
+
+            {pendingSettlementInFilter.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowSettleAllModal(true)}
+                className="px-4 py-2.5 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm shadow-ochre/20 whitespace-nowrap cursor-pointer"
+                title={`Batch settle ${pendingSettlementInFilter.length} workers with outstanding balances`}
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Settle All ({pendingSettlementInFilter.length})</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -692,6 +786,106 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
                 >
                   <Check className="w-4 h-4" />
                   <span>{submittingSettle ? 'Recording Payout...' : 'Confirm & Mark Paid'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Settle All (Category) Modal */}
+      {showSettleAllModal && (
+        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white max-w-lg w-full rounded-3xl p-6 sm:p-8 shadow-2xl border border-charcoal/10 space-y-5 animate-fade-in">
+            <div className="flex items-start justify-between gap-4 border-b border-charcoal/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-ochre/10 text-ochre flex items-center justify-center">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-charcoal">Batch Settle Week</h3>
+                  <p className="text-xs text-charcoal/50">
+                    {selectedTradeFilter === 'all' ? 'All Trades' : selectedTradeFilter} • {pendingSettlementInFilter.length} workers • {weekId}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSettleAllModal(false)}
+                className="p-2 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* List of workers to be settled */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/50">
+                Workers to Settle ({pendingSettlementInFilter.length})
+              </span>
+              <div className="max-h-48 overflow-y-auto space-y-1.5 p-2 bg-cream/30 rounded-2xl border border-charcoal/10 divide-y divide-charcoal/5 text-xs">
+                {pendingSettlementInFilter.map(l => (
+                  <div key={l.worker.id} className="pt-1.5 first:pt-0 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-charcoal">{l.worker.name}</span>
+                      <span className="text-charcoal/40 ml-1.5">({l.worker.skill})</span>
+                    </div>
+                    <span className="font-mono font-bold text-ochre">KES {formatMoney(l.netDue)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Batch Total Summary */}
+            <div className="p-4 bg-cream/30 rounded-2xl border border-charcoal/10 flex items-center justify-between text-sm">
+              <span className="font-bold text-charcoal">Total Batch Payout:</span>
+              <span className="text-lg font-bold text-ochre font-mono">KES {formatMoney(totalBatchAmount)}</span>
+            </div>
+
+            <form onSubmit={handleConfirmSettleAll} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                  Payment Method
+                </label>
+                <select
+                  value={settleAllMethod}
+                  onChange={e => setSettleAllMethod(e.target.value as any)}
+                  className="w-full px-4 py-3 rounded-2xl border border-charcoal/15 bg-white text-sm font-medium text-charcoal outline-none focus:border-ochre cursor-pointer"
+                >
+                  <option value="M-Pesa">M-Pesa</option>
+                  <option value="Cash">Cash Payout</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                  Batch Receipt / M-Pesa Code (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={settleAllMpesaRef}
+                  onChange={e => setSettleAllMpesaRef(e.target.value)}
+                  placeholder="e.g. BATCH-PAYROLL-01"
+                  className="w-full px-4 py-3 rounded-2xl border border-charcoal/15 text-sm font-mono text-charcoal outline-none focus:border-ochre uppercase"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-charcoal/10">
+                <button
+                  type="button"
+                  onClick={() => setShowSettleAllModal(false)}
+                  className="px-5 py-2.5 rounded-xl border border-charcoal/15 text-xs font-bold text-charcoal/70 hover:bg-cream/50 transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingSettleAll}
+                  className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md shadow-ochre/20 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{submittingSettleAll ? 'Processing Batch...' : `Settle All (${pendingSettlementInFilter.length})`}</span>
                 </button>
               </div>
             </form>

@@ -43,7 +43,7 @@ export default function DailyPayRun({ workers, projects, onComplete }: DailyPayR
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const activeWorkers = useMemo(() => {
-    return workers.filter(w => w.status !== 'inactive');
+    return workers.filter(w => w.status === 'active');
   }, [workers]);
 
   // Load existing records for the selected date to allow review & backfilling

@@ -105,7 +105,14 @@ export default function Login() {
       try {
         const userProfileSnap = await getDoc(docRef);
         if (userProfileSnap.exists()) {
-          userRole = userProfileSnap.data().role;
+          const uData = userProfileSnap.data();
+          userRole = uData.role;
+          if (uData.status === 'pending' || userRole === 'pending') {
+            await auth.signOut();
+            setError('Request sent, pending approval. You cannot log in yet until the site owner reviews and approves your account.');
+            setLoading(false);
+            return;
+          }
         }
       } catch (e) {
         console.warn("Could not check user role for navigation:", e);

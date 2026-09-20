@@ -529,19 +529,6 @@ export default function QuickActions({
               onNavigateTab('hrms', { subtab: 'logs', openModal: 'log' });
             }
           }
-        },
-        {
-          id: 'add-worker',
-          icon: HardHat,
-          label: 'Add Worker',
-          description: 'Register a new carpenter, mason, or electrician',
-          onClick: () => {
-            if (onOpenHrmsModal) {
-              onOpenHrmsModal('workers', 'worker');
-            } else {
-              onNavigateTab('hrms', { subtab: 'workers', openModal: 'worker' });
-            }
-          }
         }
       );
     }

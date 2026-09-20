@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, onSnapshot 
+  collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, query, orderBy, onSnapshot 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../hooks/useAuth';
@@ -10,7 +10,7 @@ import {
   Users, UserCheck, HardHat, Calendar, DollarSign, Plus, Search, 
   Filter, Trash2, Edit2, CheckCircle2, AlertCircle, Clock, 
   Briefcase, Phone, CreditCard, ChevronRight, X, Download, RefreshCw,
-  Zap, CalendarDays, CheckSquare, MessageSquareHeart, FileText
+  Zap, CalendarDays, CheckSquare, MessageSquareHeart, FileText, Copy
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import DailyPayRun from './hrms/DailyPayRun';
@@ -124,6 +124,25 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
     notes: ''
   });
 
+  // Edit Payment State
+  const [editingPayment, setEditingPayment] = useState<WorkerPayment | null>(null);
+  const [showEditPaymentModal, setShowEditPaymentModal] = useState(false);
+  const [editPaymentForm, setEditPaymentForm] = useState<{
+    amount: number | '';
+    date: string;
+    paymentMethod: 'M-Pesa' | 'Cash' | 'Bank Transfer';
+    referenceCode: string;
+    notes: string;
+    type: 'wage' | 'extra';
+  }>({
+    amount: '',
+    date: new Date().toISOString().split('T')[0],
+    paymentMethod: 'M-Pesa',
+    referenceCode: '',
+    notes: '',
+    type: 'wage'
+  });
+
   // Real-time subscribers
   useEffect(() => {
     setLoading(true);
@@ -196,19 +215,10 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
   };
 
   // Worker Handlers
-  const handleOpenNewWorker = () => {
-    setEditingWorker(null);
-    setWorkerForm({
-      name: '',
-      phone: '',
-      idNumber: '',
-      skill: 'Carpenter',
-      dailyRate: 1500,
-      status: 'active',
-      assignedProjectId: '',
-      notes: ''
-    });
-    setShowWorkerModal(true);
+  const handleCopySignupLink = () => {
+    const link = `${window.location.origin}/signup?role=worker`;
+    navigator.clipboard.writeText(link);
+    triggerSuccess('Worker self-signup link copied! Share this link with artisans to register.');
   };
 
   const handleEditWorker = (w: Worker) => {
@@ -228,13 +238,13 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
 
   const handleSaveWorker = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!workerForm.name.trim()) return;
+    if (!workerForm.name.trim() || !editingWorker?.id) return;
 
     try {
       setSubmitting(true);
       const proj = projects.find(p => p.id === workerForm.assignedProjectId);
 
-      const workerData: Omit<Worker, 'id'> = {
+      const workerData: Partial<Worker> = {
         name: workerForm.name.trim(),
         phone: workerForm.phone.trim(),
         idNumber: workerForm.idNumber.trim() || undefined,
@@ -244,17 +254,40 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
         assignedProjectId: workerForm.assignedProjectId || undefined,
         assignedProjectName: proj ? proj.name : undefined,
         notes: workerForm.notes.trim() || undefined,
-        createdAt: editingWorker?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
 
-      if (editingWorker?.id) {
-        await updateDoc(doc(db, 'workers', editingWorker.id), workerData);
-        triggerSuccess(`Updated worker ${workerForm.name}`);
-      } else {
-        await addDoc(collection(db, 'workers'), workerData);
-        triggerSuccess(`Added ${workerForm.name} to workers directory`);
+      await updateDoc(doc(db, 'workers', editingWorker.id), workerData);
+
+      // Sync user profile and clear pending_signups if activating
+      const targetUid = editingWorker.userId || editingWorker.id;
+      if (targetUid) {
+        try {
+          const profileRef = doc(db, 'profiles', targetUid);
+          const pSnap = await getDoc(profileRef);
+          if (pSnap.exists()) {
+            await updateDoc(profileRef, {
+              name: workerForm.name.trim(),
+              phone: workerForm.phone.trim(),
+              idNumber: workerForm.idNumber.trim() || undefined,
+              status: workerForm.status === 'pending' ? 'pending' : 'active',
+              role: 'worker'
+            });
+          }
+
+          if (workerForm.status === 'active') {
+            const pendingRef = doc(db, 'pending_signups', targetUid);
+            const pendSnap = await getDoc(pendingRef);
+            if (pendSnap.exists()) {
+              await deleteDoc(pendingRef);
+            }
+          }
+        } catch (profileErr) {
+          console.warn('Could not sync worker status to user profile:', profileErr);
+        }
       }
+
+      triggerSuccess(`Updated worker details for ${workerForm.name}${workerForm.status === 'active' ? ' (Account Approved & Active)' : ''}`);
       setShowWorkerModal(false);
     } catch (err) {
       console.error('Error saving worker:', err);
@@ -272,6 +305,58 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
         triggerSuccess(`Removed ${w.name}`);
       } catch (err) {
         console.error('Error deleting worker:', err);
+      }
+    }
+  };
+
+  // Payment Edit & Delete Handlers
+  const handleOpenEditPayment = (pay: WorkerPayment) => {
+    setEditingPayment(pay);
+    setEditPaymentForm({
+      amount: pay.amount,
+      date: pay.date,
+      paymentMethod: (pay.paymentMethod as any) || 'M-Pesa',
+      referenceCode: pay.referenceCode || '',
+      notes: pay.notes || '',
+      type: pay.type || 'wage'
+    });
+    setShowEditPaymentModal(true);
+  };
+
+  const handleSaveEditPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPayment?.id || !editPaymentForm.amount) return;
+
+    try {
+      setSubmitting(true);
+      await updateDoc(doc(db, 'workerPayments', editingPayment.id), {
+        amount: Number(editPaymentForm.amount),
+        date: editPaymentForm.date,
+        paymentMethod: editPaymentForm.paymentMethod,
+        referenceCode: editPaymentForm.referenceCode.trim() || undefined,
+        notes: editPaymentForm.notes.trim() || undefined,
+        type: editPaymentForm.type,
+        updatedAt: new Date().toISOString()
+      });
+      triggerSuccess(`Updated payment record of KES ${formatMoney(Number(editPaymentForm.amount))}`);
+      setShowEditPaymentModal(false);
+    } catch (err) {
+      console.error('Error updating payment:', err);
+      alert('Failed to update payment record.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeletePayment = async (pay: WorkerPayment) => {
+    if (!pay.id) return;
+    if (confirm(`Delete payment record of KES ${formatMoney(pay.amount)} for ${pay.workerName}?`)) {
+      try {
+        await deleteDoc(doc(db, 'workerPayments', pay.id));
+        triggerSuccess(`Deleted payment record for ${pay.workerName}`);
+      } catch (err) {
+        console.error('Error deleting payment:', err);
+        alert('Could not delete payment record.');
       }
     }
   };
@@ -486,11 +571,12 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
           </button>
 
           <button
-            onClick={handleOpenNewWorker}
+            onClick={handleCopySignupLink}
             className="px-4 py-2.5 rounded-xl bg-charcoal text-white hover:bg-ochre transition-all text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+            title="Copy worker self-signup registration link"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add Worker</span>
+            <Copy className="w-3.5 h-3.5" />
+            <span>Worker Signup Link</span>
           </button>
         </div>
       </div>
@@ -666,7 +752,7 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
       {/* TAB 1: WORKERS DIRECTORY */}
       {activeTab === 'workers' && (
         <div className="space-y-6">
-          {/* Search & Skill Filter */}
+          {/* Search, Skill Filter & Signup Link */}
           <div className="bg-white p-4 rounded-2xl border border-charcoal/10 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="relative w-full md:w-80">
               <Search className="w-4 h-4 text-charcoal/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -679,18 +765,31 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
               />
             </div>
 
-            <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-              <span className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider shrink-0">Trade:</span>
-              <select
-                value={selectedSkillFilter}
-                onChange={(e) => setSelectedSkillFilter(e.target.value)}
-                className="p-2 bg-cream/40 border border-charcoal/10 rounded-xl text-xs font-semibold focus:outline-none focus:border-ochre"
+            <div className="flex items-center gap-3 w-full md:w-auto flex-wrap justify-between md:justify-end">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider shrink-0">Trade:</span>
+                <select
+                  value={selectedSkillFilter}
+                  onChange={(e) => setSelectedSkillFilter(e.target.value)}
+                  className="p-2 bg-cream/40 border border-charcoal/10 rounded-xl text-xs font-semibold focus:outline-none focus:border-ochre cursor-pointer"
+                >
+                  <option value="all">All Trades & Skills</option>
+                  {SKILLS_LIST.map(skill => (
+                    <option key={skill} value={skill}>{skill}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Worker Self-Signup Share Link */}
+              <button
+                type="button"
+                onClick={handleCopySignupLink}
+                className="px-3.5 py-2 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0"
+                title="Copy registration link for workers"
               >
-                <option value="all">All Trades & Skills</option>
-                {SKILLS_LIST.map(skill => (
-                  <option key={skill} value={skill}>{skill}</option>
-                ))}
-              </select>
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy Signup Link</span>
+              </button>
             </div>
           </div>
 
@@ -704,12 +803,16 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
             <div className="p-16 text-center text-charcoal/40 text-xs space-y-3 bg-white rounded-2xl border border-dashed border-charcoal/20">
               <HardHat className="w-8 h-8 text-charcoal/20 mx-auto" />
               <p className="font-bold text-charcoal/60">No workers found in directory.</p>
+              <p className="text-[11px] text-charcoal/50 max-w-sm mx-auto">
+                Workers register through self-signup. Copy and share the worker registration link below with site artisans.
+              </p>
               <button
-                onClick={handleOpenNewWorker}
-                className="px-4 py-2 rounded-xl bg-ochre text-white text-xs font-bold inline-flex items-center gap-1.5"
+                type="button"
+                onClick={handleCopySignupLink}
+                className="px-4 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm shadow-ochre/20"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add First Worker</span>
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy Worker Signup Link</span>
               </button>
             </div>
           ) : (
@@ -732,9 +835,11 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
                         </div>
                         <span className={cn(
                           "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full",
-                          w.status === 'active' ? "bg-emerald-100 text-emerald-800" : w.status === 'on_leave' ? "bg-amber-100 text-amber-800" : "bg-charcoal/10 text-charcoal/60"
+                          w.status === 'active' ? "bg-emerald-100 text-emerald-800" : 
+                          w.status === 'pending' ? "bg-amber-100 text-amber-800" :
+                          w.status === 'on_leave' ? "bg-blue-100 text-blue-800" : "bg-charcoal/10 text-charcoal/60"
                         )}>
-                          {w.status.replace('_', ' ')}
+                          {w.status === 'pending' ? 'Pending Approval' : w.status.replace('_', ' ')}
                         </span>
                       </div>
 
@@ -771,26 +876,33 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-3 border-t border-charcoal/5">
+                    <div className="flex items-center justify-between pt-3 border-t border-charcoal/5 gap-2">
                       <button
                         onClick={() => handleOpenNewPayment(w.id)}
-                        className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                        className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0"
                       >
                         <DollarSign className="w-3 h-3" />
-                        <span>Pay Payout</span>
+                        <span>Pay</span>
                       </button>
 
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => handleEditWorker(w)}
-                          className="p-1.5 text-charcoal/50 hover:text-ochre hover:bg-cream rounded-lg transition-colors cursor-pointer"
-                          title="Edit Worker"
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer",
+                            w.status === 'pending'
+                              ? "bg-amber-500 hover:bg-amber-600 text-white shadow-xs"
+                              : "bg-cream/60 hover:bg-cream text-charcoal"
+                          )}
+                          title="Edit worker information & status"
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          <Edit2 className="w-3 h-3" />
+                          <span>{w.status === 'pending' ? 'Approve / Edit' : 'Edit Info'}</span>
                         </button>
+
                         <button
                           onClick={() => handleDeleteWorker(w)}
-                          className="p-1.5 text-charcoal/50 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-charcoal/40 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                           title="Delete Worker"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -920,7 +1032,8 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
                       <th className="p-3.5">Payment Method</th>
                       <th className="p-3.5">Reference Code</th>
                       <th className="p-3.5 text-right">Amount Paid</th>
-                      <th className="p-3.5 pr-5">Recorded By</th>
+                      <th className="p-3.5">Recorded By</th>
+                      <th className="p-3.5 pr-5 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-charcoal/5 text-xs">
@@ -949,8 +1062,26 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
                         <td className="p-3.5 text-right font-mono font-bold text-emerald-700 text-sm whitespace-nowrap">
                           KES {formatMoney(pay.amount)}
                         </td>
-                        <td className="p-3.5 pr-5 text-charcoal/50 text-[11px]">
+                        <td className="p-3.5 text-charcoal/50 text-[11px]">
                           {pay.recordedBy || 'Manager'}
+                        </td>
+                        <td className="p-3.5 pr-5 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleOpenEditPayment(pay)}
+                              className="p-1.5 text-charcoal/50 hover:text-ochre hover:bg-cream/60 rounded-lg transition-colors cursor-pointer"
+                              title="Edit payment"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeletePayment(pay)}
+                              className="p-1.5 text-charcoal/40 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                              title="Delete payment"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -969,7 +1100,7 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
             <div className="flex items-center justify-between pb-3 border-b border-charcoal/10">
               <h3 className="text-xl font-bold text-charcoal flex items-center gap-2">
                 <HardHat className="w-5 h-5 text-ochre" />
-                <span>{editingWorker ? 'Edit Worker Profile' : 'Register New Site Worker'}</span>
+                <span>{editingWorker?.status === 'pending' ? 'Review & Approve Worker' : 'Edit Worker Profile & Rates'}</span>
               </h3>
               <button
                 onClick={() => setShowWorkerModal(false)}
@@ -1054,7 +1185,8 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
                     onChange={(e) => setWorkerForm({ ...workerForm, status: e.target.value as any })}
                     className="w-full p-2.5 bg-cream/30 border border-charcoal/15 rounded-xl text-xs font-semibold focus:outline-none focus:border-ochre"
                   >
-                    <option value="active">Active (On Duty)</option>
+                    <option value="active">Active (Approved & On Duty)</option>
+                    <option value="pending">Pending Approval</option>
                     <option value="on_leave">On Leave / Rest</option>
                     <option value="inactive">Inactive / Standby</option>
                   </select>
@@ -1359,6 +1491,126 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
                   className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-all disabled:opacity-50 cursor-pointer shadow-md"
                 >
                   {submitting ? 'Recording...' : 'Record Payout'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT PAYMENT */}
+      {showEditPaymentModal && editingPayment && (
+        <div className="fixed inset-0 bg-charcoal/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-charcoal/10 animate-fade-in my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-charcoal/10">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-ochre" />
+                <div>
+                  <h3 className="text-lg font-bold text-charcoal">Edit Payment Record</h3>
+                  <p className="text-xs text-charcoal/50">{editingPayment.workerName}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditPaymentModal(false)}
+                className="p-1 rounded-xl text-charcoal/40 hover:text-charcoal cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditPayment} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">
+                  Amount (KES) *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  step="50"
+                  value={editPaymentForm.amount}
+                  onChange={(e) => setEditPaymentForm({ ...editPaymentForm, amount: e.target.value ? parseFloat(e.target.value) : '' })}
+                  className="w-full p-2.5 bg-cream/30 border border-charcoal/15 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-ochre focus:bg-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Payment Method</label>
+                  <select
+                    value={editPaymentForm.paymentMethod}
+                    onChange={(e) => setEditPaymentForm({ ...editPaymentForm, paymentMethod: e.target.value as any })}
+                    className="w-full p-2.5 bg-cream/30 border border-charcoal/15 rounded-xl text-xs font-semibold focus:outline-none focus:border-ochre"
+                  >
+                    <option value="M-Pesa">M-Pesa</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Payment Type</label>
+                  <select
+                    value={editPaymentForm.type}
+                    onChange={(e) => setEditPaymentForm({ ...editPaymentForm, type: e.target.value as any })}
+                    className="w-full p-2.5 bg-cream/30 border border-charcoal/15 rounded-xl text-xs font-semibold focus:outline-none focus:border-ochre"
+                  >
+                    <option value="wage">Weekly Wage Payout</option>
+                    <option value="extra">Extra / Advance Payout</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={editPaymentForm.date}
+                    onChange={(e) => setEditPaymentForm({ ...editPaymentForm, date: e.target.value })}
+                    className="w-full p-2.5 bg-cream/30 border border-charcoal/15 rounded-xl text-xs font-semibold focus:outline-none focus:border-ochre"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Reference Code</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. QK81..."
+                    value={editPaymentForm.referenceCode}
+                    onChange={(e) => setEditPaymentForm({ ...editPaymentForm, referenceCode: e.target.value })}
+                    className="w-full p-2.5 bg-cream/30 border border-charcoal/15 rounded-xl text-xs font-mono uppercase focus:outline-none focus:border-ochre focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Notes / Description</label>
+                <input
+                  type="text"
+                  placeholder="Notes or description"
+                  value={editPaymentForm.notes}
+                  onChange={(e) => setEditPaymentForm({ ...editPaymentForm, notes: e.target.value })}
+                  className="w-full p-2.5 bg-cream/30 border border-charcoal/15 rounded-xl text-xs focus:outline-none focus:border-ochre focus:bg-white"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-charcoal/10">
+                <button
+                  type="button"
+                  onClick={() => setShowEditPaymentModal(false)}
+                  className="px-4 py-2 text-xs font-bold text-charcoal/60 hover:text-charcoal cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-6 py-2.5 rounded-xl bg-ochre text-white text-xs font-bold hover:bg-ochre-dark transition-all disabled:opacity-50 cursor-pointer shadow-md shadow-ochre/20"
+                >
+                  {submitting ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
