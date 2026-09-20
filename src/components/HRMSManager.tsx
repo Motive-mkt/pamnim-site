@@ -9,9 +9,14 @@ import { formatMoney } from '../utils/pdfGenerator';
 import { 
   Users, UserCheck, HardHat, Calendar, DollarSign, Plus, Search, 
   Filter, Trash2, Edit2, CheckCircle2, AlertCircle, Clock, 
-  Briefcase, Phone, CreditCard, ChevronRight, X, Download, RefreshCw 
+  Briefcase, Phone, CreditCard, ChevronRight, X, Download, RefreshCw,
+  Zap, CalendarDays, CheckSquare, MessageSquareHeart, FileText
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import DailyPayRun from './hrms/DailyPayRun';
+import AttendanceCalendar from './hrms/AttendanceCalendar';
+import WeeklySettlementView from './hrms/WeeklySettlementView';
+import LeaveAndExtraRequests from './hrms/LeaveAndExtraRequests';
 
 const SKILLS_LIST: WorkerSkill[] = [
   'Carpenter',
@@ -26,9 +31,17 @@ const SKILLS_LIST: WorkerSkill[] = [
   'Site Supervisor'
 ];
 
-export default function HRMSManager() {
+type HRMSTab = 'payrun' | 'calendar' | 'settlement' | 'requests' | 'workers' | 'logs' | 'payments' | 'summary';
+
+interface HRMSManagerProps {
+  initialTab?: HRMSTab;
+  initialOpenModal?: 'worker' | 'log' | 'payment';
+}
+
+export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }: HRMSManagerProps = {}) {
   const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<'workers' | 'logs' | 'payments' | 'summary'>('workers');
+  const [activeTab, setActiveTab] = useState<HRMSTab>(initialTab);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   // Data states
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -42,10 +55,17 @@ export default function HRMSManager() {
   const [selectedSkillFilter, setSelectedSkillFilter] = useState<string>('all');
 
   // Modals
-  const [showWorkerModal, setShowWorkerModal] = useState(false);
+  const [showWorkerModal, setShowWorkerModal] = useState(initialOpenModal === 'worker');
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
-  const [showLogModal, setShowLogModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showLogModal, setShowLogModal] = useState(initialOpenModal === 'log');
+  const [showPaymentModal, setShowPaymentModal] = useState(initialOpenModal === 'payment');
+
+  useEffect(() => {
+    if (initialTab) setActiveTab(initialTab);
+    if (initialOpenModal === 'worker') setShowWorkerModal(true);
+    if (initialOpenModal === 'log') setShowLogModal(true);
+    if (initialOpenModal === 'payment') setShowPaymentModal(true);
+  }, [initialTab, initialOpenModal]);
   const [submitting, setSubmitting] = useState(false);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
 
@@ -148,11 +168,25 @@ export default function HRMSManager() {
       }
     );
 
+    // 5. Pending Leave & Extra Requests Badge Count
+    let pendingL = 0;
+    let pendingE = 0;
+    const unsubLeaveBadge = onSnapshot(collection(db, 'leaveRequests'), (snap) => {
+      pendingL = snap.docs.filter(d => d.data().status === 'pending').length;
+      setPendingRequestsCount(pendingL + pendingE);
+    });
+    const unsubExtraBadge = onSnapshot(collection(db, 'extraPaymentRequests'), (snap) => {
+      pendingE = snap.docs.filter(d => d.data().status === 'pending').length;
+      setPendingRequestsCount(pendingL + pendingE);
+    });
+
     return () => {
       unsubWorkers();
       unsubLogs();
       unsubPayments();
       unsubProjects();
+      unsubLeaveBadge();
+      unsubExtraBadge();
     };
   }, []);
 
@@ -343,6 +377,7 @@ export default function HRMSManager() {
         projectName: project ? project.name : undefined,
         amount: amt,
         paymentMethod: paymentForm.paymentMethod,
+        type: 'wage',
         referenceCode: paymentForm.referenceCode.trim() || undefined,
         date: paymentForm.date,
         notes: paymentForm.notes.trim() || undefined,
@@ -425,7 +460,15 @@ export default function HRMSManager() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setActiveTab('payrun')}
+            className="px-4 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white transition-all text-xs font-bold flex items-center gap-1.5 shadow-sm shadow-ochre/20 cursor-pointer"
+          >
+            <Zap className="w-3.5 h-3.5 fill-white" />
+            <span>Fast Daily Pay Run</span>
+          </button>
+
           <button
             onClick={handleOpenNewLog}
             className="px-4 py-2.5 rounded-xl bg-white border border-charcoal/10 hover:bg-cream text-charcoal transition-all text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
@@ -516,37 +559,109 @@ export default function HRMSManager() {
       </div>
 
       {/* Navigation Sub-tabs */}
-      <div className="flex items-center gap-2 border-b border-charcoal/10 pb-3">
+      <div className="flex items-center gap-2 border-b border-charcoal/10 pb-3 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab('payrun')}
+          className={cn(
+            "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
+            activeTab === 'payrun' ? "bg-ochre text-white shadow-xs" : "bg-white text-charcoal/70 hover:bg-cream border border-charcoal/10"
+          )}
+        >
+          <Zap className="w-3.5 h-3.5" />
+          <span>Daily Pay Run</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('settlement')}
+          className={cn(
+            "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
+            activeTab === 'settlement' ? "bg-ochre text-white shadow-xs" : "bg-white text-charcoal/70 hover:bg-cream border border-charcoal/10"
+          )}
+        >
+          <CreditCard className="w-3.5 h-3.5" />
+          <span>Weekly Settlements</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('calendar')}
+          className={cn(
+            "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
+            activeTab === 'calendar' ? "bg-ochre text-white shadow-xs" : "bg-white text-charcoal/70 hover:bg-cream border border-charcoal/10"
+          )}
+        >
+          <CalendarDays className="w-3.5 h-3.5" />
+          <span>Attendance Calendar</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('requests')}
+          className={cn(
+            "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
+            activeTab === 'requests' ? "bg-ochre text-white shadow-xs" : "bg-white text-charcoal/70 hover:bg-cream border border-charcoal/10"
+          )}
+        >
+          <Clock className="w-3.5 h-3.5" />
+          <span>Leave & Extras</span>
+          {pendingRequestsCount > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full bg-ochre text-white text-[10px] font-bold">
+              {pendingRequestsCount}
+            </span>
+          )}
+        </button>
+
         <button
           onClick={() => setActiveTab('workers')}
           className={cn(
-            "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
-            activeTab === 'workers' ? "bg-ochre text-white shadow-xs" : "bg-white text-charcoal/70 hover:bg-cream"
+            "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
+            activeTab === 'workers' ? "bg-ochre text-white shadow-xs" : "bg-white text-charcoal/70 hover:bg-cream border border-charcoal/10"
           )}
         >
-          Workers Directory ({workers.length})
+          <Users className="w-3.5 h-3.5" />
+          <span>Workers Directory ({workers.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('logs')}
           className={cn(
-            "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
-            activeTab === 'logs' ? "bg-ochre text-white shadow-xs" : "bg-white text-charcoal/70 hover:bg-cream"
+            "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
+            activeTab === 'logs' ? "bg-ochre text-white shadow-xs" : "bg-white text-charcoal/70 hover:bg-cream border border-charcoal/10"
           )}
         >
-          Daily Work & Attendance ({workLogs.length})
+          <FileText className="w-3.5 h-3.5" />
+          <span>Daily Logs ({workLogs.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('payments')}
           className={cn(
-            "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
-            activeTab === 'payments' ? "bg-ochre text-white shadow-xs" : "bg-white text-charcoal/70 hover:bg-cream"
+            "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
+            activeTab === 'payments' ? "bg-ochre text-white shadow-xs" : "bg-white text-charcoal/70 hover:bg-cream border border-charcoal/10"
           )}
         >
-          Wage Payouts Ledger ({payments.length})
+          <DollarSign className="w-3.5 h-3.5" />
+          <span>Wage Payouts ({payments.length})</span>
         </button>
       </div>
+
+      {/* VIEW: FAST DAILY PAY RUN */}
+      {activeTab === 'payrun' && (
+        <DailyPayRun workers={workers} projects={projects} />
+      )}
+
+      {/* VIEW: WEEKLY SETTLEMENTS */}
+      {activeTab === 'settlement' && (
+        <WeeklySettlementView workers={workers} projects={projects} />
+      )}
+
+      {/* VIEW: ATTENDANCE CALENDAR */}
+      {activeTab === 'calendar' && (
+        <AttendanceCalendar workers={workers} projects={projects} />
+      )}
+
+      {/* VIEW: LEAVE & EXTRA REQUESTS */}
+      {activeTab === 'requests' && (
+        <LeaveAndExtraRequests workers={workers} projects={projects} />
+      )}
 
       {/* TAB 1: WORKERS DIRECTORY */}
       {activeTab === 'workers' && (

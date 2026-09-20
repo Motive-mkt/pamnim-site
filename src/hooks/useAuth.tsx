@@ -3,7 +3,7 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
-export type UserRole = 'owner' | 'elevated_employee' | 'regular_employee' | 'senior_designer' | 'designer' | 'project_manager' | 'client' | 'pending';
+export type UserRole = 'owner' | 'elevated_employee' | 'regular_employee' | 'senior_designer' | 'designer' | 'project_manager' | 'client' | 'worker' | 'pending';
 
 export interface Profile {
   uid: string;
@@ -12,6 +12,7 @@ export interface Profile {
   name: string;
   phone?: string;
   whatsapp?: string;
+  idNumber?: string;
   assignedProjectIds?: string[];
   status?: 'active' | 'pending';
 }
@@ -25,6 +26,7 @@ interface AuthContextType {
   isOwner: boolean;
   isElevatedEmployee: boolean;
   isRegularEmployee: boolean;
+  isWorker: boolean;
   canApproveSignups: boolean;
 }
 
@@ -37,6 +39,7 @@ const AuthContext = createContext<AuthContextType>({
   isOwner: false,
   isElevatedEmployee: false,
   isRegularEmployee: false,
+  isWorker: false,
   canApproveSignups: false,
 });
 
@@ -101,12 +104,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isOwner = profile?.role === 'owner';
   const isElevatedEmployee = profile?.role === 'elevated_employee';
   const isRegularEmployee = profile?.role === 'regular_employee' || profile?.role === 'senior_designer' || profile?.role === 'designer' || profile?.role === 'project_manager';
+  const isWorker = profile?.role === 'worker';
   const isAdmin = isOwner;
   const isStaff = isOwner || isElevatedEmployee || isRegularEmployee;
   const canApproveSignups = isOwner || isElevatedEmployee;
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, isAdmin, isStaff, isOwner, isElevatedEmployee, isRegularEmployee, canApproveSignups }}>
+    <AuthContext.Provider value={{ user, profile, loading, isAdmin, isStaff, isOwner, isElevatedEmployee, isRegularEmployee, isWorker, canApproveSignups }}>
       {children}
     </AuthContext.Provider>
   );

@@ -41,6 +41,12 @@ service cloud.firestore {
              getProfile(request.auth.uid).role == 'client';
     }
 
+    function isWorker() {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
+             getProfile(request.auth.uid).role == 'worker';
+    }
+
     // Validation Helpers
     function isValidMediaItem(data) {
       return data.keys().hasAll(['title', 'category', 'image', 'createdAt']) &&
@@ -73,7 +79,7 @@ service cloud.firestore {
         canManageUsers() ||
         (
           request.auth.uid == userId &&
-          request.resource.data.role == 'pending' &&
+          (request.resource.data.role == 'pending' || request.resource.data.role == 'worker') &&
           request.resource.data.status == 'pending'
         ) ||
         (
@@ -101,6 +107,7 @@ service cloud.firestore {
       allow read: if canManageUsers();
       allow create: if isSignedIn() && request.auth.uid == signupId && (
         request.resource.data.role == 'pending' || 
+        request.resource.data.role == 'worker' ||
         request.resource.data.status == 'pending'
       );
       allow update, delete: if canManageUsers();
@@ -211,15 +218,52 @@ service cloud.firestore {
       allow read, write: if isStaff();
     }
 
-    // HRMS (Workers, Daily Work Logs, Wage Payments)
+    // HRMS (Workers, Daily Attendance, Work Logs, Wage Payments, Leave & Extra Requests)
     match /workers/{workerId} {
-      allow read, write: if isStaff();
+      allow read: if isStaff() || (
+        isSignedIn() && (request.auth.uid == workerId || resource.data.userId == request.auth.uid)
+      );
+      allow write: if isStaff();
     }
     match /workLogs/{logId} {
-      allow read, write: if isStaff();
+      allow read: if isStaff() || (
+        isSignedIn() && resource.data.workerId == request.auth.uid
+      );
+      allow write: if isStaff();
+    }
+    match /attendanceRecords/{recordId} {
+      allow read: if isStaff() || (
+        isSignedIn() && resource.data.workerId == request.auth.uid
+      );
+      allow write: if isStaff();
     }
     match /workerPayments/{paymentId} {
-      allow read, write: if isStaff();
+      allow read: if isStaff() || (
+        isSignedIn() && resource.data.workerId == request.auth.uid
+      );
+      allow write: if isStaff();
+    }
+    match /leaveRequests/{requestId} {
+      allow read: if isStaff() || (
+        isSignedIn() && resource.data.workerId == request.auth.uid
+      );
+      allow create: if isSignedIn() && 
+                    request.resource.data.workerId == request.auth.uid &&
+                    request.resource.data.status == 'pending';
+      allow update, delete: if isStaff();
+    }
+    match /extraPaymentRequests/{requestId} {
+      allow read: if isStaff() || (
+        isSignedIn() && resource.data.workerId == request.auth.uid
+      );
+      allow create: if isSignedIn() && 
+                    request.resource.data.workerId == request.auth.uid &&
+                    request.resource.data.status == 'pending';
+      allow update, delete: if isStaff();
+    }
+    match /hrmsSettings/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
     }
     
     // Detailed Services

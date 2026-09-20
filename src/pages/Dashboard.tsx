@@ -2,6 +2,7 @@ import { useAuth } from '../hooks/useAuth';
 import OwnerDashboard from './dashboards/OwnerDashboard';
 import EmployeeDashboard from './dashboards/EmployeeDashboard';
 import ClientPortal from './dashboards/ClientPortal';
+import WorkerDashboard from './dashboards/WorkerDashboard';
 import { Navigate } from 'react-router-dom';
 
 export default function Dashboard() {
@@ -41,6 +42,8 @@ export default function Dashboard() {
       return <OwnerDashboard />;
     case 'client':
       return <ClientPortal />;
+    case 'worker':
+      return <WorkerDashboard />;
     default:
       return <EmployeeDashboard />;
   }

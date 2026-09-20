@@ -8,7 +8,7 @@ import {
   Plus, Users, Briefcase, Edit2, Trash2, CheckCircle2, Clock, Globe, UserPlus, Mail,
   Home, Palette, LayoutGrid, PaintBucket, RefreshCcw, MessageSquare, HelpCircle, Film, Sparkles,
   Image as ImageIcon, Copy, Check, ArrowUp, ArrowDown, Upload, X, Sparkle, DollarSign, Save, AlertCircle, AlertTriangle,
-  FileText, FileSignature, ArrowRight, LayoutDashboard, Receipt, HardHat
+  FileText, FileSignature, ArrowRight, LayoutDashboard, Receipt, HardHat, Zap
 } from 'lucide-react';
 import { useCMS } from '../../hooks/useCMS';
 import { refineDraftCopy } from '../../services/geminiService';
@@ -22,6 +22,7 @@ import QuoteGenerator from '../../components/QuoteGenerator';
 import DeleteProjectModal from '../../components/DeleteProjectModal';
 import TransactionsManager from '../../components/TransactionsManager';
 import HRMSManager from '../../components/HRMSManager';
+import QuickActions from '../../components/QuickActions';
 
 const iconMap: Record<string, any> = {
   Home,
@@ -71,8 +72,10 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 export default function OwnerDashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const urlTab = searchParams.get('tab') as 'overview' | 'projects' | 'invoices' | 'quotes' | 'transactions' | 'hrms' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat' | null;
-  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'invoices' | 'quotes' | 'transactions' | 'hrms' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat'>(urlTab || 'overview');
+  const urlTab = searchParams.get('tab') as 'overview' | 'quick-actions' | 'projects' | 'invoices' | 'quotes' | 'transactions' | 'hrms' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat' | null;
+  const [activeTab, setActiveTab] = useState<'overview' | 'quick-actions' | 'projects' | 'invoices' | 'quotes' | 'transactions' | 'hrms' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat'>(urlTab || 'overview');
+  const [hrmsInitialTab, setHrmsInitialTab] = useState<'payrun' | 'calendar' | 'settlement' | 'requests' | 'workers' | 'logs' | 'payments' | 'summary'>('workers');
+  const [hrmsInitialModal, setHrmsInitialModal] = useState<'worker' | 'log' | 'payment' | undefined>(undefined);
 
   useEffect(() => {
     const currentUrlTab = searchParams.get('tab');
@@ -999,6 +1002,7 @@ export default function OwnerDashboard() {
 
   const ownerNavItems: NavItemConfig[] = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'quick-actions', label: 'Quick Actions', icon: Zap },
     { id: 'projects', label: 'Projects & Tracker', icon: Briefcase },
     { id: 'invoices', label: 'Invoices & Billing', icon: FileText },
     { id: 'quotes', label: 'Formal Quotations', icon: FileSignature },
@@ -1015,6 +1019,21 @@ export default function OwnerDashboard() {
 
   return (
     <AdminLayout activeTab={activeTab} onTabChange={handleTabChange} navItems={ownerNavItems}>
+
+      {/* Quick Actions Tab */}
+      {activeTab === 'quick-actions' && (
+        <QuickActions 
+          onNavigateTab={handleTabChange}
+          projects={projects}
+          clients={clients}
+          onRefreshData={fetchData}
+          onOpenHrmsModal={(tab, modal) => {
+            setHrmsInitialTab(tab);
+            setHrmsInitialModal(modal);
+            handleTabChange('hrms');
+          }}
+        />
+      )}
 
       {activeTab === 'overview' && (
         <div className="space-y-8">
@@ -2232,7 +2251,7 @@ export default function OwnerDashboard() {
       {/* Site HRMS & Worker Management Tab */}
       {activeTab === 'hrms' && (
         <div className="pb-16">
-          <HRMSManager />
+          <HRMSManager initialTab={hrmsInitialTab} initialOpenModal={hrmsInitialModal} />
         </div>
       )}
 

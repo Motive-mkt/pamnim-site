@@ -4,11 +4,12 @@ import AdminLayout, { NavItemConfig } from '../../components/AdminLayout';
 import { collection, query, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
-import { Briefcase, MessageSquare, Plus, Users, ArrowRight, Calendar, User } from 'lucide-react';
+import { Briefcase, MessageSquare, Plus, Users, ArrowRight, Calendar, User, Zap } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import ProjectChat from '../../components/ProjectChat';
 import StartProjectModal from '../../components/StartProjectModal';
 import UserManagementView from '../../components/UserManagementView';
+import QuickActions from '../../components/QuickActions';
 
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
@@ -19,14 +20,14 @@ export default function EmployeeDashboard() {
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [selectedChatClient, setSelectedChatClient] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-  const initialTab = (searchParams.get('tab') as 'projects' | 'chat' | 'approvals') || 'projects';
-  const [activeTab, setActiveTab] = useState<'projects' | 'chat' | 'approvals'>(initialTab);
+  const initialTab = (searchParams.get('tab') as 'quick-actions' | 'projects' | 'chat' | 'approvals') || 'quick-actions';
+  const [activeTab, setActiveTab] = useState<'quick-actions' | 'projects' | 'chat' | 'approvals'>(initialTab);
   const [showStartProjectModal, setShowStartProjectModal] = useState(false);
   const [chatTaggedContext, setChatTaggedContext] = useState<string | undefined>();
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && (tab === 'projects' || tab === 'chat' || tab === 'approvals')) {
+    if (tab && (tab === 'quick-actions' || tab === 'projects' || tab === 'chat' || tab === 'approvals')) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -84,6 +85,7 @@ export default function EmployeeDashboard() {
   }
 
   const employeeNavItems: NavItemConfig[] = [
+    { id: 'quick-actions', label: 'Quick Actions', icon: Zap },
     { id: 'projects', label: 'Projects & Tracker', icon: Briefcase },
     { id: 'chat', label: 'Client Messages', icon: MessageSquare },
     ...(canApproveSignups ? [{ id: 'approvals', label: 'Sign-Up Approvals', icon: Users }] : []),
@@ -92,6 +94,16 @@ export default function EmployeeDashboard() {
   return (
     <AdminLayout activeTab={activeTab} onTabChange={handleTabChange} navItems={employeeNavItems}>
       <div className="space-y-8">
+
+        {/* Quick Actions Tab */}
+        {activeTab === 'quick-actions' && (
+          <QuickActions 
+            onNavigateTab={handleTabChange}
+            projects={projects}
+            clients={clients}
+            onRefreshData={fetchData}
+          />
+        )}
 
         {/* Tab 1: Projects & 4-Stage Progress Tracker */}
         {activeTab === 'projects' && (

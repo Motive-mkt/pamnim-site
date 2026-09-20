@@ -14,16 +14,17 @@ interface CatalogManagerModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectItem?: (item: CatalogItem) => void;
+  initialOpenAdd?: boolean;
 }
 
-export default function CatalogManagerModal({ isOpen, onClose, onSelectItem }: CatalogManagerModalProps) {
+export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, initialOpenAdd = false }: CatalogManagerModalProps) {
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   // Form State for Add / Edit
-  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [isEditing, setIsEditing] = useState<boolean>(initialOpenAdd);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -36,6 +37,13 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem }: C
   const [formError, setFormError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && initialOpenAdd) {
+      setIsEditing(true);
+      setEditingId(null);
+    }
+  }, [isOpen, initialOpenAdd]);
 
   useEffect(() => {
     if (!isOpen) return;

@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useCMS } from '../hooks/useCMS';
-import { Sparkle, LogOut, LayoutDashboard, Briefcase, Users, FileText, UserCircle, Menu, X, Copy, Check, UserPlus, FileSignature, MessageSquare, LayoutGrid, Sparkles, Mail, Globe, Palette, Receipt, HardHat } from 'lucide-react';
+import { Sparkle, LogOut, LayoutDashboard, Zap, Briefcase, Users, FileText, UserCircle, Menu, X, Copy, Check, UserPlus, FileSignature, MessageSquare, LayoutGrid, Sparkles, Mail, Globe, Palette, Receipt, HardHat } from 'lucide-react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { auth } from '../lib/firebase';
 import { cn, getOptimizedImageUrl } from '../lib/utils';
@@ -44,6 +44,7 @@ export default function AdminLayout({ children, activeTab, onTabChange, navItems
 
   const defaultNavItems: NavItemConfig[] = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard, roles: ['owner', 'senior_designer', 'designer', 'project_manager'] },
+    { id: 'quick-actions', label: 'Quick Actions', icon: Zap, roles: ['owner', 'senior_designer', 'designer', 'project_manager', 'elevated_employee', 'regular_employee', 'worker'] },
     { id: 'projects', label: 'Projects & Tracker', icon: Briefcase, roles: ['owner', 'senior_designer', 'designer', 'project_manager'] },
     { id: 'invoices', label: 'Invoices & Billing', icon: FileText, roles: ['owner'] },
     { id: 'quotes', label: 'Formal Quotations', icon: FileSignature, roles: ['owner'] },

@@ -130,6 +130,69 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["projectId", "clientId", "rating"]
+    },
+    "AttendanceRecord": {
+      "title": "Attendance Record",
+      "description": "Daily worker attendance record for pay run and calendar.",
+      "type": "object",
+      "properties": {
+        "workerId": { "type": "string" },
+        "workerName": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["present_full", "present_half", "absent", "approved_leave", "holiday"] },
+        "dayValue": { "type": "number", "minimum": 0, "maximum": 1 },
+        "dailyRate": { "type": "number" },
+        "accruedAmount": { "type": "number" },
+        "weekIdentifier": { "type": "string" },
+        "projectId": { "type": "string" },
+        "loggedBy": { "type": "string" },
+        "loggedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["workerId", "date", "status", "dayValue", "dailyRate", "accruedAmount", "weekIdentifier"]
+    },
+    "LeaveRequest": {
+      "title": "Leave Request",
+      "description": "Worker submitted leave request.",
+      "type": "object",
+      "properties": {
+        "workerId": { "type": "string" },
+        "workerName": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "type": { "type": "string", "enum": ["sick", "casual", "emergency"] },
+        "reason": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "ownerNote": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["workerId", "startDate", "endDate", "type", "reason", "status"]
+    },
+    "ExtraPaymentRequest": {
+      "title": "Extra Payment Request",
+      "description": "Worker extra payment or overtime/reimbursement request.",
+      "type": "object",
+      "properties": {
+        "workerId": { "type": "string" },
+        "workerName": { "type": "string" },
+        "amount": { "type": "number", "minimum": 1 },
+        "projectId": { "type": "string" },
+        "projectName": { "type": "string" },
+        "reason": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "ownerNote": { "type": "string" },
+        "weekIdentifier": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["workerId", "amount", "reason", "status"]
+    },
+    "HRMSSettings": {
+      "title": "HRMS Settings",
+      "description": "Custom site holidays, closure days, and HRMS configurations.",
+      "type": "object",
+      "properties": {
+        "customHolidays": { "type": "array" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "firestore": {
@@ -168,6 +231,22 @@
     "reviews": {
       "schema": "Review",
       "description": "Client project feedback and star ratings."
+    },
+    "attendanceRecords": {
+      "schema": "AttendanceRecord",
+      "description": "Daily site worker attendance records."
+    },
+    "leaveRequests": {
+      "schema": "LeaveRequest",
+      "description": "Site worker leave requests."
+    },
+    "extraPaymentRequests": {
+      "schema": "ExtraPaymentRequest",
+      "description": "Site worker overtime and extra pay requests."
+    },
+    "hrmsSettings": {
+      "schema": "HRMSSettings",
+      "description": "HRMS holidays and site closure configurations."
     }
   }
 }
