@@ -291,16 +291,26 @@ export default function QuoteGenerator() {
 
     try {
       setIsSavingDraft(true);
-      const quoteData: Omit<SavedQuote, 'id'> = {
+
+      const cleanedItems = items.map(i => {
+        const itemObj: Record<string, any> = {
+          id: i.id || Math.random().toString(),
+          description: i.description || '',
+          quantity: i.quantity === '' ? 0 : Number(i.quantity) || 0,
+          unitPrice: i.unitPrice === '' ? 0 : Number(i.unitPrice) || 0
+        };
+        if (i.category && i.category.trim()) itemObj.category = i.category.trim();
+        if (i.unit && i.unit.trim()) itemObj.unit = i.unit.trim();
+        if (typeof i.purchasePrice === 'number') itemObj.purchasePrice = i.purchasePrice;
+        return itemObj;
+      });
+
+      const quoteData: Record<string, any> = {
         docNumber,
         date,
         validUntil,
-        clientId: selectedClientId || undefined,
         clientName: clientName.trim(),
-        clientEmail: clientEmail.trim() || undefined,
-        clientPhone: clientPhone.trim() || undefined,
-        projectName: projectName.trim() || undefined,
-        items,
+        items: cleanedItems,
         subtotal: totalEstimate,
         notes,
         status: customStatus || 'sent',
@@ -308,6 +318,11 @@ export default function QuoteGenerator() {
         updatedAt: new Date().toISOString(),
         createdBy: profile?.name || 'Owner'
       };
+
+      if (selectedClientId && selectedClientId.trim()) quoteData.clientId = selectedClientId.trim();
+      if (clientEmail && clientEmail.trim()) quoteData.clientEmail = clientEmail.trim();
+      if (clientPhone && clientPhone.trim()) quoteData.clientPhone = clientPhone.trim();
+      if (projectName && projectName.trim()) quoteData.projectName = projectName.trim();
 
       if (editingQuoteId) {
         await updateDoc(doc(db, 'quotes', editingQuoteId), {
@@ -324,9 +339,10 @@ export default function QuoteGenerator() {
         setTimeout(() => setSaveSuccessMessage(null), 4000);
         return docRef.id;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving quotation to Firestore:', err);
-      alert('Failed to save quotation to archive.');
+      const errMsg = err?.message || String(err);
+      alert(`Failed to save quotation to archive. ${errMsg}`);
       return null;
     } finally {
       setIsSavingDraft(false);

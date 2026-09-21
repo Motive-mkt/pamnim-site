@@ -208,7 +208,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
       const selectedProject = projects.find(p => p.id === workerApprovalForm.assignedProjectId);
 
       // 1. Create / update the worker document with owner-only fields
-      const workerDoc = {
+      const workerDoc: Record<string, any> = {
         id: workerApprovalReq.id,
         userId: workerApprovalReq.uid || workerApprovalReq.id,
         name: workerApprovalReq.name || 'Worker',
@@ -218,12 +218,12 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
         skill: workerApprovalForm.skill,
         dailyRate: Number(workerApprovalForm.dailyRate) || 0,
         status: workerApprovalForm.status,
-        assignedProjectId: workerApprovalForm.assignedProjectId || undefined,
-        assignedProjectName: selectedProject ? selectedProject.name : undefined,
-        notes: workerApprovalForm.notes.trim() || undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
+      if (workerApprovalForm.assignedProjectId) workerDoc.assignedProjectId = workerApprovalForm.assignedProjectId;
+      if (selectedProject?.name) workerDoc.assignedProjectName = selectedProject.name;
+      if (workerApprovalForm.notes.trim()) workerDoc.notes = workerApprovalForm.notes.trim();
 
       await setDoc(doc(db, 'workers', workerApprovalReq.id), workerDoc, { merge: true });
 

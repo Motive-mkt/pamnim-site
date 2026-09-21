@@ -246,7 +246,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
     setSubmittingSettle(true);
 
     try {
-      await addDoc(collection(db, 'workerPayments'), {
+      const paymentPayload: Record<string, any> = {
         workerId: settleWorker.worker.userId || settleWorker.worker.id,
         workerDocId: settleWorker.worker.id,
         workerName: settleWorker.worker.name,
@@ -255,13 +255,17 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
         amount: settleWorker.netDue,
         paymentMethod: settleMethod,
         type: 'settlement',
-        referenceCode: settleMpesaRef.trim(), // Optional M-Pesa ref
         date: new Date().toISOString().split('T')[0],
         weekId,
         notes: `Weekly settlement for ${weekRangeLabel}`,
         recordedBy: profile?.name || 'Owner',
         createdAt: new Date().toISOString()
-      });
+      };
+      if (settleMpesaRef.trim()) {
+        paymentPayload.referenceCode = settleMpesaRef.trim();
+      }
+
+      await addDoc(collection(db, 'workerPayments'), paymentPayload);
 
       setSettleWorker(null);
       setSettleMpesaRef('');
@@ -334,7 +338,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
       const promises = pendingSettlementInFilter.map(l => {
         const wId = l.worker.id;
         const uId = l.worker.userId;
-        return addDoc(collection(db, 'workerPayments'), {
+        const itemPayload: Record<string, any> = {
           workerId: uId || wId,
           workerDocId: wId,
           workerName: l.worker.name,
@@ -343,13 +347,16 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
           amount: l.netDue,
           paymentMethod: settleAllMethod,
           type: 'wage',
-          referenceCode: settleAllMpesaRef.trim() || undefined,
           date: new Date().toISOString().split('T')[0],
           weekId: weekId,
           notes: `Batch weekly settlement for ${weekId} (${selectedTradeFilter === 'all' ? 'All Trades' : selectedTradeFilter})`,
           recordedBy: profile?.name || 'Owner',
           createdAt: new Date().toISOString()
-        });
+        };
+        if (settleAllMpesaRef.trim()) {
+          itemPayload.referenceCode = settleAllMpesaRef.trim();
+        }
+        return addDoc(collection(db, 'workerPayments'), itemPayload);
       });
 
       await Promise.all(promises);

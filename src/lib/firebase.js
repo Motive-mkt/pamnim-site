@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore } from 'firebase/firestore';
 import firebaseAppletConfig from '../../firebase-applet-config.json';
 
 // Utility to fetch variables securely, prioritising standard raw process.env key (Vercel Node environment)
@@ -30,6 +30,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore explicitly targeting the custom database ID string
-export const db = getFirestore(app, firebaseAppletConfig.firestoreDatabaseId || 'ai-studio-cedab439-d6a5-4268-aead-234f724a6f34');
+export const db = initializeFirestore(app, {
+  ignoreUndefinedProperties: true,
+  experimentalForceLongPolling: true
+}, firebaseAppletConfig.firestoreDatabaseId || 'ai-studio-cedab439-d6a5-4268-aead-234f724a6f34');
 export const auth = getAuth(app);
 export default app;

@@ -427,23 +427,31 @@ export default function InvoiceGenerator() {
 
     try {
       setIsSavingDraft(true);
-      const invoiceData: Omit<SavedInvoice, 'id'> = {
+
+      const cleanedItems = items.map(i => {
+        const itemObj: Record<string, any> = {
+          id: i.id || Math.random().toString(),
+          name: i.name || '',
+          paymentType: i.paymentType || 'Partial',
+          amount: i.amount === '' ? 0 : Number(i.amount) || 0,
+          date: i.date || todayStr
+        };
+        if (i.refCode && i.refCode.trim()) {
+          itemObj.refCode = i.refCode.trim();
+        }
+        return itemObj;
+      });
+
+      const invoiceData: Record<string, any> = {
         docNumber,
         date,
         dueDate,
         invoiceMode,
-        clientId: selectedClientId || undefined,
         clientName: clientName.trim(),
-        clientEmail: clientEmail.trim() || undefined,
-        clientPhone: clientPhone.trim() || undefined,
-        projectId: selectedProjectId || undefined,
-        projectName: selectedProject ? selectedProject.name : undefined,
-        items,
+        items: cleanedItems,
         subtotal: baseSubtotal,
         discount: discountAmount,
         discountType,
-        discountValue: typeof discountValue === 'number' ? discountValue : undefined,
-        taxRate: typeof taxRate === 'number' ? taxRate : undefined,
         taxAmount,
         totalInvoiced: Number(effectiveTotalInvoiced) || 0,
         amountPaid: Number(totalPaymentsLogged) || 0,
@@ -454,6 +462,28 @@ export default function InvoiceGenerator() {
         updatedAt: new Date().toISOString(),
         createdBy: profile?.name || 'Owner'
       };
+
+      if (selectedClientId && selectedClientId.trim()) {
+        invoiceData.clientId = selectedClientId.trim();
+      }
+      if (clientEmail && clientEmail.trim()) {
+        invoiceData.clientEmail = clientEmail.trim();
+      }
+      if (clientPhone && clientPhone.trim()) {
+        invoiceData.clientPhone = clientPhone.trim();
+      }
+      if (selectedProjectId && selectedProjectId.trim()) {
+        invoiceData.projectId = selectedProjectId.trim();
+      }
+      if (selectedProject?.name) {
+        invoiceData.projectName = selectedProject.name;
+      }
+      if (typeof discountValue === 'number') {
+        invoiceData.discountValue = discountValue;
+      }
+      if (typeof taxRate === 'number') {
+        invoiceData.taxRate = taxRate;
+      }
 
       if (editingInvoiceId) {
         await updateDoc(doc(db, 'invoices', editingInvoiceId), {
@@ -470,9 +500,10 @@ export default function InvoiceGenerator() {
         setTimeout(() => setSaveSuccessMessage(null), 4000);
         return docRef.id;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving invoice to Firestore:', err);
-      alert('Failed to save invoice to archive.');
+      const errMsg = err?.message || String(err);
+      alert(`Failed to save invoice to archive. ${errMsg}`);
       return null;
     } finally {
       setIsSavingDraft(false);

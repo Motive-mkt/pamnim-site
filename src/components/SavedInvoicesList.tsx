@@ -260,13 +260,10 @@ export default function SavedInvoicesList({
       const newStatus: InvoiceStatus = newBalance <= 0 ? 'paid' : 'partial';
 
       // 1. Write receipt record to invoices/{inv.id}/paymentReceipts subcollection
-      const receiptData: Omit<PaymentReceipt, 'id'> = {
+      const receiptData: Record<string, any> = {
         receiptNumber,
         invoiceId: paymentInvoice.id,
         invoiceNumber: paymentInvoice.docNumber,
-        projectId: paymentInvoice.projectId || '',
-        projectName: paymentInvoice.projectName || '',
-        clientId: paymentInvoice.clientId || '',
         clientName: paymentInvoice.clientName || 'Client',
         amount: numericAmount,
         paymentMethod: payMethod,
@@ -278,6 +275,12 @@ export default function SavedInvoicesList({
         recordedBy: profile?.name || 'Staff',
         createdAt: new Date().toISOString()
       };
+      if (paymentInvoice.projectId) receiptData.projectId = paymentInvoice.projectId;
+      if (paymentInvoice.projectName) receiptData.projectName = paymentInvoice.projectName;
+      if (paymentInvoice.clientId) receiptData.clientId = paymentInvoice.clientId;
+      if (paymentInvoice.clientEmail) receiptData.clientEmail = paymentInvoice.clientEmail;
+      if (paymentInvoice.clientPhone) receiptData.clientPhone = paymentInvoice.clientPhone;
+
       await addDoc(collection(db, 'invoices', paymentInvoice.id, 'paymentReceipts'), receiptData);
 
       // 2. If invoice is linked to a project, sync to projects/{projectId}/payments

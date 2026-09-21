@@ -244,18 +244,18 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
       setSubmitting(true);
       const proj = projects.find(p => p.id === workerForm.assignedProjectId);
 
-      const workerData: Partial<Worker> = {
+      const workerData: Record<string, any> = {
         name: workerForm.name.trim(),
         phone: workerForm.phone.trim(),
-        idNumber: workerForm.idNumber.trim() || undefined,
         skill: workerForm.skill,
         dailyRate: Number(workerForm.dailyRate) || 0,
         status: workerForm.status,
-        assignedProjectId: workerForm.assignedProjectId || undefined,
-        assignedProjectName: proj ? proj.name : undefined,
-        notes: workerForm.notes.trim() || undefined,
         updatedAt: new Date().toISOString()
       };
+      if (workerForm.idNumber.trim()) workerData.idNumber = workerForm.idNumber.trim();
+      if (workerForm.assignedProjectId) workerData.assignedProjectId = workerForm.assignedProjectId;
+      if (proj?.name) workerData.assignedProjectName = proj.name;
+      if (workerForm.notes.trim()) workerData.notes = workerForm.notes.trim();
 
       await updateDoc(doc(db, 'workers', editingWorker.id), workerData);
 
@@ -266,13 +266,14 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
           const profileRef = doc(db, 'profiles', targetUid);
           const pSnap = await getDoc(profileRef);
           if (pSnap.exists()) {
-            await updateDoc(profileRef, {
+            const profileData: Record<string, any> = {
               name: workerForm.name.trim(),
               phone: workerForm.phone.trim(),
-              idNumber: workerForm.idNumber.trim() || undefined,
               status: workerForm.status === 'pending' ? 'pending' : 'active',
               role: 'worker'
-            });
+            };
+            if (workerForm.idNumber.trim()) profileData.idNumber = workerForm.idNumber.trim();
+            await updateDoc(profileRef, profileData);
           }
 
           if (workerForm.status === 'active') {
@@ -329,20 +330,22 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
 
     try {
       setSubmitting(true);
-      await updateDoc(doc(db, 'workerPayments', editingPayment.id), {
+      const updateData: Record<string, any> = {
         amount: Number(editPaymentForm.amount),
         date: editPaymentForm.date,
         paymentMethod: editPaymentForm.paymentMethod,
-        referenceCode: editPaymentForm.referenceCode.trim() || undefined,
-        notes: editPaymentForm.notes.trim() || undefined,
         type: editPaymentForm.type,
         updatedAt: new Date().toISOString()
-      });
+      };
+      if (editPaymentForm.referenceCode.trim()) updateData.referenceCode = editPaymentForm.referenceCode.trim();
+      if (editPaymentForm.notes.trim()) updateData.notes = editPaymentForm.notes.trim();
+
+      await updateDoc(doc(db, 'workerPayments', editingPayment.id), updateData);
       triggerSuccess(`Updated payment record of KES ${formatMoney(Number(editPaymentForm.amount))}`);
       setShowEditPaymentModal(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating payment:', err);
-      alert('Failed to update payment record.');
+      alert(`Failed to update payment record. ${err?.message || err}`);
     } finally {
       setSubmitting(false);
     }
@@ -389,12 +392,9 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
       const rate = worker?.dailyRate || 0;
       const wageDue = Math.round(rate * multiplier);
 
-      const logData: Omit<WorkLog, 'id'> = {
+      const logData: Record<string, any> = {
         workerId: logForm.workerId,
         workerName: worker?.name || 'Worker',
-        workerSkill: worker?.skill,
-        projectId: logForm.projectId || undefined,
-        projectName: project ? project.name : undefined,
         date: logForm.date,
         duration: logForm.duration,
         wageDue,
@@ -403,13 +403,16 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
         recordedBy: profile?.name || 'Manager',
         createdAt: new Date().toISOString()
       };
+      if (worker?.skill) logData.workerSkill = worker.skill;
+      if (logForm.projectId) logData.projectId = logForm.projectId;
+      if (project?.name) logData.projectName = project.name;
 
       await addDoc(collection(db, 'workLogs'), logData);
       triggerSuccess(`Logged ${logForm.duration.replace('_', ' ')} for ${worker?.name}`);
       setShowLogModal(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving work log:', err);
-      alert('Could not save work log.');
+      alert(`Could not save work log. ${err?.message || err}`);
     } finally {
       setSubmitting(false);
     }
@@ -455,20 +458,20 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
       const project = projects.find(p => p.id === paymentForm.projectId);
       const amt = Number(paymentForm.amount);
 
-      const paymentData: Omit<WorkerPayment, 'id'> = {
+      const paymentData: Record<string, any> = {
         workerId: paymentForm.workerId,
         workerName: worker?.name || 'Worker',
-        projectId: paymentForm.projectId || undefined,
-        projectName: project ? project.name : undefined,
         amount: amt,
         paymentMethod: paymentForm.paymentMethod,
         type: 'wage',
-        referenceCode: paymentForm.referenceCode.trim() || undefined,
         date: paymentForm.date,
-        notes: paymentForm.notes.trim() || undefined,
         recordedBy: profile?.name || 'Manager',
         createdAt: new Date().toISOString()
       };
+      if (paymentForm.projectId) paymentData.projectId = paymentForm.projectId;
+      if (project?.name) paymentData.projectName = project.name;
+      if (paymentForm.referenceCode.trim()) paymentData.referenceCode = paymentForm.referenceCode.trim();
+      if (paymentForm.notes.trim()) paymentData.notes = paymentForm.notes.trim();
 
       await addDoc(collection(db, 'workerPayments'), paymentData);
 
@@ -495,9 +498,9 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
 
       triggerSuccess(`Recorded KES ${formatMoney(amt)} wage payout to ${worker?.name}`);
       setShowPaymentModal(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving wage payout:', err);
-      alert('Could not record wage payout.');
+      alert(`Could not record wage payout. ${err?.message || err}`);
     } finally {
       setSubmitting(false);
     }
