@@ -85,9 +85,18 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
 
   const handleOpenEdit = (item: CatalogItem) => {
     setEditingId(item.id);
+    const isService = item.category?.toLowerCase() === 'service' || 
+      item.category?.includes('Design') || 
+      item.category?.includes('Labor') || 
+      item.category?.includes('Painting') || 
+      item.category?.includes('Ceiling');
+    const safeCategory = item.category === 'Service' || item.category === 'Product' 
+      ? item.category 
+      : (isService ? 'Service' : 'Product');
+
     setFormData({
       name: item.name,
-      category: item.category || DEFAULT_CATALOG_CATEGORIES[0],
+      category: safeCategory,
       unit: item.unit || 'pcs',
       purchasePrice: item.purchasePrice ? item.purchasePrice.toString() : '',
       sellingPrice: item.sellingPrice ? item.sellingPrice.toString() : '',
@@ -184,7 +193,17 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
     const matchesSearch = 
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+    
+    if (selectedCategory === 'all') return matchesSearch;
+
+    const isService = item.category?.toLowerCase() === 'service' || 
+      item.category?.includes('Design') || 
+      item.category?.includes('Labor') || 
+      item.category?.includes('Painting') || 
+      item.category?.includes('Ceiling');
+    const normalizedCat = isService ? 'Service' : 'Product';
+
+    const matchesCategory = item.category === selectedCategory || normalizedCat === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -254,15 +273,16 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Category</label>
+                  <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">
+                    Category <span className="text-ochre">*</span>
+                  </label>
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full p-3 bg-white border border-charcoal/10 rounded-xl text-xs focus:outline-none focus:border-ochre"
+                    className="w-full p-3 bg-white border border-charcoal/10 rounded-xl text-xs font-bold text-charcoal focus:outline-none focus:border-ochre cursor-pointer"
                   >
-                    {DEFAULT_CATALOG_CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
+                    <option value="Product">Product</option>
+                    <option value="Service">Service</option>
                   </select>
                 </div>
 

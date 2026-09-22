@@ -452,7 +452,7 @@ export default function QuickActions({
         id: 'add-item',
         icon: Tag,
         label: 'Add Item',
-        description: 'Add a new product, material, or service to catalog',
+        description: 'Add a new product or service to catalog',
         onClick: () => setShowCatalogModal(true)
       });
     }

@@ -11,20 +11,16 @@ export interface CatalogItem {
 }
 
 export const DEFAULT_CATALOG_CATEGORIES = [
-  'Joinery & Woodwork',
-  'Lighting & Electrical',
-  'Flooring & Tiling',
-  'Ceilings & Gypsum',
-  'Painting & Wall Finishes',
-  'Space Planning & Design',
-  'Bespoke Furniture',
-  'General Materials & Labor'
-];
+  'Product',
+  'Service'
+] as const;
+
+export type CatalogCategory = (typeof DEFAULT_CATALOG_CATEGORIES)[number];
 
 export const PRESET_CATALOG_ITEMS: Omit<CatalogItem, 'id' | 'createdAt'>[] = [
   {
     name: 'Smart Space Planning & 3D Photorealistic Previews',
-    category: 'Space Planning & Design',
+    category: 'Service',
     unit: 'lump sum',
     purchasePrice: 20000,
     sellingPrice: 50000,
@@ -32,7 +28,7 @@ export const PRESET_CATALOG_ITEMS: Omit<CatalogItem, 'id' | 'createdAt'>[] = [
   },
   {
     name: 'Bespoke Floor-to-Ceiling Wardrobes & Soft-Close Joinery',
-    category: 'Joinery & Woodwork',
+    category: 'Product',
     unit: 'running meter',
     purchasePrice: 120000,
     sellingPrice: 220000,
@@ -40,7 +36,7 @@ export const PRESET_CATALOG_ITEMS: Omit<CatalogItem, 'id' | 'createdAt'>[] = [
   },
   {
     name: 'Luxury Fluted Wall Paneling (Acoustic & Decorative)',
-    category: 'Joinery & Woodwork',
+    category: 'Product',
     unit: 'sqm',
     purchasePrice: 25000,
     sellingPrice: 48000,
@@ -48,7 +44,7 @@ export const PRESET_CATALOG_ITEMS: Omit<CatalogItem, 'id' | 'createdAt'>[] = [
   },
   {
     name: 'Waterproof Rigid-Core SPC Flooring Supply & Installation',
-    category: 'Flooring & Tiling',
+    category: 'Product',
     unit: 'sqm',
     purchasePrice: 3200,
     sellingPrice: 5800,
@@ -56,7 +52,7 @@ export const PRESET_CATALOG_ITEMS: Omit<CatalogItem, 'id' | 'createdAt'>[] = [
   },
   {
     name: 'Concealed Ambient LED Cove Lighting & Smart Dimmers',
-    category: 'Lighting & Electrical',
+    category: 'Product',
     unit: 'linear meter',
     purchasePrice: 1500,
     sellingPrice: 3200,
@@ -64,7 +60,7 @@ export const PRESET_CATALOG_ITEMS: Omit<CatalogItem, 'id' | 'createdAt'>[] = [
   },
   {
     name: 'Suspended Gypsum False Ceiling with Shadowline Details',
-    category: 'Ceilings & Gypsum',
+    category: 'Service',
     unit: 'sqm',
     purchasePrice: 2200,
     sellingPrice: 4200,
@@ -72,7 +68,7 @@ export const PRESET_CATALOG_ITEMS: Omit<CatalogItem, 'id' | 'createdAt'>[] = [
   },
   {
     name: 'Silk-Touch Premium Interior Painting & Surface Prep',
-    category: 'Painting & Wall Finishes',
+    category: 'Service',
     unit: 'sqm',
     purchasePrice: 450,
     sellingPrice: 950,

@@ -99,6 +99,7 @@ export default function InvoiceGenerator() {
 
   // UI status
   const [isGenerating, setIsGenerating] = useState(false);
+  const [invoiceCreationStep, setInvoiceCreationStep] = useState<'idle' | 'saving' | 'generating'>('idle');
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
@@ -519,6 +520,7 @@ export default function InvoiceGenerator() {
 
     try {
       setIsGenerating(true);
+      setInvoiceCreationStep('saving');
 
       // If tied to a project, write payment line items into projects/{projectId}/payments subcollection
       if (selectedProjectId) {
@@ -529,8 +531,17 @@ export default function InvoiceGenerator() {
         }
       }
 
-      // Automatically save/update in Firestore archive
-      await saveInvoiceToFirestore();
+      // Automatically save/update in Firestore archive first
+      const savedDocId = await saveInvoiceToFirestore();
+      if (!savedDocId) {
+        // Saving failed! Do NOT proceed to generate or download the PDF
+        setIsGenerating(false);
+        setInvoiceCreationStep('idle');
+        return;
+      }
+
+      // Proceed to generate and download PDF
+      setInvoiceCreationStep('generating');
 
       // Format PDF items matching the invoice columns: Name/Item, Payment Type, Ref Code, Date, Amount
       const pdfItems = items
@@ -592,6 +603,7 @@ export default function InvoiceGenerator() {
       alert('Failed to generate PDF. Please try again.');
     } finally {
       setIsGenerating(false);
+      setInvoiceCreationStep('idle');
     }
   };
 
@@ -1348,18 +1360,8 @@ export default function InvoiceGenerator() {
 
           <button
             type="button"
-            onClick={() => saveInvoiceToFirestore()}
-            disabled={isSavingDraft || !clientName.trim()}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-charcoal text-white hover:bg-charcoal/90 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-40 cursor-pointer"
-          >
-            <Save className="w-4 h-4 text-ochre" />
-            <span>{isSavingDraft ? 'Saving to Archive...' : editingInvoiceId ? 'Update in Archive' : 'Save to Archive'}</span>
-          </button>
-
-          <button
-            type="button"
             onClick={handleShare}
-            disabled={isSharing || isGenerating || !clientName.trim()}
+            disabled={isSharing || isGenerating || isSavingDraft || !clientName.trim()}
             className="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-40 cursor-pointer"
           >
             {isSharing ? (
@@ -1377,18 +1379,22 @@ export default function InvoiceGenerator() {
 
           <button
             type="submit"
-            disabled={isGenerating || !clientName.trim()}
+            disabled={isGenerating || isSavingDraft || !clientName.trim()}
             className="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-8 py-3 rounded-xl transition-all shadow-lg shadow-red-600/20 disabled:opacity-40 cursor-pointer"
           >
-            {isGenerating ? (
+            {isGenerating || isSavingDraft ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Generating Invoice PDF...</span>
+                <span>
+                  {invoiceCreationStep === 'saving' || isSavingDraft
+                    ? 'Saving to Archive...'
+                    : 'Generating & Downloading PDF...'}
+                </span>
               </>
             ) : (
               <>
-                <Download className="w-4 h-4" />
-                <span>Download Official Invoice</span>
+                <FileText className="w-4 h-4" />
+                <span>{editingInvoiceId ? 'Update & Download Invoice' : 'Create Invoice'}</span>
               </>
             )}
           </button>

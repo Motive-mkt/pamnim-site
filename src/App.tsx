@@ -18,6 +18,7 @@ import CategoryDetailPage from './pages/CategoryDetail';
 import ServiceDetailPage from './pages/ServiceDetail';
 import ProjectTrackerPage from './pages/ProjectTrackerPage';
 import ClientPortal from './pages/dashboards/ClientPortal';
+import ClientReviewPage from './pages/ClientReviewPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import { useAuth } from './hooks/useAuth';
@@ -45,12 +46,16 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/signup" element={<SignupPage mode="general" />} />
+        <Route path="/signup/worker" element={<SignupPage mode="worker" />} />
+        <Route path="/signup-worker" element={<SignupPage mode="worker" />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/services/:categoryId" element={<CategoryDetailPage />} />
         <Route path="/services/:categoryId/:serviceSlug" element={<ServiceDetailPage />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route path="/review" element={<ClientReviewPage />} />
+        <Route path="/reviews" element={<ClientReviewPage />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />
         <Route 

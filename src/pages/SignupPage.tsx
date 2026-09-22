@@ -2,15 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useLocation } from 'react-router-dom';
 import { Sparkle, Mail, Lock, User, Phone, MessageSquare, CheckCircle2, ArrowLeft, HardHat, CreditCard } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-export default function SignupPage() {
-  const [searchParams] = useSearchParams();
-  const initialMode = searchParams.get('role') === 'worker' ? 'worker' : 'general';
+interface SignupPageProps {
+  mode?: 'general' | 'worker';
+}
 
-  const [signupType, setSignupType] = useState<'general' | 'worker'>(initialMode);
+export default function SignupPage({ mode }: SignupPageProps = {}) {
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const isWorkerRoute = mode === 'worker' || location.pathname.includes('/worker') || searchParams.get('role') === 'worker';
+  const signupType: 'general' | 'worker' = isWorkerRoute ? 'worker' : 'general';
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
@@ -33,12 +38,6 @@ export default function SignupPage() {
   const [appliedSkill, setAppliedSkill] = useState('Masonry');
   const [emergencyContact, setEmergencyContact] = useState('');
   const [workerNotes, setWorkerNotes] = useState('');
-
-  useEffect(() => {
-    if (searchParams.get('role') === 'worker') {
-      setSignupType('worker');
-    }
-  }, [searchParams]);
 
   // Handle worker Step 1 -> Step 2
   const handleProceedToWorkerProfile = (e: React.FormEvent) => {
@@ -231,45 +230,14 @@ export default function SignupPage() {
               {signupType === 'worker' ? <HardHat className="w-7 h-7" /> : <Sparkle className="w-7 h-7" />}
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-charcoal">
-              {signupType === 'worker' ? 'Site Worker Registration' : 'Request Account Access'}
+              {signupType === 'worker' ? 'Site Worker Registration' : 'Create Your Account'}
             </h1>
             <p className="text-xs sm:text-sm text-charcoal/60 mt-2">
               {signupType === 'worker' 
-                ? 'Register as a skilled site worker. Your account will be activated upon owner approval.'
-                : 'Submit your registration details to request access to Pamnim Interiors.'}
+                ? 'Register for on-site artisan operations, daily attendance, and weekly M-Pesa wage payouts. Your account will be activated upon owner approval.'
+                : 'Register as a client or interior design team member. Your account will be activated upon owner approval.'}
             </p>
           </div>
-
-          {/* Registration Type Tabs */}
-          {!submittedSuccess && (
-            <div className="grid grid-cols-2 p-1 bg-cream/60 rounded-2xl mb-6 border border-charcoal/5">
-              <button
-                type="button"
-                onClick={() => { setSignupType('general'); setError(null); }}
-                className={cn(
-                  "py-2 text-xs font-bold rounded-xl transition-all cursor-pointer text-center",
-                  signupType === 'general'
-                    ? "bg-white text-charcoal shadow-xs"
-                    : "text-charcoal/60 hover:text-charcoal"
-                )}
-              >
-                Client / Team
-              </button>
-              <button
-                type="button"
-                onClick={() => { setSignupType('worker'); setError(null); }}
-                className={cn(
-                  "py-2 text-xs font-bold rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1.5",
-                  signupType === 'worker'
-                    ? "bg-white text-ochre shadow-xs"
-                    : "text-charcoal/60 hover:text-charcoal"
-                )}
-              >
-                <HardHat className="w-3.5 h-3.5" />
-                <span>Site Worker</span>
-              </button>
-            </div>
-          )}
 
           {submittedSuccess ? (
             <div className="text-center py-6 space-y-4">
@@ -568,13 +536,31 @@ export default function SignupPage() {
                 {signupType === 'worker' ? 'Continue: Complete Your Profile' : loading ? 'Submitting Request...' : 'Submit Request'}
               </button>
 
-              <div className="text-center pt-4 border-t border-charcoal/10">
+              <div className="text-center pt-4 border-t border-charcoal/10 space-y-2">
                 <p className="text-xs text-charcoal/60">
                   Already have an approved account?{' '}
                   <Link to="/login" className="font-bold text-ochre hover:underline">
                     Log In
                   </Link>
                 </p>
+
+                {signupType === 'general' ? (
+                  <p className="text-xs text-charcoal/50 pt-1">
+                    Are you an artisan or site fundi?{' '}
+                    <Link to="/signup/worker" className="font-bold text-ochre hover:underline inline-flex items-center gap-1">
+                      <HardHat className="w-3.5 h-3.5 inline text-ochre" />
+                      <span>Site Worker Sign-Up</span>
+                    </Link>
+                  </p>
+                ) : (
+                  <p className="text-xs text-charcoal/50 pt-1">
+                    Are you a client or interior design team member?{' '}
+                    <Link to="/signup" className="font-bold text-ochre hover:underline inline-flex items-center gap-1">
+                      <Sparkle className="w-3.5 h-3.5 inline text-ochre" />
+                      <span>Client & Team Sign-Up</span>
+                    </Link>
+                  </p>
+                )}
               </div>
             </form>
           )}

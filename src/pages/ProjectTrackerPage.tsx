@@ -9,6 +9,7 @@ import ExpenseTracker from '../components/ExpenseTracker';
 import ProjectChat from '../components/ProjectChat';
 import ProjectCostEditor from '../components/ProjectCostEditor';
 import DeleteProjectModal from '../components/DeleteProjectModal';
+import ProjectReviewCard from '../components/ProjectReviewCard';
 import { 
   ArrowLeft, Activity, CreditCard, MessageSquare, 
   Calendar, User, CheckCircle2, DollarSign, Clock, ShieldAlert, Layers, Trash2
@@ -102,7 +103,7 @@ export default function ProjectTrackerPage() {
     } else if (isStaff) {
       navigate('/dashboard');
     } else {
-      navigate('/portal');
+      navigate('/');
     }
   };
 
@@ -130,7 +131,7 @@ export default function ProjectTrackerPage() {
             onClick={handleBack}
             className="px-6 py-2.5 rounded-xl bg-ochre text-white font-bold text-xs hover:bg-ochre-dark transition-all inline-flex items-center gap-2 cursor-pointer"
           >
-            <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+            <ArrowLeft className="w-4 h-4" /> Back to Home
           </button>
         </div>
       </div>
@@ -174,7 +175,7 @@ export default function ProjectTrackerPage() {
               className="inline-flex items-center gap-2 text-xs font-bold text-charcoal/60 hover:text-charcoal transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Back to Dashboard</span>
+              <span>Back to Home</span>
             </button>
 
             {/* Staff / Owner Delete Project Action (Never visible to client) */}
@@ -353,6 +354,11 @@ export default function ProjectTrackerPage() {
             {/* Internal Expense Tracker (Staff Only) */}
             {isStaff && (
               <ExpenseTracker projectId={project.id} isReadOnly={false} />
+            )}
+
+            {/* Leave a Review (Clients Only) */}
+            {!isStaff && (
+              <ProjectReviewCard project={project} />
             )}
           </div>
         )}

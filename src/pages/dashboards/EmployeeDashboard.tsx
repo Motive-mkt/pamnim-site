@@ -4,12 +4,13 @@ import AdminLayout, { NavItemConfig } from '../../components/AdminLayout';
 import { collection, query, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
-import { Briefcase, MessageSquare, Plus, Users, ArrowRight, Calendar, User, Zap } from 'lucide-react';
+import { Briefcase, MessageSquare, Plus, Users, ArrowRight, Calendar, User, Zap, Compass } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import ProjectChat from '../../components/ProjectChat';
 import StartProjectModal from '../../components/StartProjectModal';
 import UserManagementView from '../../components/UserManagementView';
 import QuickActions from '../../components/QuickActions';
+import OnboardingWalkthrough from '../../components/onboarding/OnboardingWalkthrough';
 
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ export default function EmployeeDashboard() {
   const [activeTab, setActiveTab] = useState<'quick-actions' | 'projects' | 'chat' | 'approvals'>(initialTab);
   const [showStartProjectModal, setShowStartProjectModal] = useState(false);
   const [chatTaggedContext, setChatTaggedContext] = useState<string | undefined>();
+  const [forceOpenTour, setForceOpenTour] = useState(false);
 
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -114,12 +116,24 @@ export default function EmployeeDashboard() {
                 <p className="text-xs text-charcoal/50">Start projects and manage stage media & status updates.</p>
               </div>
 
-              <button
-                onClick={() => setShowStartProjectModal(true)}
-                className="px-5 py-2.5 rounded-2xl bg-ochre text-white text-xs font-bold flex items-center gap-2 shadow-md hover:bg-ochre-dark transition-all"
-              >
-                <Plus className="w-4 h-4" /> Start Project
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForceOpenTour(true)}
+                  className="px-4 py-2.5 rounded-2xl bg-cream border border-charcoal/15 text-charcoal/80 hover:text-charcoal text-xs font-bold flex items-center gap-2 shadow-xs hover:bg-cream/80 transition-all cursor-pointer"
+                  title="Start guided onboarding walkthrough"
+                >
+                  <Compass className="w-4 h-4 text-ochre" />
+                  <span>Tour Portal</span>
+                </button>
+
+                <button
+                  onClick={() => setShowStartProjectModal(true)}
+                  className="px-5 py-2.5 rounded-2xl bg-ochre text-white text-xs font-bold flex items-center gap-2 shadow-md hover:bg-ochre-dark transition-all cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> Start Project
+                </button>
+              </div>
             </div>
 
             {projects.length === 0 ? (
@@ -240,6 +254,14 @@ export default function EmployeeDashboard() {
           <UserManagementView onRefreshData={fetchData} />
         )}
       </div>
+
+      {/* Guided Walkthrough for Staff / Designers */}
+      <OnboardingWalkthrough
+        role="employee"
+        forceOpen={forceOpenTour}
+        onClose={() => setForceOpenTour(false)}
+        onNavigateTab={(tab) => handleTabChange(tab)}
+      />
     </AdminLayout>
   );
 }

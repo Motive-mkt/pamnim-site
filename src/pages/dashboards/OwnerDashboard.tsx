@@ -8,7 +8,9 @@ import {
   Plus, Users, Briefcase, Edit2, Trash2, CheckCircle2, Clock, Globe, UserPlus, Mail,
   Home, Palette, LayoutGrid, PaintBucket, RefreshCcw, MessageSquare, HelpCircle, Film, Sparkles,
   Image as ImageIcon, Copy, Check, ArrowUp, ArrowDown, Upload, X, Sparkle, DollarSign, Save, AlertCircle, AlertTriangle,
-  FileText, FileSignature, ArrowRight, LayoutDashboard, Receipt, HardHat, Zap
+  FileText, FileSignature, ArrowRight, LayoutDashboard, Receipt, HardHat, Zap,
+  UserCheck, Search, Calendar as CalendarIcon, ChevronDown, Filter,
+  Star, MessageSquareHeart, ExternalLink, Share2
 } from 'lucide-react';
 import { useCMS } from '../../hooks/useCMS';
 import { refineDraftCopy } from '../../services/geminiService';
@@ -102,6 +104,8 @@ export default function OwnerDashboard() {
   const [mediaToDelete, setMediaToDelete] = useState<{ id: string; type: string; title?: string } | null>(null);
   const [chatTaggedContext, setChatTaggedContext] = useState<string | undefined>();
   const [copiedSignupOverview, setCopiedSignupOverview] = useState(false);
+  const [copiedWorkerSignup, setCopiedWorkerSignup] = useState(false);
+  const [copiedReviewOverview, setCopiedReviewOverview] = useState(false);
 
   const handleCopySignupLink = () => {
     const signupUrl = `${window.location.origin}/signup`;
@@ -109,6 +113,37 @@ export default function OwnerDashboard() {
     setCopiedSignupOverview(true);
     setTimeout(() => setCopiedSignupOverview(false), 3000);
   };
+
+  const handleCopyWorkerSignupLink = () => {
+    const workerSignupUrl = `${window.location.origin}/signup/worker`;
+    navigator.clipboard.writeText(workerSignupUrl);
+    setCopiedWorkerSignup(true);
+    setTimeout(() => setCopiedWorkerSignup(false), 3000);
+  };
+
+  const handleCopyReviewLink = () => {
+    const reviewUrl = `${window.location.origin}/review`;
+    navigator.clipboard.writeText(reviewUrl);
+    setCopiedReviewOverview(true);
+    setTimeout(() => setCopiedReviewOverview(false), 3000);
+  };
+
+  const handleShareReviewWhatsApp = () => {
+    const reviewUrl = `${window.location.origin}/review`;
+    const message = `Hello! Thank you for choosing Pamnim Interior Designers. We would love to hear your feedback on your interior project experience. Please take a moment to leave us a quick review: ${reviewUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+  };
+
+  // WhatsApp-Style Chat Threads State
+  const [chatThreads, setChatThreads] = useState<Record<string, any>>({});
+  const [chatSearch, setChatSearch] = useState('');
+
+  // Inquiries Meta-style Date Filter State
+  type InquiryDatePreset = 'all' | 'today' | 'yesterday' | 'last7' | 'last14' | 'last30' | 'this_month' | 'last_month' | 'custom';
+  const [inquiryDatePreset, setInquiryDatePreset] = useState<InquiryDatePreset>('all');
+  const [inquiryCustomStart, setInquiryCustomStart] = useState('');
+  const [inquiryCustomEnd, setInquiryCustomEnd] = useState('');
+  const [showDatePickerPopover, setShowDatePickerPopover] = useState(false);
   const [gallery, setGallery] = useState<any[]>([]);
   const [portfolio, setPortfolio] = useState<any[]>([]);
   const [inquiries, setInquiries] = useState<any[]>([]);
@@ -346,6 +381,120 @@ export default function OwnerDashboard() {
 
     return () => unsub();
   }, []);
+
+  // Listen to all chat summaries for WhatsApp-style chat list
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'chats'), (snapshot) => {
+      const threads: Record<string, any> = {};
+      snapshot.docs.forEach(docSnap => {
+        threads[docSnap.id] = docSnap.data();
+      });
+      setChatThreads(threads);
+    }, (err) => {
+      console.warn('Error listening to chat threads:', err);
+    });
+
+    return () => unsub();
+  }, []);
+
+  const formatChatTime = (isoString?: string | null) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMin / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMin < 1) return 'Just now';
+    if (diffMin < 60) return `${diffMin}m`;
+    if (diffHours < 24) return `${diffHours}h`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return date.toLocaleDateString(undefined, { weekday: 'short' });
+    return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  };
+
+  const clientConversations = React.useMemo(() => {
+    return clients.map(c => {
+      const clientId = c.uid || c.id;
+      const thread = chatThreads[clientId];
+      return {
+        ...c,
+        clientId,
+        lastMessage: thread?.lastMessage || '',
+        lastUpdated: thread?.lastUpdated || null,
+        updatedBy: thread?.updatedBy || ''
+      };
+    }).sort((a, b) => {
+      if (a.lastUpdated && b.lastUpdated) {
+        return new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime();
+      }
+      if (a.lastUpdated) return -1;
+      if (b.lastUpdated) return 1;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }, [clients, chatThreads]);
+
+  const filteredConversations = React.useMemo(() => {
+    if (!chatSearch.trim()) return clientConversations;
+    const term = chatSearch.toLowerCase();
+    return clientConversations.filter(c => 
+      c.name?.toLowerCase().includes(term) ||
+      c.email?.toLowerCase().includes(term) ||
+      c.phone?.toLowerCase().includes(term) ||
+      c.lastMessage?.toLowerCase().includes(term)
+    );
+  }, [clientConversations, chatSearch]);
+
+  const filteredInquiries = React.useMemo(() => {
+    return inquiries.filter(inq => {
+      if (inquiryDatePreset === 'all') return true;
+      const rawDate = inq.createdAt || inq.date || inq.timestamp;
+      if (!rawDate) return true;
+      const d = new Date(rawDate);
+      if (isNaN(d.getTime())) return true;
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      if (inquiryDatePreset === 'today') {
+        return d >= todayStart;
+      }
+      if (inquiryDatePreset === 'yesterday') {
+        const yestStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+        return d >= yestStart && d < todayStart;
+      }
+      if (inquiryDatePreset === 'last7') {
+        const start7 = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return d >= start7;
+      }
+      if (inquiryDatePreset === 'last14') {
+        const start14 = new Date(todayStart.getTime() - 14 * 24 * 60 * 60 * 1000);
+        return d >= start14;
+      }
+      if (inquiryDatePreset === 'last30') {
+        const start30 = new Date(todayStart.getTime() - 30 * 24 * 60 * 60 * 1000);
+        return d >= start30;
+      }
+      if (inquiryDatePreset === 'this_month') {
+        const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        return d >= thisMonthStart;
+      }
+      if (inquiryDatePreset === 'last_month') {
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        return d >= lastMonthStart && d < thisMonthStart;
+      }
+      if (inquiryDatePreset === 'custom') {
+        if (inquiryCustomStart && d < new Date(inquiryCustomStart)) return false;
+        if (inquiryCustomEnd) {
+          const endOfDay = new Date(new Date(inquiryCustomEnd).getTime() + 24 * 60 * 60 * 1000 - 1);
+          if (d > endOfDay) return false;
+        }
+        return true;
+      }
+      return true;
+    });
+  }, [inquiries, inquiryDatePreset, inquiryCustomStart, inquiryCustomEnd]);
 
   useEffect(() => {
     fetchData();
@@ -1037,39 +1186,97 @@ export default function OwnerDashboard() {
 
       {activeTab === 'overview' && (
         <div className="space-y-8">
-          {/* Quick Sign-Up Link Banner */}
-          <div className="bg-ochre text-white p-6 sm:p-8 rounded-3xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="w-4 h-4 text-white/80" />
-                <span className="text-xs font-bold uppercase tracking-widest text-white/90">Portal Onboarding</span>
+          {/* Quick Sharing Banners: Sign-Up & Reviews */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Quick Sign-Up Link Banner */}
+            <div className="bg-ochre text-white p-6 sm:p-8 rounded-3xl shadow-lg flex flex-col justify-between gap-6">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles className="w-4 h-4 text-white/80" />
+                  <span className="text-xs font-bold uppercase tracking-widest text-white/90">Portal Onboarding</span>
+                </div>
+                <h3 className="text-2xl font-bold">Copy Client & Employee Sign-Up Link</h3>
+                <p className="text-white/80 text-sm mt-1">
+                  Send this link to clients or team members to register (for clients & staff only; site worker sign-up is located in the Site HRMS tab). You can approve their requests & assign roles under the "Team & Approvals" tab.
+                </p>
               </div>
-              <h3 className="text-2xl font-bold">Copy Client & Employee Sign-Up Link</h3>
-              <p className="text-white/80 text-sm mt-1 max-w-xl">
-                Send this link to clients or team members to register. You can approve their requests & assign roles under the "Team & Approvals" tab.
-              </p>
+
+              <div className="pt-2">
+                <button
+                  onClick={handleCopySignupLink}
+                  className="px-6 py-3.5 bg-white text-ochre font-bold text-sm rounded-2xl shadow-md hover:bg-cream transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+                >
+                  {copiedSignupOverview ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-600 stroke-[3]" />
+                      <span>Link Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Copy Sign-Up Link</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
-            <button
-              onClick={handleCopySignupLink}
-              className="px-6 py-3.5 bg-white text-ochre font-bold text-sm rounded-2xl shadow-md hover:bg-cream transition-all flex items-center gap-2 shrink-0 cursor-pointer"
-            >
-              {copiedSignupOverview ? (
-                <>
-                  <Check className="w-4 h-4 text-emerald-600 stroke-[3]" />
-                  <span>Link Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" />
-                  <span>Copy Sign-Up Link</span>
-                </>
-              )}
-            </button>
+            {/* Quick Client Review Link Banner */}
+            <div className="bg-charcoal text-white p-6 sm:p-8 rounded-3xl shadow-lg border border-charcoal/20 flex flex-col justify-between gap-6 relative overflow-hidden">
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-1">
+                  <Star className="w-4 h-4 text-ochre fill-ochre" />
+                  <span className="text-xs font-bold uppercase tracking-widest text-ochre">Customer Reviews & Reputation</span>
+                </div>
+                <h3 className="text-2xl font-bold">Copy Client Review Link</h3>
+                <p className="text-white/70 text-sm mt-1">
+                  Send this direct link to your clients so they can rate and review your business. Client submissions save directly into Pamnim testimonials and prompt them to post on Google Reviews.
+                </p>
+              </div>
+
+              <div className="relative z-10 flex flex-wrap items-center gap-3 pt-2">
+                <button
+                  onClick={handleCopyReviewLink}
+                  className="px-6 py-3.5 bg-ochre text-white font-bold text-sm rounded-2xl shadow-md hover:bg-ochre-dark transition-all flex items-center gap-2 cursor-pointer shrink-0"
+                >
+                  {copiedReviewOverview ? (
+                    <>
+                      <Check className="w-4 h-4 text-white stroke-[3]" />
+                      <span>Review Link Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Copy Review Link</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={handleShareReviewWhatsApp}
+                  className="px-4 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold text-sm rounded-2xl transition-all flex items-center gap-2 cursor-pointer shrink-0"
+                  title="Share link directly to client via WhatsApp"
+                >
+                  <Share2 className="w-4 h-4 text-emerald-400" />
+                  <span>WhatsApp</span>
+                </button>
+
+                <a
+                  href="/review"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-3.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl transition-all flex items-center justify-center shrink-0"
+                  title="Preview client review form"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard label="Active Projects" value={stats.activeProjects.toString()} icon={Briefcase} color="bg-blue-50 text-blue-600" />
+            <StatCard label="Total Clients" value={clients.length.toString()} icon={UserCheck} color="bg-purple-50 text-purple-600" />
             <StatCard label="Total Staff" value={staff.length.toString()} icon={Users} color="bg-ochre/10 text-ochre" />
             <StatCard label="New Inquiries" value={inquiries.filter(i => i.status === 'new').length.toString()} icon={Mail} color="bg-green-50 text-green-600" />
           </div>
@@ -1248,53 +1455,128 @@ export default function OwnerDashboard() {
       )}
 
       {activeTab === 'chat' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-3xl p-6 border border-charcoal/10 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold">Client Chat Threads</h2>
-              <p className="text-sm text-charcoal/60">Select a client below to converse in real-time or reply to stage comments.</p>
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row items-stretch gap-6">
+            {/* WhatsApp-Style Conversation List Sidebar */}
+            <div className="w-full md:w-80 lg:w-96 flex-shrink-0 bg-white rounded-3xl border border-charcoal/10 shadow-sm flex flex-col h-[740px] overflow-hidden">
+              {/* Header & Search */}
+              <div className="p-4 sm:p-5 border-b border-charcoal/10 space-y-3 bg-cream/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-ochre" />
+                    <h2 className="text-lg font-bold text-charcoal">Conversations</h2>
+                  </div>
+                  <span className="text-[11px] font-bold bg-ochre/15 text-ochre px-2.5 py-0.5 rounded-full">
+                    {filteredConversations.length}
+                  </span>
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="w-4 h-4 text-charcoal/40 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={chatSearch}
+                    onChange={(e) => setChatSearch(e.target.value)}
+                    placeholder="Search by client or message..."
+                    className="w-full pl-9 pr-8 py-2 bg-white border border-charcoal/10 rounded-xl text-xs font-medium focus:outline-none focus:border-ochre text-charcoal"
+                  />
+                  {chatSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setChatSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-charcoal/40 hover:text-charcoal cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Scrollable Conversation List */}
+              <div className="flex-1 overflow-y-auto divide-y divide-charcoal/5">
+                {filteredConversations.length === 0 ? (
+                  <div className="p-8 text-center text-charcoal/40 text-xs">
+                    {chatSearch ? 'No clients match your search.' : 'No active clients yet.'}
+                  </div>
+                ) : (
+                  filteredConversations.map((client) => {
+                    const activeClient = selectedChatClient || clients[0];
+                    const isSelected = (activeClient?.uid || activeClient?.id) === client.clientId;
+                    return (
+                      <button
+                        key={client.clientId}
+                        type="button"
+                        onClick={() => setSelectedChatClient(client)}
+                        className={cn(
+                          "w-full p-4 text-left transition-all flex items-start gap-3 hover:bg-cream/40 cursor-pointer border-l-4",
+                          isSelected
+                            ? "bg-ochre/10 border-ochre"
+                            : "border-transparent"
+                        )}
+                      >
+                        {/* Avatar */}
+                        <div className={cn(
+                          "w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-sm shrink-0 uppercase",
+                          isSelected ? "bg-ochre text-white shadow-sm" : "bg-charcoal/5 text-charcoal"
+                        )}>
+                          {client.name ? client.name.charAt(0) : 'C'}
+                        </div>
+
+                        {/* Content */}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1 mb-0.5">
+                            <h4 className={cn("text-xs font-bold truncate", isSelected ? "text-ochre" : "text-charcoal")}>
+                              {client.name}
+                            </h4>
+                            <span className="text-[10px] text-charcoal/40 shrink-0 font-medium">
+                              {formatChatTime(client.lastUpdated)}
+                            </span>
+                          </div>
+
+                          <p className="text-[11px] text-charcoal/60 truncate leading-snug">
+                            {client.lastMessage ? client.lastMessage : (
+                              <span className="italic text-charcoal/40">No messages yet</span>
+                            )}
+                          </p>
+
+                          {client.phone && (
+                            <span className="text-[9px] text-charcoal/40 block mt-0.5">
+                              {client.phone}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>
 
-            <div className="w-full md:w-auto">
-              <select
-                value={selectedChatClient?.uid || selectedChatClient?.id || (clients[0]?.uid || '')}
-                onChange={e => {
-                  const match = clients.find(c => c.uid === e.target.value || c.id === e.target.value);
-                  if (match) setSelectedChatClient(match);
-                }}
-                className="w-full md:w-72 px-4 py-2.5 rounded-xl border border-charcoal/15 text-sm font-bold bg-white text-charcoal outline-none focus:border-ochre"
-              >
-                {clients.length === 0 ? (
-                  <option value="">No clients available</option>
-                ) : (
-                  clients.map(c => (
-                    <option key={c.uid || c.id} value={c.uid || c.id}>
-                      {c.name} ({c.email || c.phone || 'Client'})
-                    </option>
-                  ))
-                )}
-              </select>
+            {/* Right Pane: Active ProjectChat */}
+            <div className="flex-1 min-w-0 bg-white rounded-3xl border border-charcoal/10 shadow-sm overflow-hidden flex flex-col h-[740px]">
+              {(() => {
+                const activeChatUser = selectedChatClient || clients[0];
+                if (!activeChatUser) {
+                  return (
+                    <div className="h-full flex items-center justify-center p-12 text-center text-charcoal/40 text-sm">
+                      Select a conversation on the left to start messaging.
+                    </div>
+                  );
+                }
+                return (
+                  <div className="h-full flex flex-col">
+                    <ProjectChat
+                      clientId={activeChatUser.uid || activeChatUser.id}
+                      clientName={activeChatUser.name}
+                      initialTaggedContext={chatTaggedContext}
+                      onClearTag={() => setChatTaggedContext(undefined)}
+                    />
+                  </div>
+                );
+              })()}
             </div>
           </div>
-
-          {(() => {
-            const activeChatUser = selectedChatClient || clients[0];
-            if (!activeChatUser) {
-              return (
-                <div className="p-12 text-center text-charcoal/40 bg-white rounded-3xl border border-charcoal/10">
-                  No active clients available for messaging yet.
-                </div>
-              );
-            }
-            return (
-              <ProjectChat
-                clientId={activeChatUser.uid || activeChatUser.id}
-                clientName={activeChatUser.name}
-                initialTaggedContext={chatTaggedContext}
-                onClearTag={() => setChatTaggedContext(undefined)}
-              />
-            );
-          })()}
         </div>
       )}
 
@@ -1538,13 +1820,141 @@ export default function OwnerDashboard() {
                  Review potential clients, reply instantly via WhatsApp, and manage inquiry statuses.
                </p>
              </div>
-             <div className="text-xs text-charcoal/50 font-medium">
-               {inquiries.filter(i => i.status === 'new').length} new inquiry(ies)
+
+             {/* Meta-Style Date Picker Filter */}
+             <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
+               <div className="relative">
+                 <button
+                   type="button"
+                   onClick={() => setShowDatePickerPopover(!showDatePickerPopover)}
+                   className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-charcoal/15 bg-white text-charcoal hover:border-ochre text-xs font-bold transition-all shadow-sm cursor-pointer"
+                 >
+                   <CalendarIcon className="w-4 h-4 text-ochre" />
+                   <span>
+                     {inquiryDatePreset === 'today' ? 'Today' :
+                      inquiryDatePreset === 'yesterday' ? 'Yesterday' :
+                      inquiryDatePreset === 'last7' ? 'Last 7 days' :
+                      inquiryDatePreset === 'last14' ? 'Last 14 days' :
+                      inquiryDatePreset === 'last30' ? 'Last 30 days' :
+                      inquiryDatePreset === 'this_month' ? 'This month' :
+                      inquiryDatePreset === 'last_month' ? 'Last month' :
+                      inquiryDatePreset === 'custom' ? (inquiryCustomStart && inquiryCustomEnd ? `${inquiryCustomStart} to ${inquiryCustomEnd}` : 'Custom Range') :
+                      'All time'}
+                   </span>
+                   <ChevronDown className="w-3.5 h-3.5 text-charcoal/40" />
+                 </button>
+
+                 {showDatePickerPopover && (
+                   <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white rounded-2xl border border-charcoal/10 shadow-2xl p-4 z-30 space-y-4">
+                     <div>
+                       <div className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 mb-2">Preset Ranges</div>
+                       <div className="grid grid-cols-2 gap-1.5">
+                         {[
+                           { id: 'today', label: 'Today' },
+                           { id: 'yesterday', label: 'Yesterday' },
+                           { id: 'last7', label: 'Last 7 days' },
+                           { id: 'last14', label: 'Last 14 days' },
+                           { id: 'last30', label: 'Last 30 days' },
+                           { id: 'this_month', label: 'This month' },
+                           { id: 'last_month', label: 'Last month' },
+                           { id: 'all', label: 'All time' },
+                         ].map((preset) => (
+                           <button
+                             key={preset.id}
+                             type="button"
+                             onClick={() => {
+                               setInquiryDatePreset(preset.id as any);
+                               setShowDatePickerPopover(false);
+                             }}
+                             className={cn(
+                               "px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition-colors cursor-pointer",
+                               inquiryDatePreset === preset.id
+                                 ? "bg-ochre text-white font-bold"
+                                 : "bg-cream/40 text-charcoal/80 hover:bg-cream"
+                             )}
+                           >
+                             {preset.label}
+                           </button>
+                         ))}
+                       </div>
+                     </div>
+
+                     <div className="border-t border-charcoal/10 pt-3 space-y-2">
+                       <div className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40">Custom Date Range</div>
+                       <div className="grid grid-cols-2 gap-2">
+                         <div>
+                           <label className="block text-[9px] text-charcoal/50 font-bold mb-1">Start Date</label>
+                           <input
+                             type="date"
+                             value={inquiryCustomStart}
+                             onChange={(e) => setInquiryCustomStart(e.target.value)}
+                             className="w-full p-2 bg-cream/30 border border-charcoal/10 rounded-lg text-[11px] focus:outline-none focus:border-ochre font-medium text-charcoal"
+                           />
+                         </div>
+                         <div>
+                           <label className="block text-[9px] text-charcoal/50 font-bold mb-1">End Date</label>
+                           <input
+                             type="date"
+                             value={inquiryCustomEnd}
+                             onChange={(e) => setInquiryCustomEnd(e.target.value)}
+                             className="w-full p-2 bg-cream/30 border border-charcoal/10 rounded-lg text-[11px] focus:outline-none focus:border-ochre font-medium text-charcoal"
+                           />
+                         </div>
+                       </div>
+                       <div className="flex items-center justify-between pt-1">
+                         <button
+                           type="button"
+                           onClick={() => {
+                             setInquiryDatePreset('all');
+                             setInquiryCustomStart('');
+                             setInquiryCustomEnd('');
+                             setShowDatePickerPopover(false);
+                           }}
+                           className="text-xs text-charcoal/50 hover:text-charcoal cursor-pointer font-medium"
+                         >
+                           Reset
+                         </button>
+                         <button
+                           type="button"
+                           disabled={!inquiryCustomStart && !inquiryCustomEnd}
+                           onClick={() => {
+                             setInquiryDatePreset('custom');
+                             setShowDatePickerPopover(false);
+                           }}
+                           className="px-3.5 py-1.5 rounded-lg bg-ochre text-white text-xs font-bold disabled:opacity-40 cursor-pointer hover:bg-ochre-dark transition-all"
+                         >
+                           Apply Range
+                         </button>
+                       </div>
+                     </div>
+                   </div>
+                 )}
+               </div>
+
+               <div className="text-xs text-charcoal/50 font-medium whitespace-nowrap">
+                 {filteredInquiries.length} total ({filteredInquiries.filter(i => i.status === 'new').length} new)
+               </div>
              </div>
            </div>
 
            <div className="space-y-4">
-              {inquiries.map(inquiry => (
+              {filteredInquiries.length === 0 ? (
+                <div className="py-16 text-center border-2 border-dashed border-charcoal/10 rounded-3xl space-y-3">
+                  <p className="text-charcoal/40 text-sm font-medium">No customer inquiries found for this date range.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInquiryDatePreset('all');
+                      setInquiryCustomStart('');
+                      setInquiryCustomEnd('');
+                    }}
+                    className="px-4 py-2 bg-ochre/10 text-ochre text-xs font-bold rounded-xl hover:bg-ochre/20 transition-all cursor-pointer"
+                  >
+                    Reset Filter to All Time
+                  </button>
+                </div>
+              ) : (
+                filteredInquiries.map(inquiry => (
                 <div key={inquiry.id} className={cn(
                   "p-5 sm:p-6 rounded-2xl border transition-all",
                   inquiry.status === 'new' 
@@ -1644,13 +2054,7 @@ export default function OwnerDashboard() {
                      )}
                    </div>
                 </div>
-              ))}
-
-              {inquiries.length === 0 && (
-                <div className="py-20 text-center border-2 border-dashed border-charcoal/10 rounded-3xl">
-                  <p className="text-charcoal/30 font-bold">No customer inquiries yet.</p>
-                </div>
-              )}
+              )))}
            </div>
         </div>
       )}
@@ -2090,143 +2494,6 @@ export default function OwnerDashboard() {
         </div>
       )}
 
-      {/* Real Project Previews & Category Settings */}
-      {activeTab === 'content' && (
-        <div className="max-w-6xl mx-auto px-0 sm:px-6 lg:px-8 pb-24 sm:pb-16">
-          <div className="bg-white border border-charcoal/5 rounded-2xl sm:rounded-[2.5rem] p-4 sm:p-8 md:p-12 shadow-sm space-y-6 sm:space-y-8">
-            <div>
-              <h3 className="text-xl font-bold">Category Project Previews & Settings</h3>
-              <p className="text-sm text-charcoal/60 mt-1">
-                Customize the starting prices, timelines, and the real-world project preview images displayed when users request quotes on the homepage.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-              {cmsLuxuryCategories.map((category, catIdx) => (
-                <div key={category.id || catIdx} className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-cream/30 border border-charcoal/5 space-y-5 sm:space-y-6 relative group" id={`category-${category.id}`}>
-                  <div className="flex justify-between items-center border-b border-charcoal/5 pb-4">
-                    <div>
-                      <span className="text-[10px] font-mono tracking-widest text-ochre uppercase font-bold">Category {category.accent || catIdx + 1}</span>
-                      <h4 className="font-bold text-lg mt-0.5">{category.title}</h4>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold uppercase text-charcoal/40 mb-1.5">Starting Price</label>
-                      <input
-                        type="text"
-                        value={category.startingPrice || ''}
-                        onChange={(e) => {
-                          const updated = [...cmsLuxuryCategories];
-                          updated[catIdx] = { ...category, startingPrice: e.target.value };
-                          setCmsLuxuryCategories(updated);
-                        }}
-                        className="w-full p-3 bg-white border border-charcoal/5 rounded-xl text-xs focus:outline-none focus:border-ochre font-medium"
-                        placeholder="e.g. From KES 50,000"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold uppercase text-charcoal/40 mb-1.5">Timeline</label>
-                      <input
-                        type="text"
-                        value={category.timeline || ''}
-                        onChange={(e) => {
-                          const updated = [...cmsLuxuryCategories];
-                          updated[catIdx] = { ...category, timeline: e.target.value };
-                          setCmsLuxuryCategories(updated);
-                        }}
-                        className="w-full p-3 bg-white border border-charcoal/5 rounded-xl text-xs focus:outline-none focus:border-ochre font-medium"
-                        placeholder="e.g. 2 - 3 Weeks"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Previews URLs and small thumb displays */}
-                  <div className="space-y-4">
-                    <label className="block text-[10px] font-bold uppercase text-charcoal/40">Real Project Previews (Up to 3 Images)</label>
-                    
-                    {(category.images || []).map((imgUrl: string, imgIdx: number) => (
-                      <div key={imgIdx} className="space-y-1.5">
-                        <div className="flex gap-2 sm:gap-3 items-center">
-                          {/* Tiny thumbnail preview */}
-                          <div className="w-10 sm:w-12 h-10 sm:h-12 rounded-xl bg-cream border border-charcoal/5 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                            {imgUrl ? (
-                              <img src={imgUrl} className="w-full h-full object-cover" alt="Preview Thumbnail" onError={(e) => { (e.target as any).src = "https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&q=80&w=120" }} referrerPolicy="no-referrer" />
-                            ) : (
-                              <span className="text-[10px] text-charcoal/20">Empty</span>
-                            )}
-                          </div>
-                          
-                          {/* Input url */}
-                          <div className="flex-1 relative min-w-0">
-                            <input
-                              type="text"
-                              value={imgUrl}
-                              onChange={(e) => {
-                                const updated = [...cmsLuxuryCategories];
-                                const updatedImages = [...(category.images || [])];
-                                updatedImages[imgIdx] = e.target.value;
-                                updated[catIdx] = { ...category, images: updatedImages };
-                                setCmsLuxuryCategories(updated);
-                              }}
-                              className="w-full pl-2.5 sm:pl-3 pr-14 sm:pr-20 py-2.5 sm:py-3 bg-white border border-charcoal/5 rounded-xl text-[11px] focus:outline-none focus:border-ochre font-mono truncate"
-                              placeholder={`Paste Image URL ${imgIdx + 1}...`}
-                            />
-                            <span className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-[8px] sm:text-[9px] uppercase tracking-wider text-charcoal/30 font-bold font-sans pointer-events-none">
-                              Image {imgIdx + 1}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Quick selection from media library */}
-                        <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none max-w-full">
-                          <span className="text-[9px] font-bold text-charcoal/35 whitespace-nowrap">Media Library:</span>
-                          {gallery.slice(0, 4).map((mItem, mIdx) => (
-                            <button
-                              key={mItem.id || mIdx}
-                              type="button"
-                              onClick={() => {
-                                const updated = [...cmsLuxuryCategories];
-                                const updatedImages = [...(category.images || [])];
-                                updatedImages[imgIdx] = mItem.image;
-                                updated[catIdx] = { ...category, images: updatedImages };
-                                setCmsLuxuryCategories(updated);
-                              }}
-                              className="h-6 w-9 rounded-md overflow-hidden border border-charcoal/5 flex-shrink-0 hover:scale-105 active:scale-95 transition-all focus:outline-none cursor-pointer"
-                              title="Click to apply this image"
-                            >
-                              <img src={mItem.image} className="w-full h-full object-cover" alt="Media Asset" referrerPolicy="no-referrer" />
-                            </button>
-                          ))}
-                          {portfolio.slice(0, 4).map((mItem, mIdx) => (
-                            <button
-                              key={mItem.id || mIdx}
-                              type="button"
-                              onClick={() => {
-                                const updated = [...cmsLuxuryCategories];
-                                const updatedImages = [...(category.images || [])];
-                                updatedImages[imgIdx] = mItem.image;
-                                updated[catIdx] = { ...category, images: updatedImages };
-                                setCmsLuxuryCategories(updated);
-                              }}
-                              className="h-6 w-9 rounded-md overflow-hidden border border-charcoal/5 flex-shrink-0 hover:scale-105 active:scale-95 transition-all focus:outline-none cursor-pointer"
-                              title="Click to apply this image"
-                            >
-                              <img src={mItem.image} className="w-full h-full object-cover" alt="Media Asset" referrerPolicy="no-referrer" />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Invoice Generator Tab */}
       {activeTab === 'invoices' && (
         <div className="pb-16">
@@ -2250,7 +2517,38 @@ export default function OwnerDashboard() {
 
       {/* Site HRMS & Worker Management Tab */}
       {activeTab === 'hrms' && (
-        <div className="pb-16">
+        <div className="space-y-6 pb-16">
+          {/* Quick Worker Sign-Up Link Banner */}
+          <div className="bg-charcoal text-white p-6 sm:p-8 rounded-3xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-6 border border-charcoal/10">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <HardHat className="w-4 h-4 text-ochre" />
+                <span className="text-xs font-bold uppercase tracking-widest text-ochre">Artisan & Site Operations</span>
+              </div>
+              <h3 className="text-2xl font-bold">Copy Site Worker Sign-Up Link</h3>
+              <p className="text-white/80 text-sm mt-1 max-w-xl">
+                Send this dedicated link to fundis, carpenters, gypsum installers, and site workers. Worker sign-ups submitted via this link are reviewed and finalized right here from this HRMS tab (not the general Team & Approvals list).
+              </p>
+            </div>
+
+            <button
+              onClick={handleCopyWorkerSignupLink}
+              className="px-6 py-3.5 bg-ochre text-white font-bold text-sm rounded-2xl shadow-md hover:bg-ochre-dark transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+            >
+              {copiedWorkerSignup ? (
+                <>
+                  <Check className="w-4 h-4 text-white stroke-[3]" />
+                  <span>Worker Link Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  <span>Copy Worker Sign-Up Link</span>
+                </>
+              )}
+            </button>
+          </div>
+
           <HRMSManager initialTab={hrmsInitialTab} initialOpenModal={hrmsInitialModal} />
         </div>
       )}

@@ -113,6 +113,7 @@ export default function AdminLayout({ children, activeTab, onTabChange, navItems
             return (
               <button
                 key={item.id}
+                id={`nav-item-${item.id}`}
                 type="button"
                 onClick={() => handleNavClick(item.id)}
                 className={cn(
@@ -288,6 +289,7 @@ export default function AdminLayout({ children, activeTab, onTabChange, navItems
                     return (
                       <button
                         key={item.id}
+                        id={`mobile-nav-item-${item.id}`}
                         type="button"
                         onClick={() => handleNavClick(item.id)}
                         className={cn(

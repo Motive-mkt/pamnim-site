@@ -400,23 +400,6 @@ export default function Services() {
                       ))}
                     </div>
                   </div>
-
-                  {/* 2 project visuals display */}
-                  <div>
-                    <h4 className="text-[10px] font-bold tracking-[0.2em] text-charcoal/40 uppercase mb-3">REAL PROJECT PREVIEWS</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      {selectedService.images.slice(0, 2).map((img, idx) => (
-                        <div key={idx} className="h-28 rounded-2xl overflow-hidden border border-charcoal/5 shadow-sm group">
-                          <img 
-                            src={img} 
-                            alt={`${selectedService.title} Preview`}
-                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                            referrerPolicy="no-referrer"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 </div>
 
                 {/* Right Panel: Lead Capture Form / Instant WhatsApp Booking */}
