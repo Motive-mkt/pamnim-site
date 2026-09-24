@@ -25,6 +25,7 @@ import DeleteProjectModal from '../../components/DeleteProjectModal';
 import TransactionsManager from '../../components/TransactionsManager';
 import HRMSManager from '../../components/HRMSManager';
 import QuickActions from '../../components/QuickActions';
+import ProjectActivityFeed from '../../components/ProjectActivityFeed';
 
 const iconMap: Record<string, any> = {
   Home,
@@ -1281,12 +1282,18 @@ export default function OwnerDashboard() {
             <StatCard label="New Inquiries" value={inquiries.filter(i => i.status === 'new').length.toString()} icon={Mail} color="bg-green-50 text-green-600" />
           </div>
           
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-charcoal/5">
-            <h2 className="text-2xl font-bold mb-8">Project Activity</h2>
-            <div className="h-64 bg-cream rounded-2xl flex items-center justify-center text-charcoal/20 font-bold border border-dashed border-charcoal/10">
-               Project lifecycle & engagement metrics
-            </div>
-          </div>
+          {/* Project Activity & Operations Feed */}
+          <ProjectActivityFeed
+            projects={projects}
+            staff={staff}
+            clients={clients}
+            onNavigateToTracker={(projectId) => navigate(`/tracker/${projectId}`)}
+            onSelectProjectInTab={(proj) => {
+              setSelectedProject(proj);
+              handleTabChange('projects');
+            }}
+            onStartNewProject={() => setShowStartProjectModal(true)}
+          />
         </div>
       )}
 

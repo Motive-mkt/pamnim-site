@@ -4,11 +4,11 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { 
-  Plus, Trash2, Download, FileSignature, Sparkles, Building2, User, Phone, Mail, 
+  Plus, Trash2, FileSignature, Sparkles, Building2, User, Phone, Mail, 
   DollarSign, Calendar, CheckCircle2, Layers, AlertCircle, TrendingUp, Info, Eye,
-  Save, History, X
+  History, X, Share2
 } from 'lucide-react';
-import { generateDocumentPDF, PDFLineItem, formatMoney } from '../utils/pdfGenerator';
+import { generateDocumentPDF, shareDocumentPDF, PDFLineItem, formatMoney } from '../utils/pdfGenerator';
 import { useCMS } from '../hooks/useCMS';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
@@ -89,6 +89,8 @@ export default function QuoteGenerator() {
 
   // UI Status
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [quoteCreationStep, setQuoteCreationStep] = useState<'idle' | 'saving' | 'generating'>('idle');
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   // Archive & Edit State
@@ -358,9 +360,12 @@ export default function QuoteGenerator() {
 
     try {
       setIsGenerating(true);
+      setQuoteCreationStep('saving');
 
       // Auto-save to quotes collection
       await saveQuoteToFirestore();
+
+      setQuoteCreationStep('generating');
 
       const pdfItems: PDFLineItem[] = items
         .filter(i => i.description.trim() || Number(i.unitPrice) > 0)
@@ -403,6 +408,60 @@ export default function QuoteGenerator() {
       alert('Failed to generate PDF quotation. Please try again.');
     } finally {
       setIsGenerating(false);
+      setQuoteCreationStep('idle');
+    }
+  };
+
+  const handleShare = async () => {
+    if (!clientName.trim()) {
+      alert('Please provide a client name.');
+      return;
+    }
+
+    try {
+      setIsSharing(true);
+
+      // Auto-save to quotes collection
+      await saveQuoteToFirestore();
+
+      const pdfItems: PDFLineItem[] = items
+        .filter(i => i.description.trim() || Number(i.unitPrice) > 0)
+        .map(i => ({
+          id: i.id,
+          description: i.description || 'Estimated Service Item',
+          quantity: Number(i.quantity) || 1,
+          unitPrice: Number(i.unitPrice) || 0
+        }));
+
+      await shareDocumentPDF('quote', {
+        docNumber,
+        date,
+        validUntil,
+        clientName: clientName.trim(),
+        clientEmail: clientEmail.trim() || undefined,
+        clientPhone: clientPhone.trim() || undefined,
+        projectName: projectName.trim() || undefined,
+        items: pdfItems.length > 0 ? pdfItems : [{
+          id: '1',
+          description: 'Consultation & Spatial Planning Estimate',
+          quantity: 1,
+          unitPrice: 0
+        }],
+        notes,
+        currencySymbol: 'KES',
+        companyInfo: {
+          name: 'Pamnim Interior Designers',
+          address: content.contact?.address || 'Nairobi, Kenya',
+          phone: content.contact?.phone || '0714 984 268',
+          email: content.contact?.email || 'hinteriors01@gmail.com',
+          tagline: 'Shinning outside, beautiful inside'
+        }
+      });
+    } catch (err) {
+      console.error('Quote sharing failed:', err);
+      alert('Failed to share PDF quotation. Please try again.');
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -807,28 +866,41 @@ export default function QuoteGenerator() {
         <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-charcoal/5">
           <button
             type="button"
-            onClick={() => saveQuoteToFirestore()}
-            disabled={isSavingDraft || !clientName.trim()}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-charcoal text-white hover:bg-charcoal/90 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-40 cursor-pointer"
+            onClick={handleShare}
+            disabled={isSharing || isGenerating || isSavingDraft || !clientName.trim()}
+            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-40 cursor-pointer"
           >
-            <Save className="w-4 h-4 text-ochre" />
-            <span>{isSavingDraft ? 'Saving to Archive...' : editingQuoteId ? 'Update in Archive' : 'Save to Archive'}</span>
+            {isSharing ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Sharing...</span>
+              </>
+            ) : (
+              <>
+                <Share2 className="w-4 h-4" />
+                <span>Share Quote</span>
+              </>
+            )}
           </button>
 
           <button
             type="submit"
-            disabled={isGenerating || !clientName.trim()}
+            disabled={isGenerating || isSavingDraft || !clientName.trim()}
             className="w-full sm:w-auto flex items-center justify-center gap-2 bg-ochre hover:bg-ochre-dark text-white text-sm font-bold px-8 py-3 rounded-xl transition-all shadow-lg shadow-ochre/20 disabled:opacity-40 cursor-pointer"
           >
-            {isGenerating ? (
+            {isGenerating || isSavingDraft ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Generating Quote PDF...</span>
+                <span>
+                  {quoteCreationStep === 'saving' || isSavingDraft
+                    ? 'Saving to Archive...'
+                    : 'Generating & Downloading PDF...'}
+                </span>
               </>
             ) : (
               <>
-                <Download className="w-4 h-4" />
-                <span>Download Official Quote</span>
+                <FileSignature className="w-4 h-4" />
+                <span>{editingQuoteId ? 'Update & Download Quote' : 'Create Quote'}</span>
               </>
             )}
           </button>
