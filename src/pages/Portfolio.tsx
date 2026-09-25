@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import PortfolioContactForm from '../components/PortfolioContactForm';
+import LeadQualifyingForm from '../components/LeadQualifyingForm';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -28,6 +28,7 @@ export default function PortfolioPage() {
   const [deletingItem, setDeletingItem] = useState<PortfolioItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [showLeadModal, setShowLeadModal] = useState(false);
 
   // Video playback states - mapping item ID to playing boolean
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
@@ -355,10 +356,33 @@ export default function PortfolioPage() {
             </div>
           )}
         </div>
-
-        {/* Contact Form Section at the Bottom of the Portfolio Page */}
-        <PortfolioContactForm />
       </main>
+
+      {/* Sticky Bottom-Center CTA: "Be our next portfolio? Tell us about your project" */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[92vw] sm:max-w-md w-full px-4 pointer-events-auto">
+        <button
+          type="button"
+          onClick={() => setShowLeadModal(true)}
+          className="w-full py-3.5 px-6 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-xs sm:text-sm font-bold shadow-2xl shadow-ochre/35 border border-white/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer backdrop-blur-md"
+        >
+          <span className="truncate">Be our next portfolio? Tell us about your project</span>
+        </button>
+      </div>
+
+      {/* Modal containing shared LeadQualifyingForm */}
+      {showLeadModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs animate-fade-in overflow-y-auto">
+          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden animate-scale-up my-8 max-h-[90vh] overflow-y-auto">
+            <LeadQualifyingForm
+              variant="modal"
+              source="portfolio_modal"
+              onClose={() => setShowLeadModal(false)}
+              title="Be our next featured project"
+              subtitle="Tell us about your home and design dreams. We'll craft a bespoke spatial transformation."
+            />
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal for Staff/Owner */}
       {deletingItem && (

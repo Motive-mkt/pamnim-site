@@ -8,7 +8,7 @@ import {
   Plus, Users, Briefcase, Edit2, Trash2, CheckCircle2, Clock, Globe, UserPlus, Mail,
   Home, Palette, LayoutGrid, PaintBucket, RefreshCcw, MessageSquare, HelpCircle, Film, Sparkles,
   Image as ImageIcon, Copy, Check, ArrowUp, ArrowDown, Upload, X, Sparkle, DollarSign, Save, AlertCircle, AlertTriangle,
-  FileText, FileSignature, ArrowRight, LayoutDashboard, Receipt, HardHat, Zap,
+  FileText, FileSignature, ArrowRight, LayoutDashboard, Receipt, HardHat, Zap, Layers,
   UserCheck, Search, Calendar as CalendarIcon, ChevronDown, Filter,
   Star, MessageSquareHeart, ExternalLink, Share2
 } from 'lucide-react';
@@ -26,6 +26,7 @@ import TransactionsManager from '../../components/TransactionsManager';
 import HRMSManager from '../../components/HRMSManager';
 import QuickActions from '../../components/QuickActions';
 import ProjectActivityFeed from '../../components/ProjectActivityFeed';
+import CatalogManagerView from '../../components/CatalogManagerView';
 
 const iconMap: Record<string, any> = {
   Home,
@@ -75,8 +76,8 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 export default function OwnerDashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const urlTab = searchParams.get('tab') as 'overview' | 'quick-actions' | 'projects' | 'invoices' | 'quotes' | 'transactions' | 'hrms' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat' | null;
-  const [activeTab, setActiveTab] = useState<'overview' | 'quick-actions' | 'projects' | 'invoices' | 'quotes' | 'transactions' | 'hrms' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat'>(urlTab || 'overview');
+  const urlTab = searchParams.get('tab') as 'overview' | 'quick-actions' | 'projects' | 'invoices' | 'quotes' | 'catalog' | 'transactions' | 'hrms' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat' | null;
+  const [activeTab, setActiveTab] = useState<'overview' | 'quick-actions' | 'projects' | 'invoices' | 'quotes' | 'catalog' | 'transactions' | 'hrms' | 'services' | 'staff' | 'content' | 'media' | 'inquiries' | 'detailed-services' | 'chat'>(urlTab || 'overview');
   const [hrmsInitialTab, setHrmsInitialTab] = useState<'payrun' | 'calendar' | 'settlement' | 'requests' | 'workers' | 'logs' | 'payments' | 'summary'>('workers');
   const [hrmsInitialModal, setHrmsInitialModal] = useState<'worker' | 'log' | 'payment' | undefined>(undefined);
 
@@ -145,6 +146,8 @@ export default function OwnerDashboard() {
   const [inquiryCustomStart, setInquiryCustomStart] = useState('');
   const [inquiryCustomEnd, setInquiryCustomEnd] = useState('');
   const [showDatePickerPopover, setShowDatePickerPopover] = useState(false);
+  const [inquiryLeadTagFilter, setInquiryLeadTagFilter] = useState<'all' | 'high-value' | 'incomplete' | 'general'>('all');
+  const [inquiryServiceFilter, setInquiryServiceFilter] = useState<string>('all');
   const [gallery, setGallery] = useState<any[]>([]);
   const [portfolio, setPortfolio] = useState<any[]>([]);
   const [inquiries, setInquiries] = useState<any[]>([]);
@@ -447,8 +450,25 @@ export default function OwnerDashboard() {
     );
   }, [clientConversations, chatSearch]);
 
+  const availableInquiryServices = React.useMemo(() => {
+    const set = new Set<string>();
+    inquiries.forEach(i => {
+      const s = i.selectedService || i.projectType;
+      if (s && typeof s === 'string' && s.trim()) set.add(s.trim());
+    });
+    return Array.from(set);
+  }, [inquiries]);
+
   const filteredInquiries = React.useMemo(() => {
     return inquiries.filter(inq => {
+      if (inquiryLeadTagFilter !== 'all') {
+        const tag = inq.leadTag || 'general';
+        if (tag !== inquiryLeadTagFilter) return false;
+      }
+      if (inquiryServiceFilter !== 'all') {
+        const srv = inq.selectedService || inq.projectType || '';
+        if (srv.toLowerCase() !== inquiryServiceFilter.toLowerCase()) return false;
+      }
       if (inquiryDatePreset === 'all') return true;
       const rawDate = inq.createdAt || inq.date || inq.timestamp;
       if (!rawDate) return true;
@@ -495,7 +515,7 @@ export default function OwnerDashboard() {
       }
       return true;
     });
-  }, [inquiries, inquiryDatePreset, inquiryCustomStart, inquiryCustomEnd]);
+  }, [inquiries, inquiryLeadTagFilter, inquiryServiceFilter, inquiryDatePreset, inquiryCustomStart, inquiryCustomEnd]);
 
   useEffect(() => {
     fetchData();
@@ -1156,6 +1176,7 @@ export default function OwnerDashboard() {
     { id: 'projects', label: 'Projects & Tracker', icon: Briefcase },
     { id: 'invoices', label: 'Invoices & Billing', icon: FileText },
     { id: 'quotes', label: 'Formal Quotations', icon: FileSignature },
+    { id: 'catalog', label: 'Add Item & Catalog', icon: Layers },
     { id: 'transactions', label: 'Transactions & Receipts', icon: Receipt },
     { id: 'hrms', label: 'Site HRMS & Workers', icon: HardHat },
     { id: 'chat', label: 'Client Messages', icon: MessageSquare },
@@ -1944,6 +1965,89 @@ export default function OwnerDashboard() {
              </div>
            </div>
 
+           {/* Lead Qualification Filter Pills */}
+           <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1">
+             <button
+               type="button"
+               onClick={() => setInquiryLeadTagFilter('all')}
+               className={cn(
+                 "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer",
+                 inquiryLeadTagFilter === 'all'
+                   ? "bg-charcoal text-white shadow-xs"
+                   : "bg-cream/60 text-charcoal/70 hover:bg-cream"
+               )}
+             >
+               All Inquiries ({inquiries.length})
+             </button>
+             <button
+               type="button"
+               onClick={() => setInquiryLeadTagFilter('high-value')}
+               className={cn(
+                 "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5",
+                 inquiryLeadTagFilter === 'high-value'
+                   ? "bg-ochre text-white shadow-xs"
+                   : "bg-ochre/10 text-ochre-dark hover:bg-ochre/20"
+               )}
+             >
+               <Sparkles className="w-3 h-3" />
+               <span>High-Value Leads ({inquiries.filter(i => i.leadTag === 'high-value').length})</span>
+             </button>
+             <button
+               type="button"
+               onClick={() => setInquiryLeadTagFilter('incomplete')}
+               className={cn(
+                 "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5",
+                 inquiryLeadTagFilter === 'incomplete'
+                   ? "bg-rose-600 text-white shadow-xs"
+                   : "bg-rose-50 text-rose-700 hover:bg-rose-100"
+               )}
+             >
+               <Clock className="w-3 h-3" />
+               <span>Incomplete Leads ({inquiries.filter(i => i.leadTag === 'incomplete').length})</span>
+             </button>
+             <button
+               type="button"
+               onClick={() => setInquiryLeadTagFilter('general')}
+               className={cn(
+                 "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5",
+                 inquiryLeadTagFilter === 'general'
+                   ? "bg-charcoal/80 text-white shadow-xs"
+                   : "bg-charcoal/5 text-charcoal/70 hover:bg-charcoal/10"
+               )}
+             >
+               <Mail className="w-3 h-3" />
+               <span>General Inquiries ({inquiries.filter(i => (!i.leadTag || i.leadTag === 'general')).length})</span>
+             </button>
+           </div>
+
+           {/* Filter by Service Needed */}
+           {availableInquiryServices.length > 0 && (
+             <div className="flex items-center gap-2 mb-6 flex-wrap">
+               <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/50">Filter by Service:</span>
+               <select
+                 value={inquiryServiceFilter}
+                 onChange={(e) => setInquiryServiceFilter(e.target.value)}
+                 className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-charcoal/15 bg-white text-charcoal focus:outline-none focus:border-ochre cursor-pointer shadow-xs"
+               >
+                 <option value="all">All Services ({inquiries.length})</option>
+                 {availableInquiryServices.map(srv => (
+                   <option key={srv} value={srv}>
+                     {srv} ({inquiries.filter(i => (i.selectedService === srv || i.projectType === srv)).length})
+                   </option>
+                 ))}
+               </select>
+               {inquiryServiceFilter !== 'all' && (
+                 <button
+                   type="button"
+                   onClick={() => setInquiryServiceFilter('all')}
+                   className="text-xs text-ochre hover:text-ochre-dark font-bold underline cursor-pointer"
+                 >
+                   Clear service filter
+                 </button>
+               )}
+             </div>
+           )}
+
            <div className="space-y-4">
               {filteredInquiries.length === 0 ? (
                 <div className="py-16 text-center border-2 border-dashed border-charcoal/10 rounded-3xl space-y-3">
@@ -1974,6 +2078,25 @@ export default function OwnerDashboard() {
                       <div>
                          <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
                             <h3 className="font-bold text-lg text-charcoal">{inquiry.name}</h3>
+                            {/* Lead Qualification Badge */}
+                            {inquiry.leadTag === 'high-value' && (
+                              <span className="bg-gradient-to-r from-ochre to-amber-600 text-white text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs">
+                                <Sparkles className="w-3 h-3 text-amber-200" />
+                                <span>High-Value Lead</span>
+                              </span>
+                            )}
+                            {inquiry.leadTag === 'incomplete' && (
+                              <span className="bg-rose-100 text-rose-800 border border-rose-200 text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-rose-600" />
+                                <span>Incomplete Project Lead</span>
+                              </span>
+                            )}
+                            {(!inquiry.leadTag || inquiry.leadTag === 'general') && (
+                              <span className="bg-charcoal/10 text-charcoal/80 text-[10px] px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider flex items-center gap-1">
+                                <Mail className="w-3 h-3 text-charcoal/50" />
+                                <span>General Inquiry</span>
+                              </span>
+                            )}
                             {inquiry.status === 'new' && (
                               <span className="bg-ochre text-white text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
                                 New
@@ -2006,7 +2129,7 @@ export default function OwnerDashboard() {
                               </>
                             )}
                             <span>•</span>
-                            <span className="text-ochre-dark font-semibold">{inquiry.projectType}</span>
+                            <span className="text-ochre-dark font-semibold">{inquiry.selectedService || inquiry.projectType || 'General Inquiry'}</span>
                          </div>
                       </div>
 
@@ -2047,6 +2170,29 @@ export default function OwnerDashboard() {
                          </button>
                       </div>
                    </div>
+
+                   {(inquiry.budget || inquiry.timeline || inquiry.scope) && (
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3 p-3.5 bg-ochre/5 border border-ochre/20 rounded-2xl text-xs">
+                       {inquiry.budget && (
+                         <div>
+                           <span className="text-[10px] uppercase font-bold text-charcoal/50 block">Target Budget</span>
+                           <span className="font-bold text-ochre-dark text-xs sm:text-sm">{inquiry.budget}</span>
+                         </div>
+                       )}
+                       {inquiry.timeline && (
+                         <div>
+                           <span className="text-[10px] uppercase font-bold text-charcoal/50 block">Desired Timeline</span>
+                           <span className="font-semibold text-charcoal text-xs sm:text-sm">{inquiry.timeline}</span>
+                         </div>
+                       )}
+                       {inquiry.scope && (
+                         <div className="sm:col-span-2 pt-1 border-t border-ochre/10">
+                           <span className="text-[10px] uppercase font-bold text-charcoal/50 block">Project Scope</span>
+                           <span className="text-charcoal/80 font-medium text-xs leading-relaxed">{inquiry.scope}</span>
+                         </div>
+                       )}
+                     </div>
+                   )}
 
                    <p className="text-charcoal/80 leading-relaxed bg-white/70 p-4 rounded-xl italic text-xs sm:text-sm border border-charcoal/5">
                      "{inquiry.message}"
@@ -2512,6 +2658,13 @@ export default function OwnerDashboard() {
       {activeTab === 'quotes' && (
         <div className="pb-16">
           <QuoteGenerator />
+        </div>
+      )}
+
+      {/* Materials & Services Item Catalog Tab */}
+      {activeTab === 'catalog' && (
+        <div className="pb-16">
+          <CatalogManagerView />
         </div>
       )}
 

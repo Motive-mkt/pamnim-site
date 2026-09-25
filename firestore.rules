@@ -62,7 +62,8 @@ service cloud.firestore {
              data.email is string && data.email.size() <= 200 &&
              data.message is string && data.message.size() <= 5000 &&
              data.status in ['new', 'read', 'responded', 'replied'] &&
-             data.createdAt is string && data.createdAt.size() <= 100;
+             data.createdAt is string && data.createdAt.size() <= 100 &&
+             (!('leadTag' in data) || data.leadTag in ['high-value', 'incomplete', 'general']);
     }
 
     // Profiles
@@ -195,11 +196,13 @@ service cloud.firestore {
       allow read, write: if isStaff();
     }
 
-    // Invoices & Quotes Archives (Owner / Staff access only)
+    // Invoices & Quotes Archives (Staff manage, clients read their own invoices & payment receipts)
     match /invoices/{invoiceId} {
-      allow read, write: if isStaff();
+      allow read: if isStaff() || (isSignedIn() && resource.data.clientId == request.auth.uid);
+      allow write: if isStaff();
       match /paymentReceipts/{receiptId} {
-        allow read, write: if isStaff();
+        allow read: if isStaff() || (isSignedIn() && get(/databases/$(database)/documents/invoices/$(invoiceId)).data.clientId == request.auth.uid);
+        allow write: if isStaff();
       }
     }
     match /{path=**}/paymentReceipts/{receiptId} {

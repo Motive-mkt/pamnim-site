@@ -12,12 +12,96 @@
 }
 
 @layer base {
+  :root {
+    --radius-button: 0.75rem; /* 12px = rounded-xl */
+    --radius-card: 1.5rem;    /* 24px = rounded-3xl */
+  }
+
   body {
     @apply bg-cream text-charcoal font-sans antialiased;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-serif;
+  h1, .h1 {
+    @apply font-serif font-bold tracking-tight;
+    font-size: clamp(2.25rem, 4.5vw, 4rem);
+    line-height: 1.1;
+  }
+
+  h2, .h2 {
+    @apply font-serif font-bold tracking-tight;
+    font-size: clamp(1.85rem, 3.25vw, 3rem);
+    line-height: 1.15;
+  }
+
+  h3, .h3 {
+    @apply font-serif font-bold tracking-normal;
+    font-size: clamp(1.4rem, 2.25vw, 2.25rem);
+    line-height: 1.25;
+  }
+
+  h4, .h4 {
+    @apply font-serif font-semibold tracking-normal;
+    font-size: clamp(1.15rem, 1.6vw, 1.5rem);
+    line-height: 1.35;
+  }
+
+  button, a, input, select, textarea {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+  }
+
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-cream), 0 0 0 4px var(--color-ochre);
+  }
+}
+
+/* 1. Elevation Hierarchy (3 Tiers) */
+.elevation-subtle {
+  box-shadow: 0 1px 3px rgba(26, 26, 26, 0.04), 0 1px 2px rgba(26, 26, 26, 0.02);
+}
+
+.elevation-raised {
+  box-shadow: 0 10px 25px -5px rgba(26, 26, 26, 0.08), 0 4px 10px -2px rgba(26, 26, 26, 0.03);
+}
+
+.elevation-modal {
+  box-shadow: 0 25px 50px -12px rgba(26, 26, 26, 0.25), 0 0 0 1px rgba(26, 26, 26, 0.05);
+}
+
+/* 2. Brand Icon Box Treatment (Replaces white rounded box with shadow) */
+.brand-icon-box {
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--radius-button);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(194, 138, 62, 0.09);
+  border: 1px solid rgba(194, 138, 62, 0.22);
+  color: var(--color-ochre);
+  transition: all 250ms ease;
+  flex-shrink: 0;
+}
+
+.brand-icon-box:hover,
+.group:hover .brand-icon-box {
+  background-color: var(--color-ochre);
+  border-color: var(--color-ochre);
+  color: #ffffff;
+}
+
+/* 3. Section Rhythm on Public Marketing Pages */
+.section-rhythm {
+  padding-top: 5rem;
+  padding-bottom: 5rem;
+}
+
+@media (min-width: 768px) {
+  .section-rhythm {
+    padding-top: 7rem;
+    padding-bottom: 7rem;
   }
 }
 

@@ -90,13 +90,18 @@
     },
     "Inquiry": {
       "title": "Inquiry",
-      "description": "A customer message from the contact form.",
+      "description": "A customer message or qualified lead from the contact form.",
       "type": "object",
       "properties": {
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
         "projectType": { "type": "string" },
         "message": { "type": "string" },
+        "leadTag": { "type": "string", "enum": ["high-value", "incomplete", "general"] },
+        "budget": { "type": "string" },
+        "timeline": { "type": "string" },
+        "scope": { "type": "string" },
         "status": { "type": "string", "enum": ["new", "read", "responded"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },

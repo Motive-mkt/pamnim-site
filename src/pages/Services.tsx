@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Compass, Layers, Grid, Sparkles } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import BrandIconBox from '../components/BrandIconBox';
 import { serviceCategories } from '../data/servicesData';
 
 export default function ServicesPage() {
@@ -54,7 +55,7 @@ export default function ServicesPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                   whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                  className="bg-white border border-charcoal/5 rounded-[2.5rem] p-8 md:p-12 shadow-sm hover:shadow-md hover:border-ochre/20 transition-all duration-300 flex flex-col justify-between group"
+                  className="bg-white border border-charcoal/5 rounded-3xl p-8 md:p-12 elevation-subtle hover:elevation-raised hover:border-ochre/20 transition-all duration-300 flex flex-col justify-between group"
                 >
                   <div>
                     {/* Index & Icon */}
@@ -62,9 +63,7 @@ export default function ServicesPage() {
                       <span className="font-mono text-sm tracking-widest text-ochre font-extrabold">
                         {category.accent}
                       </span>
-                      <div className="w-12 h-12 rounded-2xl bg-cream border border-charcoal/5 flex items-center justify-center group-hover:bg-ochre/5 group-hover:border-ochre/20 transition-all duration-300">
-                        <Icon className="w-5 h-5 text-ochre" />
-                      </div>
+                      <BrandIconBox icon={Icon} />
                     </div>
 
                     {/* Content */}

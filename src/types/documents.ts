@@ -1,9 +1,25 @@
-import { InvoicePaymentItem } from '../components/InvoiceGenerator';
 import { QuoteLineItem } from '../components/QuoteGenerator';
 
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'partial' | 'cancelled';
 export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired';
-export type InvoiceMode = 'walk_in' | 'pay_later';
+export type InvoiceMode = 'itemized' | 'freeform' | 'walk_in' | 'pay_later';
+export type RecipientType = 'client' | 'lead' | 'walk_in';
+
+export interface InvoiceLineItem {
+  id: string;
+  description: string;
+  category?: string;
+  unit?: string;
+  quantity: number | '';
+  unitPrice: number | '';
+  amount?: number;
+  name?: string;
+  paymentType?: 'Partial' | 'Full';
+  refCode?: string;
+  date?: string;
+}
+
+export type InvoicePaymentItem = InvoiceLineItem;
 
 export interface PaymentReceipt {
   id?: string;
@@ -18,7 +34,7 @@ export interface PaymentReceipt {
   clientPhone?: string;
   amount: number;
   paymentMethod: 'bank' | 'mpesa' | 'cash' | 'cheque' | string;
-  referenceNumber?: string;
+  referenceNumber: string; // Required for invoice payments
   reference?: string;
   balanceRemaining?: number;
   totalInvoiceAmount?: number;
@@ -34,14 +50,16 @@ export interface SavedInvoice {
   date: string;
   dueDate?: string;
   invoiceMode?: InvoiceMode;
+  recipientType?: RecipientType;
   clientId?: string;
+  leadId?: string;
   clientName: string;
   clientEmail?: string;
   clientPhone?: string;
   clientAddress?: string;
   projectId?: string;
   projectName?: string;
-  items: InvoicePaymentItem[];
+  items: InvoiceLineItem[];
   subtotal?: number;
   discount?: number;
   discountType?: 'amount' | 'percentage';
@@ -53,8 +71,10 @@ export interface SavedInvoice {
   balanceDue: number;
   notes: string;
   status: InvoiceStatus;
+  selectedPaymentMethod?: 'bank' | 'mpesa' | 'cash' | 'cheque' | 'all' | string;
   paymentMethod?: string;
   paymentReference?: string;
+  isLocked?: boolean;
   createdAt: string;
   updatedAt: string;
   createdBy?: string;

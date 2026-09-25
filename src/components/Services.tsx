@@ -19,6 +19,7 @@ import { Link } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { useCMS } from '../hooks/useCMS';
+import BrandIconBox from './BrandIconBox';
 
 export const LUXURY_CATEGORIES = [
   {
