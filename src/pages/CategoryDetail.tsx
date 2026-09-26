@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { ChevronRight, ArrowRight, Sparkles, MessageSquare } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import BrandIconBox from '../components/BrandIconBox';
 import { serviceCategories } from '../data/servicesData';
 
 export default function CategoryDetailPage() {
@@ -33,16 +34,14 @@ export default function CategoryDetailPage() {
         </div>
 
         {/* Hero Section */}
-        <section className="py-16 relative overflow-hidden bg-cream border-b border-charcoal/5">
+        <section className="section-rhythm relative overflow-hidden bg-cream border-b border-charcoal/5">
           <div className="max-w-7xl mx-auto px-6 md:px-12 relative z-10">
             <div className="flex items-center gap-3 mb-4">
               <span className="font-mono text-xs tracking-widest text-ochre font-extrabold uppercase">
                 Category {category.accent}
               </span>
               <div className="h-[1px] w-8 bg-ochre/20" />
-              <div className="w-8 h-8 rounded-lg bg-cream border border-charcoal/5 flex items-center justify-center">
-                <Icon className="w-4 h-4 text-ochre" />
-              </div>
+              <BrandIconBox icon={Icon} className="w-8 h-8" iconClassName="w-4 h-4" />
             </div>
 
             <motion.h1 
@@ -65,7 +64,7 @@ export default function CategoryDetailPage() {
         </section>
 
         {/* Sub-services Grid */}
-        <main className="py-20 max-w-7xl mx-auto px-6 md:px-12">
+        <main className="section-rhythm max-w-7xl mx-auto px-6 md:px-12">
           <h2 className="text-xs font-bold tracking-[0.2em] text-charcoal/30 uppercase mb-8 pb-4 border-b border-charcoal/5">
             DETAILED SERVICE BREAKDOWN
           </h2>
@@ -78,7 +77,7 @@ export default function CategoryDetailPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: idx * 0.1 }}
                 whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                className="bg-white border border-charcoal/5 rounded-[2rem] p-8 shadow-sm hover:shadow-md hover:border-ochre/20 transition-all duration-300 flex flex-col justify-between group"
+                className="bg-white border border-charcoal/5 rounded-3xl p-8 elevation-subtle hover:elevation-raised hover:border-ochre/20 transition-all duration-300 flex flex-col justify-between group"
               >
                 <div>
                   <h3 className="text-xl font-bold text-charcoal mb-4 group-hover:text-ochre transition-colors duration-300">

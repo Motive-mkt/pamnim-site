@@ -16,11 +16,18 @@ export interface Worker {
   id?: string;
   userId?: string; // Links to auth UID if self-signed up
   name: string;
-  phone: string;
+  mpesaName?: string; // M-Pesa Registered Name (FULL CAPS)
+  phone: string; // Registered on M-Pesa
   idNumber?: string;
   email?: string;
   skill: WorkerSkill;
-  dailyRate: number; // KES (Owner-only: hidden from worker view)
+  payFrequency?: 'daily' | 'weekly'; // Daily rate or fixed weekly wage budget
+  dailyRate: number; // KES per day worked (for daily pay frequency)
+  weeklyBudget?: number; // KES fixed weekly budget (for weekly pay frequency)
+  payoutMethod?: 'M-Pesa' | 'Bank Transfer';
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
   status: WorkerStatus;
   notes?: string;
   assignedProjectId?: string;

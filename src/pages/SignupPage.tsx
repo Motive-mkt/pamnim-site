@@ -3,7 +3,7 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { Link, useSearchParams, useLocation } from 'react-router-dom';
-import { Sparkle, Mail, Lock, User, Phone, MessageSquare, CheckCircle2, ArrowLeft, HardHat, CreditCard } from 'lucide-react';
+import { Mail, Lock, User, Phone, MessageSquare, CheckCircle2, ArrowLeft, HardHat, CreditCard, Building } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface SignupPageProps {
@@ -33,9 +33,14 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
   const [whatsapp, setWhatsapp] = useState('');
 
   // Worker-only fields
+  const [mpesaName, setMpesaName] = useState('');
   const [mpesaPhone, setMpesaPhone] = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [appliedSkill, setAppliedSkill] = useState('Masonry');
+  const [payoutMethod, setPayoutMethod] = useState<'M-Pesa' | 'Bank Transfer'>('M-Pesa');
+  const [bankName, setBankName] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
   const [emergencyContact, setEmergencyContact] = useState('');
   const [workerNotes, setWorkerNotes] = useState('');
 
@@ -46,6 +51,10 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
 
     if (!name.trim()) {
       setError('Please enter your full name.');
+      return;
+    }
+    if (!mpesaName.trim()) {
+      setError('Please enter your M-Pesa registered name.');
       return;
     }
     if (!mpesaPhone.trim()) {
@@ -116,13 +125,15 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
 
       if (signupType === 'worker') {
         // Site Worker self-registration: Submits strictly as pending worker
-        const workerRequestData = {
+        const workerRequestData: Record<string, any> = {
           uid: user.uid,
           name: name.trim(),
+          mpesaName: mpesaName.trim().toUpperCase(),
           email: email.trim().toLowerCase(),
           phone: mpesaPhone.trim(),
           idNumber: idNumber.trim(),
           appliedSkill: appliedSkill,
+          payoutMethod,
           emergencyContact: emergencyContact.trim(),
           notes: workerNotes.trim(),
           role: 'worker' as const,
@@ -130,25 +141,56 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
           createdAt: new Date().toISOString()
         };
 
+        if (payoutMethod === 'Bank Transfer') {
+          if (bankName.trim()) workerRequestData.bankName = bankName.trim();
+          if (accountName.trim()) workerRequestData.accountName = accountName.trim();
+          if (accountNumber.trim()) workerRequestData.accountNumber = accountNumber.trim();
+        }
+
         // Create pending profile document
         await setDoc(doc(db, 'profiles', user.uid), workerRequestData);
         // Create in pending_signups collection for owner approval queue
         await setDoc(doc(db, 'pending_signups', user.uid), workerRequestData);
         // Create initial worker document in workers collection with pending status
-        await setDoc(doc(db, 'workers', user.uid), {
+        const workerDocData: Record<string, any> = {
           id: user.uid,
           userId: user.uid,
           name: name.trim(),
+          mpesaName: mpesaName.trim().toUpperCase(),
           email: email.trim().toLowerCase(),
           phone: mpesaPhone.trim(),
           idNumber: idNumber.trim(),
           skill: appliedSkill,
+          payFrequency: 'daily',
+          payoutMethod,
           emergencyContact: emergencyContact.trim(),
           notes: workerNotes.trim(),
           dailyRate: 0, // Configured only by owner on approval
           status: 'pending',
           createdAt: new Date().toISOString()
-        });
+        };
+
+        if (payoutMethod === 'Bank Transfer') {
+          if (bankName.trim()) workerDocData.bankName = bankName.trim();
+          if (accountName.trim()) workerDocData.accountName = accountName.trim();
+          if (accountNumber.trim()) workerDocData.accountNumber = accountNumber.trim();
+        }
+
+        await setDoc(doc(db, 'workers', user.uid), workerDocData);
+
+        // Notify owner via server push endpoint
+        try {
+          fetch('/api/notifications/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: 'New Worker Signup Pending Approval',
+              body: `${name.trim()} (${appliedSkill}) submitted site worker registration.`,
+              url: '/dashboard?tab=hrms',
+              tag: 'worker-signup'
+            })
+          }).catch(() => {});
+        } catch (_) {}
 
         // Sign out immediately so worker cannot log in yet
         await auth.signOut();
@@ -227,7 +269,7 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
         <div className="bg-white rounded-[2.5rem] p-6 sm:p-10 shadow-xl border border-charcoal/10">
           <div className="text-center mb-6">
             <div className="w-14 h-14 bg-ochre/10 text-ochre rounded-2xl flex items-center justify-center mx-auto mb-4">
-              {signupType === 'worker' ? <HardHat className="w-7 h-7" /> : <Sparkle className="w-7 h-7" />}
+              {signupType === 'worker' ? <HardHat className="w-7 h-7" /> : <User className="w-7 h-7" />}
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-charcoal">
               {signupType === 'worker' ? 'Site Worker Registration' : 'Create Your Account'}
@@ -414,12 +456,32 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
                 </div>
               </div>
 
-              {/* Worker Specific: Phone (M-Pesa) */}
+              {/* Worker Specific: M-Pesa Registered Name & Phone */}
               {signupType === 'worker' ? (
                 <>
                   <div>
                     <label className="block text-xs font-bold text-charcoal/60 uppercase tracking-widest mb-1.5">
-                      Phone (M-Pesa)
+                      M-Pesa Registered Name <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <User className="w-5 h-5 text-charcoal/40 absolute left-4 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. JOHN MWANGI KAMAU"
+                        value={mpesaName}
+                        onChange={e => setMpesaName(e.target.value.toUpperCase())}
+                        className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-charcoal/15 focus:border-ochre outline-none text-sm bg-cream/30 font-bold uppercase tracking-wider"
+                      />
+                    </div>
+                    <span className="text-[10px] text-charcoal/40 mt-1 block">
+                      Auto-formatted in FULL CAPS to match how M-Pesa and bank confirmations display your name.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-charcoal/60 uppercase tracking-widest mb-1.5">
+                      Phone (M-Pesa) <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <Phone className="w-5 h-5 text-emerald-600 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -432,7 +494,9 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
                         className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-charcoal/15 focus:border-ochre outline-none text-sm bg-cream/30 font-medium"
                       />
                     </div>
-                    <span className="text-[10px] text-charcoal/40 mt-1 block">Used for daily site wage settlements and SMS notifications.</span>
+                    <span className="text-[10px] text-charcoal/40 mt-1 block">
+                      Enter exactly as registered on M-Pesa.
+                    </span>
                   </div>
 
                   {/* National ID */}
@@ -556,7 +620,7 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
                   <p className="text-xs text-charcoal/50 pt-1">
                     Are you a client or interior design team member?{' '}
                     <Link to="/signup" className="font-bold text-ochre hover:underline inline-flex items-center gap-1">
-                      <Sparkle className="w-3.5 h-3.5 inline text-ochre" />
+                      <User className="w-3.5 h-3.5 inline text-ochre" />
                       <span>Client & Team Sign-Up</span>
                     </Link>
                   </p>

@@ -22,7 +22,7 @@ export default function Footer() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
             <a
               href={`tel:${content.contact.phone.replace(/\s/g, '')}`}
-              className="w-full sm:w-auto bg-ochre hover:bg-ochre/90 text-white px-10 py-5 rounded-full font-bold flex items-center justify-center gap-3 transition-all duration-300 transform hover:-translate-y-1"
+              className="w-full sm:w-auto bg-ochre hover:bg-ochre-dark text-white px-10 py-4 rounded-xl font-bold flex items-center justify-center gap-3 transition-all duration-300 transform hover:-translate-y-0.5 shadow-md shadow-ochre/25"
             >
               <Phone className="w-5 h-5" />
               Call {content.contact.phone}

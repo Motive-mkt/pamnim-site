@@ -248,12 +248,11 @@ export default function Services() {
 
                 <div>
                   {/* Icon */}
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-8 border transition-all duration-300 ${
-                    category.isMostRequested 
-                      ? 'bg-ochre border-ochre text-white' 
-                      : 'bg-cream border-charcoal/5 text-ochre group-hover:bg-ochre group-hover:border-ochre group-hover:text-white'
-                  }`}>
-                    <Icon className="w-5 h-5 transition-all duration-300" />
+                  <div className="mb-8">
+                    <BrandIconBox 
+                      icon={Icon} 
+                      className={category.isMostRequested ? 'bg-ochre border-ochre text-white' : ''} 
+                    />
                   </div>
 
                   {/* Title */}
@@ -451,19 +450,14 @@ export default function Services() {
                           </div>
 
                           <div>
-                            <label className="block text-[10px] font-bold text-charcoal/50 uppercase tracking-widest mb-1.5 font-mono">Est. Budget Range (KES)</label>
-                            <select 
+                            <label className="block text-[10px] font-bold text-charcoal/50 uppercase tracking-widest mb-1.5 font-mono">Est. Budget (KES)</label>
+                            <input 
+                              type="text"
                               value={leadBudget}
                               onChange={(e) => setLeadBudget(e.target.value)}
-                              className="w-full bg-cream border border-charcoal/5 rounded-xl px-4 py-3 text-xs text-charcoal focus:border-ochre focus:outline-none transition-colors appearance-none"
-                            >
-                              <option value="">Select range...</option>
-                              <option value="KES 50K - 150K">KES 50,000 - 150,000</option>
-                              <option value="KES 150K - 300K">KES 150,000 - 300,000</option>
-                              <option value="KES 300K - 600K">KES 300,000 - 600,000</option>
-                              <option value="KES 600K - 1.2M">KES 600,000 - 1,200,000</option>
-                              <option value="KES 1.2M+">KES 1,200,000+</option>
-                            </select>
+                              placeholder="e.g. KES 500,000 or 1.5M"
+                              className="w-full bg-cream border border-charcoal/5 rounded-xl px-4 py-3 text-xs text-charcoal focus:border-ochre focus:outline-none transition-colors"
+                            />
                           </div>
 
                           <div>

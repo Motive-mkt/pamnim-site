@@ -8,6 +8,7 @@ import { serviceCategories } from '../data/servicesData';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { optimizeHeroCloudinaryUrl } from '../services/cloudinaryService';
+import BrandIconBox from '../components/BrandIconBox';
 
 export default function ServiceDetailPage() {
   const { categoryId, serviceSlug } = useParams();
@@ -71,7 +72,7 @@ export default function ServiceDetailPage() {
         {/* 1. Hero image: full-width image at the top */}
         <div className="max-w-7xl mx-auto px-6 md:px-12 pt-8">
           {heroImage ? (
-            <div className="w-full aspect-[21/9] rounded-[2.5rem] overflow-hidden border border-charcoal/5 shadow-md bg-cream">
+            <div className="w-full aspect-[21/9] rounded-3xl overflow-hidden border border-charcoal/5 elevation-raised bg-cream">
               <img
                 src={optimizeHeroCloudinaryUrl(heroImage)}
                 alt={`${serviceName} Hero`}
@@ -80,9 +81,9 @@ export default function ServiceDetailPage() {
               />
             </div>
           ) : (
-            <div className="w-full aspect-[21/9] rounded-[2.5rem] border-2 border-dashed border-charcoal/10 bg-white/40 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden group hover:border-ochre/20 transition-colors duration-300">
-              <div className="w-12 h-12 rounded-full bg-cream border border-charcoal/5 flex items-center justify-center mb-4 text-charcoal/30 group-hover:text-ochre group-hover:bg-ochre/5 transition-colors duration-300">
-                <ImageIcon className="w-5 h-5" />
+            <div className="w-full aspect-[21/9] rounded-3xl border-2 border-dashed border-charcoal/10 bg-white/40 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden group hover:border-ochre/20 transition-colors duration-300">
+              <div className="mb-4">
+                <BrandIconBox icon={ImageIcon} />
               </div>
               <p className="text-xs font-bold text-charcoal/40 uppercase tracking-widest mb-1">
                 Hero Image coming soon
@@ -95,7 +96,7 @@ export default function ServiceDetailPage() {
         </div>
 
         {/* Service Core Detail: 2. Service Name H1 & 3. Brief description */}
-        <main className="py-16 max-w-7xl mx-auto px-6 md:px-12">
+        <main className="section-rhythm max-w-7xl mx-auto px-6 md:px-12">
           <div className="max-w-4xl">
             <span className="text-xs font-bold tracking-[0.2em] text-ochre uppercase mb-3 block">
               DETAILED SERVICE STUDY
@@ -128,7 +129,7 @@ export default function ServiceDetailPage() {
               {[0, 1, 2].map((index) => {
                 const imgUrl = galleryImages[index];
                 return imgUrl ? (
-                  <div key={index} className="aspect-[4/3] rounded-[2rem] overflow-hidden border border-charcoal/5 shadow-sm bg-cream">
+                  <div key={index} className="aspect-[4/3] rounded-3xl overflow-hidden border border-charcoal/5 elevation-subtle hover:elevation-raised transition-shadow bg-cream">
                     <img
                       src={imgUrl}
                       alt={`${serviceName} project reference ${index + 1}`}
@@ -139,10 +140,10 @@ export default function ServiceDetailPage() {
                 ) : (
                   <div 
                     key={index} 
-                    className="aspect-[4/3] rounded-[2rem] border-2 border-dashed border-charcoal/10 bg-white/40 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden group hover:border-ochre/20 transition-colors duration-300"
+                    className="aspect-[4/3] rounded-3xl border-2 border-dashed border-charcoal/10 bg-white/40 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden group hover:border-ochre/20 transition-colors duration-300"
                   >
-                    <div className="w-12 h-12 rounded-full bg-cream border border-charcoal/5 flex items-center justify-center mb-4 text-charcoal/30 group-hover:text-ochre group-hover:bg-ochre/5 transition-colors duration-300">
-                      <ImageIcon className="w-5 h-5" />
+                    <div className="mb-4">
+                      <BrandIconBox icon={ImageIcon} />
                     </div>
                     <p className="text-xs font-bold text-charcoal/40 uppercase tracking-widest mb-1">
                       Photo coming soon
@@ -158,9 +159,9 @@ export default function ServiceDetailPage() {
         </main>
 
         {/* 5. CTA band: "Get a Quote" */}
-        <section className="py-20 bg-cream">
+        <section className="section-rhythm bg-cream">
           <div className="max-w-5xl mx-auto px-6 md:px-12 text-center">
-            <div className="bg-charcoal text-white rounded-[3rem] p-10 md:p-16 relative overflow-hidden border border-white/5 shadow-2xl">
+            <div className="bg-charcoal text-white rounded-3xl p-10 md:p-16 relative overflow-hidden border border-white/5 elevation-modal">
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-ochre to-transparent opacity-50" />
               
               <div className="relative z-10 space-y-6">

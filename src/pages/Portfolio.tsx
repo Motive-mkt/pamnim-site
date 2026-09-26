@@ -229,7 +229,7 @@ export default function PortfolioPage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        className="group relative aspect-[4/5] overflow-hidden rounded-3xl cursor-pointer bg-white border border-charcoal/5 shadow-sm"
+                        className="group relative aspect-[4/5] overflow-hidden rounded-3xl cursor-pointer bg-white border border-charcoal/5 elevation-subtle hover:elevation-raised transition-all"
                       >
                         <img 
                           src={optimizeCloudinaryUrl(project.image, 'image')} 
@@ -274,7 +274,7 @@ export default function PortfolioPage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        className="bg-white rounded-3xl overflow-hidden border border-charcoal/5 shadow-sm flex flex-col group relative"
+                        className="bg-white rounded-3xl overflow-hidden border border-charcoal/5 elevation-subtle hover:elevation-raised transition-all flex flex-col group relative"
                       >
                         {project.isGallery && (
                           <div className="absolute top-4 left-4 z-30 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5 shadow-sm pointer-events-none">
@@ -363,7 +363,7 @@ export default function PortfolioPage() {
         <button
           type="button"
           onClick={() => setShowLeadModal(true)}
-          className="w-full py-3.5 px-6 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-xs sm:text-sm font-bold shadow-2xl shadow-ochre/35 border border-white/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer backdrop-blur-md"
+          className="w-full py-3.5 px-6 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs sm:text-sm font-bold shadow-2xl shadow-ochre/35 border border-white/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer backdrop-blur-md"
         >
           <span className="truncate">Be our next portfolio? Tell us about your project</span>
         </button>
@@ -372,7 +372,7 @@ export default function PortfolioPage() {
       {/* Modal containing shared LeadQualifyingForm */}
       {showLeadModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs animate-fade-in overflow-y-auto">
-          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden animate-scale-up my-8 max-h-[90vh] overflow-y-auto">
+          <div className="relative w-full max-w-2xl bg-white rounded-3xl elevation-modal overflow-hidden animate-scale-up my-8 max-h-[90vh] overflow-y-auto">
             <LeadQualifyingForm
               variant="modal"
               source="portfolio_modal"
@@ -387,7 +387,7 @@ export default function PortfolioPage() {
       {/* Delete Confirmation Modal for Staff/Owner */}
       {deletingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white w-full max-w-md rounded-3xl border border-red-200 shadow-2xl overflow-hidden p-6 space-y-4 animate-scale-up">
+          <div className="bg-white w-full max-w-md rounded-3xl border border-red-200 elevation-modal overflow-hidden p-6 space-y-4 animate-scale-up">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center">
