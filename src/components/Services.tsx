@@ -131,7 +131,6 @@ export default function Services() {
   const [leadName, setLeadName] = useState('');
   const [leadEmail, setLeadEmail] = useState('');
   const [leadPhone, setLeadPhone] = useState('');
-  const [leadBudget, setLeadBudget] = useState('');
   const [leadNotes, setLeadNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -142,7 +141,6 @@ export default function Services() {
     setLeadName('');
     setLeadEmail('');
     setLeadPhone('');
-    setLeadBudget('');
     setLeadNotes('');
   };
 
@@ -158,7 +156,7 @@ export default function Services() {
         email: leadEmail,
         phone: leadPhone,
         projectType: selectedService.title,
-        message: `Quote Request for: ${selectedService.title}\nBudget: ${leadBudget || 'Not specified'}\nMessage: ${leadNotes || 'Interested in this service.'}`,
+        message: `Quote Request for: ${selectedService.title}\nMessage: ${leadNotes || 'Interested in this service.'}`,
         status: 'new',
         createdAt: new Date().toISOString()
       });
@@ -173,7 +171,7 @@ export default function Services() {
       
       // Auto-open prefilled WhatsApp as dynamic follow-up
       const phoneNumber = content?.contact?.whatsapp || "254714984268";
-      const prefilledMsg = `Hello Pamnim Interiors! I just submitted a quote request for *${selectedService.title}* on your website.\n\n*Name:* ${leadName}\n*Budget:* ${leadBudget || 'Not specified'}\n*Direct Inquiry:* ${leadNotes || 'I would like to discuss next steps.'}`;
+      const prefilledMsg = `Hello Pamnim Interiors! I just submitted a quote request for *${selectedService.title}* on your website.\n\n*Name:* ${leadName}\n*Direct Inquiry:* ${leadNotes || 'I would like to discuss next steps.'}`;
       const waUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(prefilledMsg)}`;
       
       setTimeout(() => {
@@ -420,7 +418,6 @@ export default function Services() {
                               required
                               value={leadName}
                               onChange={(e) => setLeadName(e.target.value)}
-                              placeholder="e.g. Joy Wambui"
                               className="w-full bg-cream border border-charcoal/5 rounded-xl px-4 py-3 text-xs text-charcoal focus:border-ochre focus:outline-none transition-colors"
                             />
                           </div>
@@ -432,7 +429,6 @@ export default function Services() {
                               required
                               value={leadPhone}
                               onChange={(e) => setLeadPhone(e.target.value)}
-                              placeholder="e.g. 0712 345 678"
                               className="w-full bg-cream border border-charcoal/5 rounded-xl px-4 py-3 text-xs text-charcoal focus:border-ochre focus:outline-none transition-colors"
                             />
                           </div>
@@ -444,18 +440,6 @@ export default function Services() {
                               required
                               value={leadEmail}
                               onChange={(e) => setLeadEmail(e.target.value)}
-                              placeholder="e.g. joy@domain.com"
-                              className="w-full bg-cream border border-charcoal/5 rounded-xl px-4 py-3 text-xs text-charcoal focus:border-ochre focus:outline-none transition-colors"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-[10px] font-bold text-charcoal/50 uppercase tracking-widest mb-1.5 font-mono">Est. Budget (KES)</label>
-                            <input 
-                              type="text"
-                              value={leadBudget}
-                              onChange={(e) => setLeadBudget(e.target.value)}
-                              placeholder="e.g. KES 500,000 or 1.5M"
                               className="w-full bg-cream border border-charcoal/5 rounded-xl px-4 py-3 text-xs text-charcoal focus:border-ochre focus:outline-none transition-colors"
                             />
                           </div>
@@ -466,7 +450,6 @@ export default function Services() {
                               rows={2}
                               value={leadNotes}
                               onChange={(e) => setLeadNotes(e.target.value)}
-                              placeholder="e.g. Modern open plan lounge..."
                               className="w-full bg-cream border border-charcoal/5 rounded-xl px-4 py-3 text-xs text-charcoal focus:border-ochre focus:outline-none transition-colors resize-none"
                             />
                           </div>

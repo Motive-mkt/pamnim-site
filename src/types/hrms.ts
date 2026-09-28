@@ -12,6 +12,15 @@ export type WorkerSkill =
 
 export type WorkerStatus = 'active' | 'on_leave' | 'inactive';
 
+export interface WorkerPayoutProfile {
+  id: string;
+  label: string; // e.g. "Own M-Pesa", "Wife's M-Pesa", "Equity Bank"
+  accountName: string; // Name on the account
+  accountNumber: string; // Phone or account number
+  type?: 'mpesa' | 'bank' | 'cash' | 'other';
+  isDefault?: boolean;
+}
+
 export interface Worker {
   id?: string;
   userId?: string; // Links to auth UID if self-signed up
@@ -28,6 +37,7 @@ export interface Worker {
   bankName?: string;
   accountName?: string;
   accountNumber?: string;
+  payoutProfiles?: WorkerPayoutProfile[]; // Multiple saved payout profiles
   status: WorkerStatus;
   notes?: string;
   assignedProjectId?: string;

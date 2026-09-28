@@ -3,7 +3,7 @@ import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useCMS } from '../hooks/useCMS';
 import { 
-  CheckCircle2, Send, MessageSquare, Clock, DollarSign, 
+  CheckCircle2, Send, MessageSquare, Clock, 
   HelpCircle, ArrowRight, ShieldCheck, Phone, Mail, User, X, Layers
 } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -50,7 +50,6 @@ export default function LeadQualifyingForm({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [selectedService, setSelectedService] = useState('');
-  const [budget, setBudget] = useState('');
   const [timeline, setTimeline] = useState<string>(DESIRED_TIMELINES[1]);
   const [scope, setScope] = useState('');
   const [generalInquiry, setGeneralInquiry] = useState('');
@@ -70,13 +69,13 @@ export default function LeadQualifyingForm({
   const buildMessageContent = useCallback((isProject: boolean, isPartial = false): string => {
     const serviceInfo = selectedService ? `\nService Needed: ${selectedService}` : '';
     if (isPartial) {
-      return `[INCOMPLETE PROJECT LEAD]\nUser started project inquiry but abandoned before submission.${serviceInfo}\nScope draft: ${scope.trim() || '—'}\nBudget: ${budget.trim() || 'Not specified'}\nTimeline: ${timeline}`;
+      return `[INCOMPLETE PROJECT LEAD]\nUser started project inquiry but abandoned before submission.${serviceInfo}\nScope draft: ${scope.trim() || '—'}\nTimeline: ${timeline}`;
     }
     if (isProject) {
-      return `[HIGH-VALUE PROJECT INQUIRY]${serviceInfo}\nBudget: ${budget.trim() || 'Not specified'}\nTimeline: ${timeline}\n\nProject Scope & Objectives:\n${scope.trim() || 'Not specified'}`;
+      return `[HIGH-VALUE PROJECT INQUIRY]${serviceInfo}\nTimeline: ${timeline}\n\nProject Scope & Objectives:\n${scope.trim() || 'Not specified'}`;
     }
     return `${selectedService ? `Service of Interest: ${selectedService}\n\n` : ''}${generalInquiry.trim() || 'General inquiry submitted from website.'}`;
-  }, [selectedService, budget, timeline, scope, generalInquiry]);
+  }, [selectedService, timeline, scope, generalInquiry]);
 
   // Clean payload helper (stripping undefined values for Firestore safety)
   const buildPayload = useCallback((tag: LeadTag, isPartial = false) => {
@@ -101,7 +100,6 @@ export default function LeadQualifyingForm({
       payload.projectType = selectedService.trim();
     }
     if (isProject) {
-      if (budget.trim()) payload.budget = budget.trim();
       if (timeline) payload.timeline = timeline;
       if (scope.trim()) payload.scope = scope.trim();
     } else {
@@ -109,7 +107,7 @@ export default function LeadQualifyingForm({
     }
 
     return payload;
-  }, [hasActiveProject, name, email, phone, selectedService, budget, timeline, scope, generalInquiry, source, buildMessageContent]);
+  }, [hasActiveProject, name, email, phone, selectedService, timeline, scope, generalInquiry, source, buildMessageContent]);
 
   // Background capture for Abandoned / Incomplete Leads
   const captureIncompleteLead = useCallback(async () => {
@@ -148,7 +146,7 @@ export default function LeadQualifyingForm({
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
-  }, [hasActiveProject, name, email, phone, scope, budget, timeline, captureIncompleteLead]);
+  }, [hasActiveProject, name, email, phone, scope, timeline, captureIncompleteLead]);
 
   // Also capture when user switches tabs or navigates away (visibilitychange)
   useEffect(() => {
@@ -238,7 +236,7 @@ export default function LeadQualifyingForm({
     const cleanNumber = rawNumber.replace(/[^0-9]/g, '');
     let text = `Hello Pamnim Interior Designers! I'd like to discuss a project.\n\n*Name:* ${name || 'Client'}\n*Phone:* ${phone || '—'}`;
     if (hasActiveProject) {
-      text += `\n*Budget:* ${budget}\n*Timeline:* ${timeline}\n*Scope:* ${scope}`;
+      text += `\n*Timeline:* ${timeline}\n*Scope:* ${scope}`;
     } else {
       text += `\n*Inquiry:* ${generalInquiry || 'General Inquiry'}`;
     }
@@ -268,7 +266,7 @@ export default function LeadQualifyingForm({
           </h3>
           <p className="text-sm sm:text-base text-charcoal/70 max-w-md mx-auto leading-relaxed">
             {submittedTag === 'high-value'
-              ? `Our senior interior design team has received your ${budget ? `${budget} ` : ''}project brief. We will review your scope and get in touch within a few hours to arrange a discovery session.`
+              ? 'Our senior interior design team has received your project brief. We will review your scope and get in touch within a few hours to arrange a discovery session.'
               : 'We have received your note and will get back to you within 24 business hours.'}
           </p>
         </div>
@@ -420,38 +418,21 @@ export default function LeadQualifyingForm({
               </select>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Estimated Budget: Text Input (Typed by user) */}
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
-                  <DollarSign className="w-3.5 h-3.5 text-ochre" />
-                  <span>Estimated Budget <span className="text-ochre">*</span></span>
-                </label>
-                <input
-                  type="text"
-                  value={budget}
-                  onChange={(e) => setBudget(e.target.value)}
-                  placeholder="e.g. KES 500,000 or 1.5M"
-                  className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal shadow-xs"
-                />
-              </div>
-
-              {/* Desired Timeline Dropdown */}
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-ochre" />
-                  <span>Desired Timeline <span className="text-ochre">*</span></span>
-                </label>
-                <select
-                  value={timeline}
-                  onChange={(e) => setTimeline(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal cursor-pointer shadow-xs"
-                >
-                  {DESIRED_TIMELINES.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-              </div>
+            {/* Desired Timeline Dropdown */}
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-ochre" />
+                <span>Desired Timeline <span className="text-ochre">*</span></span>
+              </label>
+              <select
+                value={timeline}
+                onChange={(e) => setTimeline(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal cursor-pointer shadow-xs"
+              >
+                {DESIRED_TIMELINES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
             </div>
 
             {/* Project Scope Textarea */}
@@ -463,8 +444,7 @@ export default function LeadQualifyingForm({
                 rows={3}
                 value={scope}
                 onChange={(e) => setScope(e.target.value)}
-                placeholder="e.g. 4-bedroom villa in Kilimani — living room gypsum ceilings, custom master walk-in closet, fluted oak wall paneling, and kitchen renovation..."
-                className="w-full p-3.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal placeholder:text-charcoal/30 shadow-xs"
+                className="w-full p-3.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal shadow-xs"
               />
             </div>
           </div>
@@ -511,8 +491,7 @@ export default function LeadQualifyingForm({
                 rows={3}
                 value={generalInquiry}
                 onChange={(e) => setGeneralInquiry(e.target.value)}
-                placeholder="Ask about design consultation rates, material options, past projects, or workshop visiting hours..."
-                className="w-full p-3.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal placeholder:text-charcoal/30 shadow-xs"
+                className="w-full p-3.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal shadow-xs"
               />
             </div>
           </div>
@@ -532,7 +511,6 @@ export default function LeadQualifyingForm({
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Christine Mutua"
                   className="w-full px-3.5 py-2.5 bg-cream/50 border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre focus:bg-white text-charcoal shadow-xs"
                 />
               </div>
@@ -547,7 +525,6 @@ export default function LeadQualifyingForm({
                   required
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="07XX XXX XXX"
                   className="w-full px-3.5 py-2.5 bg-cream/50 border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre focus:bg-white text-charcoal shadow-xs"
                 />
               </div>
@@ -563,7 +540,6 @@ export default function LeadQualifyingForm({
                 required={hasActiveProject === true}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="christine@example.com"
                 className="w-full px-3.5 py-2.5 bg-cream/50 border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre focus:bg-white text-charcoal shadow-xs"
               />
             </div>

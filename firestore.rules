@@ -226,7 +226,11 @@ service cloud.firestore {
       allow read: if isStaff() || (
         isSignedIn() && (request.auth.uid == workerId || resource.data.userId == request.auth.uid)
       );
-      allow write: if isStaff();
+      allow create, delete: if isStaff();
+      allow update: if isStaff() || (
+        isSignedIn() && (request.auth.uid == workerId || resource.data.userId == request.auth.uid) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payoutProfiles', 'phone', 'mpesaName'])
+      );
     }
     match /workLogs/{logId} {
       allow read: if isStaff() || (

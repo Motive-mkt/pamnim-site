@@ -54,22 +54,29 @@ export default function QuoteGenerator() {
   const [clientPhone, setClientPhone] = useState('');
   const [projectName, setProjectName] = useState('');
 
-  // Quotation Terms & Disclaimer (Powered by CMS Settings)
-  const defaultPaymentDetails = content.contact.paymentDetails || 'Bank / M-Pesa Details: Pamnim Interior Designers, Paybill: 247247, Acc: 0714984268.';
+  // Quotation Terms & Disclaimer (Powered by CMS Settings with M-Pesa, Bank, Cash details)
+  const getCompiledPaymentDetails = () => {
+    const methods = content?.contact?.paymentDetailsByMethod || {};
+    const parts = [methods.bank, methods.mpesa, methods.cash].filter(Boolean);
+    if (parts.length > 0) return parts.join('\n\n');
+    return content.contact.paymentDetails || 'Bank / M-Pesa Details: Pamnim Interior Designers, Paybill: 247247, Acc: 0714984268.';
+  };
+
   const [notes, setNotes] = useState(
-    `This quotation is an estimate valid for 30 days and is subject to final site inspection, scope adjustments, and material availability.\nAll prices include spatial design planning, premium materials supply, and professional installation by Pamnim Interior Designers.\n${defaultPaymentDetails}`
+    `This quotation is an estimate valid for 30 days and is subject to final site inspection, scope adjustments, and material availability.\nAll prices include spatial design planning, premium materials supply, and professional installation by Pamnim Interior Designers.\n\n${getCompiledPaymentDetails()}`
   );
 
   useEffect(() => {
-    if (content.contact.paymentDetails) {
+    const compiled = getCompiledPaymentDetails();
+    if (compiled) {
       setNotes(prev => {
         if (!prev || prev.includes('Paybill: 247247, Acc: 0714984268.')) {
-          return `This quotation is an estimate valid for 30 days and is subject to final site inspection, scope adjustments, and material availability.\nAll prices include spatial design planning, premium materials supply, and professional installation by Pamnim Interior Designers.\n${content.contact.paymentDetails}`;
+          return `This quotation is an estimate valid for 30 days and is subject to final site inspection, scope adjustments, and material availability.\nAll prices include spatial design planning, premium materials supply, and professional installation by Pamnim Interior Designers.\n\n${compiled}`;
         }
         return prev;
       });
     }
-  }, [content.contact.paymentDetails]);
+  }, [content.contact.paymentDetails, content.contact.paymentDetailsByMethod]);
 
   // Quote Line Items: Blank by default (no placeholder pre-filled mock items)
   const [items, setItems] = useState<QuoteLineItem[]>([
@@ -258,7 +265,7 @@ export default function QuoteGenerator() {
     setClientEmail(qt.clientEmail || '');
     setClientPhone(qt.clientPhone || '');
     setProjectName(qt.projectName || '');
-    setNotes(qt.notes || defaultPaymentDetails);
+    setNotes(qt.notes || getCompiledPaymentDetails());
     if (qt.items && qt.items.length > 0) {
       setItems(qt.items);
     } else {
@@ -278,7 +285,7 @@ export default function QuoteGenerator() {
     setClientEmail(qt.clientEmail || '');
     setClientPhone(qt.clientPhone || '');
     setProjectName(qt.projectName || '');
-    setNotes(qt.notes || defaultPaymentDetails);
+    setNotes(qt.notes || getCompiledPaymentDetails());
     if (qt.items && qt.items.length > 0) {
       setItems(qt.items.map(i => ({ ...i, id: Math.random().toString() })));
     }

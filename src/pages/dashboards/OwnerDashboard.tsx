@@ -10,7 +10,7 @@ import {
   Image as ImageIcon, Copy, Check, ArrowUp, ArrowDown, Upload, X, Sparkle, DollarSign, Save, AlertCircle, AlertTriangle,
   FileText, FileSignature, ArrowRight, LayoutDashboard, Receipt, HardHat, Zap, Layers,
   UserCheck, Search, Calendar as CalendarIcon, ChevronDown, Filter,
-  Star, MessageSquareHeart, ExternalLink, Share2
+  Star, MessageSquareHeart, ExternalLink, Share2, MapPin
 } from 'lucide-react';
 import { useCMS } from '../../hooks/useCMS';
 import { refineDraftCopy } from '../../services/geminiService';
@@ -460,7 +460,7 @@ export default function OwnerDashboard() {
   }, [inquiries]);
 
   const filteredInquiries = React.useMemo(() => {
-    return inquiries.filter(inq => {
+    const filtered = inquiries.filter(inq => {
       if (inquiryLeadTagFilter !== 'all') {
         const tag = inq.leadTag || 'general';
         if (tag !== inquiryLeadTagFilter) return false;
@@ -514,6 +514,22 @@ export default function OwnerDashboard() {
         return true;
       }
       return true;
+    });
+
+    // Sort requests: Soonest site visit / start date appear first
+    return [...filtered].sort((a, b) => {
+      const dateA = a.siteVisitDate || a.startDate;
+      const dateB = b.siteVisitDate || b.startDate;
+
+      if (dateA && dateB) {
+        return new Date(dateA).getTime() - new Date(dateB).getTime();
+      }
+      if (dateA && !dateB) return -1;
+      if (!dateA && dateB) return 1;
+
+      const createdA = new Date(a.createdAt || 0).getTime();
+      const createdB = new Date(b.createdAt || 0).getTime();
+      return createdB - createdA;
     });
   }, [inquiries, inquiryLeadTagFilter, inquiryServiceFilter, inquiryDatePreset, inquiryCustomStart, inquiryCustomEnd]);
 
@@ -2078,23 +2094,26 @@ export default function OwnerDashboard() {
                       <div>
                          <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
                             <h3 className="font-bold text-lg text-charcoal">{inquiry.name}</h3>
-                            {/* Lead Qualification Badge */}
-                            {inquiry.leadTag === 'high-value' && (
+                            {/* Lead Qualification & Request Type Badge */}
+                            {(inquiry.leadTag === 'project' || inquiry.requestType === 'project_request' || inquiry.siteVisitDate) ? (
+                              <span className="bg-ochre text-white text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs">
+                                <CalendarIcon className="w-3 h-3 text-white" />
+                                <span>I Have a Project • Site Visit</span>
+                              </span>
+                            ) : inquiry.leadTag === 'high-value' ? (
                               <span className="bg-gradient-to-r from-ochre to-amber-600 text-white text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs">
                                 <Sparkles className="w-3 h-3 text-amber-200" />
                                 <span>High-Value Lead</span>
                               </span>
-                            )}
-                            {inquiry.leadTag === 'incomplete' && (
+                            ) : inquiry.leadTag === 'incomplete' ? (
                               <span className="bg-rose-100 text-rose-800 border border-rose-200 text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1">
                                 <Clock className="w-3 h-3 text-rose-600" />
                                 <span>Incomplete Project Lead</span>
                               </span>
-                            )}
-                            {(!inquiry.leadTag || inquiry.leadTag === 'general') && (
+                            ) : (
                               <span className="bg-charcoal/10 text-charcoal/80 text-[10px] px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider flex items-center gap-1">
                                 <Mail className="w-3 h-3 text-charcoal/50" />
-                                <span>General Inquiry</span>
+                                <span>Send Request</span>
                               </span>
                             )}
                             {inquiry.status === 'new' && (
@@ -2171,24 +2190,48 @@ export default function OwnerDashboard() {
                       </div>
                    </div>
 
-                   {(inquiry.budget || inquiry.timeline || inquiry.scope) && (
-                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3 p-3.5 bg-ochre/5 border border-ochre/20 rounded-2xl text-xs">
-                       {inquiry.budget && (
-                         <div>
-                           <span className="text-[10px] uppercase font-bold text-charcoal/50 block">Target Budget</span>
-                           <span className="font-bold text-ochre-dark text-xs sm:text-sm">{inquiry.budget}</span>
+                   {(inquiry.siteVisitDate || inquiry.startDate || inquiry.location || inquiry.timeline || inquiry.scope || inquiry.description) && (
+                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 mb-3 p-3.5 bg-ochre/5 border border-ochre/20 rounded-2xl text-xs">
+                       {inquiry.siteVisitDate && (
+                         <div className="p-2.5 bg-white rounded-xl border border-ochre/20 shadow-2xs">
+                           <span className="text-[10px] uppercase font-bold text-ochre block flex items-center gap-1">
+                             <CalendarIcon className="w-3 h-3 text-ochre" /> Booked Site Visit
+                           </span>
+                           <span className="font-bold text-charcoal text-xs sm:text-sm">
+                             {inquiry.siteVisitDate}
+                           </span>
                          </div>
                        )}
-                       {inquiry.timeline && (
-                         <div>
+                       {inquiry.startDate && (
+                         <div className="p-2.5 bg-white rounded-xl border border-ochre/20 shadow-2xs">
+                           <span className="text-[10px] uppercase font-bold text-charcoal/50 block flex items-center gap-1">
+                             <Clock className="w-3 h-3" /> Desired Start Date
+                           </span>
+                           <span className="font-semibold text-charcoal text-xs sm:text-sm">
+                             {inquiry.startDate}
+                           </span>
+                         </div>
+                       )}
+                       {inquiry.location && (
+                         <div className="p-2.5 bg-white rounded-xl border border-ochre/20 shadow-2xs">
+                           <span className="text-[10px] uppercase font-bold text-charcoal/50 block flex items-center gap-1">
+                             <MapPin className="w-3 h-3 text-ochre" /> Location / Address
+                           </span>
+                           <span className="font-semibold text-charcoal text-xs sm:text-sm truncate block" title={inquiry.location}>
+                             {inquiry.location}
+                           </span>
+                         </div>
+                       )}
+                       {inquiry.timeline && !inquiry.startDate && (
+                         <div className="p-2.5 bg-white rounded-xl border border-ochre/20 shadow-2xs">
                            <span className="text-[10px] uppercase font-bold text-charcoal/50 block">Desired Timeline</span>
                            <span className="font-semibold text-charcoal text-xs sm:text-sm">{inquiry.timeline}</span>
                          </div>
                        )}
-                       {inquiry.scope && (
-                         <div className="sm:col-span-2 pt-1 border-t border-ochre/10">
-                           <span className="text-[10px] uppercase font-bold text-charcoal/50 block">Project Scope</span>
-                           <span className="text-charcoal/80 font-medium text-xs leading-relaxed">{inquiry.scope}</span>
+                       {(inquiry.scope || inquiry.description) && (
+                         <div className="sm:col-span-2 md:col-span-3 pt-2 border-t border-ochre/15">
+                           <span className="text-[10px] uppercase font-bold text-charcoal/50 block mb-0.5">Project Scope / Description</span>
+                           <span className="text-charcoal/80 font-medium text-xs leading-relaxed">{inquiry.description || inquiry.scope}</span>
                          </div>
                        )}
                      </div>

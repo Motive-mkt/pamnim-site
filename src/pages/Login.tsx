@@ -120,8 +120,14 @@ export default function Login() {
       
       if (userRole === 'owner') {
         navigate('/admin');
+      } else if (userRole === 'client') {
+        navigate('/client-portal');
+      } else if (userRole === 'worker' || userRole === 'regular_employee') {
+        navigate('/dashboard');
+      } else if (userRole === 'elevated_employee') {
+        navigate('/admin');
       } else {
-        navigate('/');
+        navigate('/dashboard');
       }
     } catch (err: any) {
       console.error(err);

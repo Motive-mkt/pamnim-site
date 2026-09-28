@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Check } from 'lucide-react';
 import { useCMS } from '../hooks/useCMS';
 import { optimizeHeroCloudinaryUrl } from '../services/cloudinaryService';
-import LeadQualifyingForm from './LeadQualifyingForm';
+import HeroContactForm from './HeroContactForm';
 
 const FALLBACK_HERO_IMAGE = "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=90&w=2560";
 
@@ -82,13 +82,7 @@ export default function Hero() {
           transition={{ duration: 0.8, delay: 0.2 }}
           className="w-full max-w-lg mx-auto lg:ml-auto"
         >
-          <LeadQualifyingForm
-            variant="card"
-            source="hero_form"
-            title="Book your free consultation"
-            subtitle="Tell us about your space. We'll respond with tailored recommendations within 24 hours."
-            className="shadow-2xl border-white/20"
-          />
+          <HeroContactForm />
         </motion.div>
       </div>
     </section>

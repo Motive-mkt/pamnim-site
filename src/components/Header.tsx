@@ -52,6 +52,21 @@ export default function Header() {
     { name: 'Contact', path: '/contact' }
   ];
 
+  const getDashboardDestination = () => {
+    if (!profile) return '/login';
+    if (profile.role === 'owner') return '/admin';
+    if (profile.role === 'client') return '/client-portal';
+    if (profile.role === 'worker') return '/dashboard';
+    return isStaff ? '/admin' : '/dashboard';
+  };
+
+  const getDashboardText = () => {
+    if (profile?.role === 'owner') return '✦ Command Dashboard';
+    if (profile?.role === 'client') return '✦ Client Portal';
+    if (profile?.role === 'worker') return '✦ Worker Dashboard';
+    return '✦ Dashboard';
+  };
+
   return (
     <>
       <header className={cn("fixed top-0 left-0 right-0 z-50 transition-all duration-500", headerBg)}>
@@ -107,28 +122,16 @@ export default function Header() {
                 {link.name}
               </Link>
             ))}
-            {user && isStaff && (
+            {user && (
               <Link 
-                to="/admin" 
+                to={getDashboardDestination()} 
                 id="cmd-dashboard-desktop"
                 className={cn(
                   "font-bold text-xs uppercase tracking-[0.2em] transition-all relative py-1", 
                   displayLight ? "text-white/80 hover:text-white" : "text-charcoal/80 hover:text-charcoal"
                 )}
               >
-                ✦ COMMAND DASHBOARD
-              </Link>
-            )}
-            {user && profile?.role === 'client' && (
-              <Link 
-                to="/client-portal" 
-                id="client-portal-desktop"
-                className={cn(
-                  "font-bold text-xs uppercase tracking-[0.2em] transition-all relative py-1", 
-                  displayLight ? "text-white/80 hover:text-white" : "text-charcoal/80 hover:text-charcoal"
-                )}
-              >
-                ✦ CLIENT PORTAL
+                {getDashboardText()}
               </Link>
             )}
           </nav>
@@ -241,33 +244,18 @@ export default function Header() {
                       </Link>
                     </motion.div>
                   ))}
-                  {user && isStaff && (
+                  {user && (
                     <motion.div
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: navLinks.length * 0.08 }}
                     >
                       <Link
-                        to="/admin"
+                        to={getDashboardDestination()}
                         id="cmd-dashboard-mobile"
                         className="font-bold text-xs uppercase tracking-[0.2em] text-ochre/80 hover:text-ochre transition-colors block py-2"
                       >
-                        ✦ COMMAND DASHBOARD
-                      </Link>
-                    </motion.div>
-                  )}
-                  {user && profile?.role === 'client' && (
-                    <motion.div
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: navLinks.length * 0.08 }}
-                    >
-                      <Link
-                        to="/client-portal"
-                        id="client-portal-mobile"
-                        className="font-bold text-xs uppercase tracking-[0.2em] text-ochre/80 hover:text-ochre transition-colors block py-2"
-                      >
-                        ✦ CLIENT PORTAL
+                        {getDashboardText()}
                       </Link>
                     </motion.div>
                   )}

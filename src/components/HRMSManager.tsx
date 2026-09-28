@@ -4,19 +4,21 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../hooks/useAuth';
-import { Worker, WorkLog, WorkerPayment, WorkerSkill, WorkDuration } from '../types/hrms';
+import { Worker, WorkLog, WorkerPayment, WorkerSkill, WorkDuration, WorkerPayoutProfile } from '../types/hrms';
 import { formatMoney } from '../utils/pdfGenerator';
 import { 
   Users, UserCheck, HardHat, Calendar, DollarSign, Plus, Search, 
   Filter, Trash2, Edit2, CheckCircle2, AlertCircle, Clock, 
   Briefcase, Phone, CreditCard, ChevronRight, X, Download, RefreshCw,
-  Zap, CalendarDays, CheckSquare, MessageSquareHeart, FileText, Copy
+  Zap, CalendarDays, CheckSquare, MessageSquareHeart, FileText, Copy,
+  MessageSquare, Tag
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import DailyPayRun from './hrms/DailyPayRun';
 import AttendanceCalendar from './hrms/AttendanceCalendar';
 import WeeklySettlementView from './hrms/WeeklySettlementView';
 import LeaveAndExtraRequests from './hrms/LeaveAndExtraRequests';
+import WhatsAppPasteMatcherModal from './hrms/WhatsAppPasteMatcherModal';
 
 const SKILLS_LIST: WorkerSkill[] = [
   'Carpenter',
@@ -53,12 +55,25 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
   // Search & filter states
   const [searchWorker, setSearchWorker] = useState('');
   const [selectedSkillFilter, setSelectedSkillFilter] = useState<string>('all');
+  const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>('all');
+
+  // Fast manual-add filter states for modals
+  const [manualLogProjectFilter, setManualLogProjectFilter] = useState<string>('all');
+  const [manualLogSkillFilter, setManualLogSkillFilter] = useState<string>('all');
+  const [manualPayProjectFilter, setManualPayProjectFilter] = useState<string>('all');
+  const [manualPaySkillFilter, setManualPaySkillFilter] = useState<string>('all');
 
   // Modals
   const [showWorkerModal, setShowWorkerModal] = useState(initialOpenModal === 'worker');
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
   const [showLogModal, setShowLogModal] = useState(initialOpenModal === 'log');
   const [showPaymentModal, setShowPaymentModal] = useState(initialOpenModal === 'payment');
+  const [showWhatsAppMatcher, setShowWhatsAppMatcher] = useState(false);
+
+  // New Payout Profile inline inputs in Worker Modal
+  const [newProfileLabel, setNewProfileLabel] = useState('');
+  const [newProfileName, setNewProfileName] = useState('');
+  const [newProfileNumber, setNewProfileNumber] = useState('');
 
   useEffect(() => {
     if (initialTab) setActiveTab(initialTab);
@@ -79,6 +94,7 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
     status: 'active' | 'on_leave' | 'inactive';
     assignedProjectId: string;
     notes: string;
+    payoutProfiles: WorkerPayoutProfile[];
   }>({
     name: '',
     phone: '',
@@ -87,7 +103,8 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
     dailyRate: 1500,
     status: 'active',
     assignedProjectId: '',
-    notes: ''
+    notes: '',
+    payoutProfiles: []
   });
 
   // Work Log Form State
@@ -530,9 +547,30 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
         (w.idNumber && w.idNumber.includes(searchWorker));
       
       const matchesSkill = selectedSkillFilter === 'all' || w.skill === selectedSkillFilter;
-      return matchesSearch && matchesSkill;
+      const matchesProject = selectedProjectFilter === 'all' || 
+        (selectedProjectFilter === 'unassigned' ? !w.assignedProjectId : w.assignedProjectId === selectedProjectFilter);
+      return matchesSearch && matchesSkill && matchesProject;
     });
-  }, [workers, searchWorker, selectedSkillFilter]);
+  }, [workers, searchWorker, selectedSkillFilter, selectedProjectFilter]);
+
+  // Fast manual-add picker lists
+  const manualLogWorkers = useMemo(() => {
+    return workers.filter(w => {
+      const matchProj = manualLogProjectFilter === 'all' || 
+        (manualLogProjectFilter === 'unassigned' ? !w.assignedProjectId : w.assignedProjectId === manualLogProjectFilter);
+      const matchSkill = manualLogSkillFilter === 'all' || w.skill === manualLogSkillFilter;
+      return matchProj && matchSkill;
+    });
+  }, [workers, manualLogProjectFilter, manualLogSkillFilter]);
+
+  const manualPayWorkers = useMemo(() => {
+    return workers.filter(w => {
+      const matchProj = manualPayProjectFilter === 'all' || 
+        (manualPayProjectFilter === 'unassigned' ? !w.assignedProjectId : w.assignedProjectId === manualPayProjectFilter);
+      const matchSkill = manualPaySkillFilter === 'all' || w.skill === manualPaySkillFilter;
+      return matchProj && matchSkill;
+    });
+  }, [workers, manualPayProjectFilter, manualPaySkillFilter]);
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -769,8 +807,25 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
             </div>
 
             <div className="flex items-center gap-3 w-full md:w-auto flex-wrap justify-between md:justify-end">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider shrink-0">Trade:</span>
+              {/* Project Filter */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider shrink-0">Project:</span>
+                <select
+                  value={selectedProjectFilter}
+                  onChange={(e) => setSelectedProjectFilter(e.target.value)}
+                  className="p-2 bg-cream/40 border border-charcoal/10 rounded-xl text-xs font-semibold focus:outline-none focus:border-ochre cursor-pointer max-w-[150px] truncate"
+                >
+                  <option value="all">All Projects</option>
+                  <option value="unassigned">Unassigned / Workshop</option>
+                  {projects.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Worker Type / Trade Filter */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider shrink-0">Type:</span>
                 <select
                   value={selectedSkillFilter}
                   onChange={(e) => setSelectedSkillFilter(e.target.value)}
@@ -796,7 +851,7 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
             </div>
           </div>
 
-          {/* Workers Grid */}
+          {/* Workers Single-Row List */}
           {loading ? (
             <div className="p-16 text-center text-charcoal/40 text-xs flex flex-col items-center justify-center gap-2">
               <RefreshCw className="w-5 h-5 animate-spin text-ochre" />
@@ -805,9 +860,9 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
           ) : filteredWorkers.length === 0 ? (
             <div className="p-16 text-center text-charcoal/40 text-xs space-y-3 bg-white rounded-2xl border border-dashed border-charcoal/20">
               <HardHat className="w-8 h-8 text-charcoal/20 mx-auto" />
-              <p className="font-bold text-charcoal/60">No workers found in directory.</p>
+              <p className="font-bold text-charcoal/60">No workers found matching selected filters.</p>
               <p className="text-[11px] text-charcoal/50 max-w-sm mx-auto">
-                Workers register through self-signup. Copy and share the worker registration link below with site artisans.
+                Try selecting "All Projects" or "All Trades", or share the signup link with site artisans.
               </p>
               <button
                 type="button"
@@ -819,7 +874,7 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="space-y-2.5">
               {filteredWorkers.map(w => {
                 // Compute worker financial summary
                 const earned = workLogs.filter(l => l.workerId === w.id).reduce((s, l) => s + (l.wageDue || 0), 0);
@@ -827,80 +882,99 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
                 const balance = Math.max(0, earned - paid);
 
                 return (
-                  <div key={w.id} className="p-5 rounded-2xl bg-white border border-charcoal/10 shadow-sm flex flex-col justify-between hover:border-ochre/30 transition-all space-y-4">
-                    <div>
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-ochre/10 text-ochre inline-block mb-1">
+                  <div 
+                    key={w.id} 
+                    className="w-full bg-white rounded-2xl border border-charcoal/10 hover:border-ochre/40 shadow-xs hover:shadow-sm transition-all p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3"
+                  >
+                    {/* Left: Worker identity, skill, status, contact */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 rounded-xl bg-ochre/10 text-ochre flex items-center justify-center shrink-0 font-bold text-sm">
+                        {w.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-bold text-sm text-charcoal truncate max-w-[200px] sm:max-w-none" title={w.name}>
+                            {w.name}
+                          </h3>
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-ochre/10 text-ochre shrink-0">
                             {w.skill}
                           </span>
-                          <h3 className="font-bold text-base text-charcoal">{w.name}</h3>
-                        </div>
-                        <span className={cn(
-                          "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full",
-                          w.status === 'active' ? "bg-emerald-100 text-emerald-800" : 
-                          w.status === 'pending' ? "bg-amber-100 text-amber-800" :
-                          w.status === 'on_leave' ? "bg-blue-100 text-blue-800" : "bg-charcoal/10 text-charcoal/60"
-                        )}>
-                          {w.status === 'pending' ? 'Pending Approval' : w.status.replace('_', ' ')}
-                        </span>
-                      </div>
-
-                      <div className="space-y-1.5 text-xs text-charcoal/70 pt-2 border-t border-charcoal/5">
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-3.5 h-3.5 text-charcoal/40" />
-                          <span>{w.phone || 'No phone'}</span>
-                        </div>
-                        {w.idNumber && (
-                          <div className="text-[11px] text-charcoal/50">
-                            ID: <span className="font-mono">{w.idNumber}</span>
-                          </div>
-                        )}
-                        {w.assignedProjectName && (
-                          <div className="flex items-center gap-1.5 text-[11px] text-ochre font-medium">
-                            <Briefcase className="w-3 h-3" />
-                            <span className="truncate">{w.assignedProjectName}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Daily Rate & Balance */}
-                      <div className="grid grid-cols-2 gap-2 mt-4 p-3 bg-cream/40 rounded-xl text-xs">
-                        <div>
-                          <span className="text-[10px] uppercase text-charcoal/50 font-bold block">Daily Rate</span>
-                          <span className="font-mono font-bold text-charcoal">KES {formatMoney(w.dailyRate)}</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] uppercase text-charcoal/50 font-bold block">Unpaid Wage</span>
-                          <span className={cn("font-mono font-bold", balance > 0 ? "text-amber-700" : "text-emerald-700")}>
-                            KES {formatMoney(balance)}
+                          <span className={cn(
+                            "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full shrink-0",
+                            w.status === 'active' ? "bg-emerald-100 text-emerald-800" : 
+                            w.status === 'pending' ? "bg-amber-100 text-amber-800" :
+                            w.status === 'on_leave' ? "bg-blue-100 text-blue-800" : "bg-charcoal/10 text-charcoal/60"
+                          )}>
+                            {w.status === 'pending' ? 'Pending Approval' : w.status.replace('_', ' ')}
                           </span>
+                        </div>
+
+                        <div className="flex items-center gap-x-3 gap-y-1 text-xs text-charcoal/60 flex-wrap mt-1">
+                          <span className="flex items-center gap-1 font-mono text-[11px]">
+                            <Phone className="w-3 h-3 text-charcoal/40" />
+                            {w.phone || 'No phone'}
+                          </span>
+                          {w.idNumber && (
+                            <span className="text-[11px]">
+                              ID: <span className="font-mono">{w.idNumber}</span>
+                            </span>
+                          )}
+                          {w.assignedProjectName ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-ochre font-medium">
+                              <Briefcase className="w-3 h-3 shrink-0" />
+                              <span className="truncate max-w-[160px]">{w.assignedProjectName}</span>
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-charcoal/40 italic">
+                              Workshop
+                            </span>
+                          )}
+                          {w.payoutProfiles && w.payoutProfiles.length > 0 && (
+                            <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+                              {w.payoutProfiles.length} payout profile{w.payoutProfiles.length > 1 ? 's' : ''}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-3 border-t border-charcoal/5 gap-2">
-                      <button
-                        onClick={() => handleOpenNewPayment(w.id)}
-                        className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0"
-                      >
-                        <DollarSign className="w-3 h-3" />
-                        <span>Pay</span>
-                      </button>
+                    {/* Right: Rates, Balance & Quick Actions */}
+                    <div className="flex items-center justify-between md:justify-end gap-3.5 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-charcoal/5">
+                      <div className="flex items-center gap-3 text-right">
+                        <div>
+                          <span className="text-[9px] uppercase tracking-wider text-charcoal/50 font-bold block">Daily Rate</span>
+                          <span className="font-mono font-bold text-xs text-charcoal">KES {formatMoney(w.dailyRate)}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] uppercase tracking-wider text-charcoal/50 font-bold block">Unpaid</span>
+                          <span className={cn("font-mono font-bold text-xs", balance > 0 ? "text-amber-700 font-black" : "text-emerald-700")}>
+                            KES {formatMoney(balance)}
+                          </span>
+                        </div>
+                      </div>
 
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => handleOpenNewPayment(w.id)}
+                          className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                          title="Record wage payment"
+                        >
+                          <DollarSign className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Pay</span>
+                        </button>
+
                         <button
                           onClick={() => handleEditWorker(w)}
                           className={cn(
-                            "px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer",
+                            "px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer",
                             w.status === 'pending'
                               ? "bg-amber-500 hover:bg-amber-600 text-white shadow-xs"
                               : "bg-cream/60 hover:bg-cream text-charcoal"
                           )}
                           title="Edit worker information & status"
                         >
-                          <Edit2 className="w-3 h-3" />
-                          <span>{w.status === 'pending' ? 'Approve / Edit' : 'Edit Info'}</span>
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">{w.status === 'pending' ? 'Approve' : 'Edit'}</span>
                         </button>
 
                         <button
@@ -1261,17 +1335,55 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
 
             <form onSubmit={handleSaveWorkLog} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Select Worker *</label>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <label className="block text-[11px] font-bold uppercase text-charcoal/60">Select Worker *</label>
+                  <span className="text-[10px] text-charcoal/40 font-medium">Filter by project/type below</span>
+                </div>
+
+                {/* Quick Filters for Worker Picker */}
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <select
+                    value={manualLogProjectFilter}
+                    onChange={(e) => setManualLogProjectFilter(e.target.value)}
+                    className="p-1.5 bg-cream/50 border border-charcoal/10 rounded-lg text-[11px] font-medium focus:outline-none focus:border-ochre cursor-pointer truncate"
+                  >
+                    <option value="all">All Projects</option>
+                    <option value="unassigned">Workshop / Unassigned</option>
+                    {projects.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={manualLogSkillFilter}
+                    onChange={(e) => setManualLogSkillFilter(e.target.value)}
+                    className="p-1.5 bg-cream/50 border border-charcoal/10 rounded-lg text-[11px] font-medium focus:outline-none focus:border-ochre cursor-pointer truncate"
+                  >
+                    <option value="all">All Worker Types</option>
+                    {SKILLS_LIST.map(skill => (
+                      <option key={skill} value={skill}>{skill}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <select
                   required
                   value={logForm.workerId}
-                  onChange={(e) => setLogForm({ ...logForm, workerId: e.target.value })}
+                  onChange={(e) => {
+                    const wid = e.target.value;
+                    const w = workers.find(x => x.id === wid);
+                    setLogForm({ 
+                      ...logForm, 
+                      workerId: wid,
+                      projectId: w?.assignedProjectId || logForm.projectId 
+                    });
+                  }}
                   className="w-full p-2.5 bg-cream/30 border border-charcoal/15 rounded-xl text-xs font-semibold focus:outline-none focus:border-ochre cursor-pointer"
                 >
-                  <option value="">-- Choose Worker --</option>
-                  {workers.map(w => (
+                  <option value="">-- Choose Worker ({manualLogWorkers.length} available) --</option>
+                  {manualLogWorkers.map(w => (
                     <option key={w.id} value={w.id}>
-                      {w.name} ({w.skill}) — KES {formatMoney(w.dailyRate)}/day
+                      {w.name} ({w.skill}) {w.assignedProjectName ? `• ${w.assignedProjectName}` : ''} — KES {formatMoney(w.dailyRate)}/day
                     </option>
                   ))}
                 </select>
@@ -1368,7 +1480,37 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
 
             <form onSubmit={handleSavePayment} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Select Worker *</label>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <label className="block text-[11px] font-bold uppercase text-charcoal/60">Select Worker *</label>
+                  <span className="text-[10px] text-charcoal/40 font-medium">Filter by project/type below</span>
+                </div>
+
+                {/* Quick Filters for Worker Picker */}
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <select
+                    value={manualPayProjectFilter}
+                    onChange={(e) => setManualPayProjectFilter(e.target.value)}
+                    className="p-1.5 bg-cream/50 border border-charcoal/10 rounded-lg text-[11px] font-medium focus:outline-none focus:border-ochre cursor-pointer truncate"
+                  >
+                    <option value="all">All Projects</option>
+                    <option value="unassigned">Workshop / Unassigned</option>
+                    {projects.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={manualPaySkillFilter}
+                    onChange={(e) => setManualPaySkillFilter(e.target.value)}
+                    className="p-1.5 bg-cream/50 border border-charcoal/10 rounded-lg text-[11px] font-medium focus:outline-none focus:border-ochre cursor-pointer truncate"
+                  >
+                    <option value="all">All Worker Types</option>
+                    {SKILLS_LIST.map(skill => (
+                      <option key={skill} value={skill}>{skill}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <select
                   required
                   value={paymentForm.workerId}
@@ -1391,10 +1533,10 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
                   }}
                   className="w-full p-2.5 bg-cream/30 border border-charcoal/15 rounded-xl text-xs font-semibold focus:outline-none focus:border-ochre cursor-pointer"
                 >
-                  <option value="">-- Choose Worker --</option>
-                  {workers.map(w => (
+                  <option value="">-- Choose Worker ({manualPayWorkers.length} available) --</option>
+                  {manualPayWorkers.map(w => (
                     <option key={w.id} value={w.id}>
-                      {w.name} ({w.skill})
+                      {w.name} ({w.skill}) {w.assignedProjectName ? `• ${w.assignedProjectName}` : ''}
                     </option>
                   ))}
                 </select>

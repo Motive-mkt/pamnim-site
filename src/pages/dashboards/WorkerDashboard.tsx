@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../../lib/firebase';
 import { 
-  collection, addDoc, query, where, orderBy, onSnapshot, doc, getDoc 
+  collection, addDoc, query, where, orderBy, onSnapshot, doc, getDoc, getDocs, setDoc 
 } from 'firebase/firestore';
 import { useAuth } from '../../hooks/useAuth';
 import { 
-  AttendanceRecord, WorkerPayment, LeaveRequest, ExtraRequest, PublicHoliday 
+  AttendanceRecord, WorkerPayment, LeaveRequest, ExtraRequest, PublicHoliday, Worker, WorkerPayoutProfile 
 } from '../../types/hrms';
 import { formatMoney } from '../../utils/pdfGenerator';
 import { 
@@ -14,15 +14,26 @@ import {
 import { 
   HardHat, Calendar, DollarSign, Clock, CheckCircle2, AlertCircle, 
   Plus, LogOut, Phone, CreditCard, ChevronRight, Check, X, 
-  ArrowDownLeft, Sparkles, RefreshCw, FileText, Compass
+  ArrowDownLeft, Sparkles, RefreshCw, FileText, Compass, Briefcase, Trash2, Edit3, User, PlusCircle, Shield
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import OnboardingWalkthrough from '../../components/onboarding/OnboardingWalkthrough';
 
 export default function WorkerDashboard() {
   const { profile, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'attendance' | 'requests' | 'payments'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'attendance' | 'requests' | 'payments'>('overview');
   const [forceOpenTour, setForceOpenTour] = useState(false);
+
+  // Worker's own profile and saved payout profiles
+  const [workerRecord, setWorkerRecord] = useState<Worker | null>(null);
+
+  // Payout profile modal state
+  const [showPayoutModal, setShowPayoutModal] = useState(false);
+  const [payoutLabel, setPayoutLabel] = useState('');
+  const [payoutAccountName, setPayoutAccountName] = useState('');
+  const [payoutAccountNumber, setPayoutAccountNumber] = useState('');
+  const [payoutType, setPayoutType] = useState<'mpesa' | 'bank' | 'cash' | 'other'>('mpesa');
+  const [savingPayout, setSavingPayout] = useState(false);
 
   // Real-time data strictly for this worker
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
@@ -66,6 +77,19 @@ export default function WorkerDashboard() {
     setLoading(true);
 
     const workerUid = profile.uid;
+
+    // 0. Worker's own worker profile record (rates, assigned project, multiple payout profiles)
+    const unsubWorker = onSnapshot(doc(db, 'workers', workerUid), (docSnap) => {
+      if (docSnap.exists()) {
+        setWorkerRecord({ id: docSnap.id, ...docSnap.data() } as Worker);
+      } else {
+        getDocs(query(collection(db, 'workers'), where('userId', '==', workerUid))).then(res => {
+          if (!res.empty) {
+            setWorkerRecord({ id: res.docs[0].id, ...res.docs[0].data() } as Worker);
+          }
+        }).catch(err => console.warn('Could not query worker by userId:', err));
+      }
+    }, (err) => console.warn('Worker doc snapshot error:', err));
 
     // 1. Worker's own attendance records
     const unsubAttendance = onSnapshot(
@@ -115,6 +139,7 @@ export default function WorkerDashboard() {
     });
 
     return () => {
+      unsubWorker();
       unsubAttendance();
       unsubPayments();
       unsubLeave();
@@ -232,6 +257,68 @@ export default function WorkerDashboard() {
     }
   };
 
+  // Add / Save Payout Profile
+  const handleSavePayoutProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile?.uid) return;
+    if (!payoutLabel.trim() || !payoutAccountNumber.trim()) {
+      alert('Please provide a profile label and account number.');
+      return;
+    }
+
+    setSavingPayout(true);
+    try {
+      const newProfile: WorkerPayoutProfile = {
+        id: Math.random().toString(36).substring(2, 9),
+        label: payoutLabel.trim(),
+        accountName: payoutAccountName.trim() || workerRecord?.name || profile.name || 'Account Holder',
+        accountNumber: payoutAccountNumber.trim(),
+        type: payoutType
+      };
+
+      const existing = workerRecord?.payoutProfiles || [];
+      const updated = [...existing, newProfile];
+
+      const workerDocId = workerRecord?.id || profile.uid;
+      await setDoc(doc(db, 'workers', workerDocId), {
+        payoutProfiles: updated
+      }, { merge: true });
+
+      setToastMessage(`Saved payout profile "${payoutLabel.trim()}"!`);
+      setShowPayoutModal(false);
+      setPayoutLabel('');
+      setPayoutAccountName('');
+      setPayoutAccountNumber('');
+      setTimeout(() => setToastMessage(null), 4000);
+    } catch (err: any) {
+      console.error('Error saving payout profile:', err);
+      alert('Could not save payout profile: ' + err.message);
+    } finally {
+      setSavingPayout(false);
+    }
+  };
+
+  // Delete Payout Profile
+  const handleDeletePayoutProfile = async (profId: string) => {
+    if (!profile?.uid) return;
+    const workerDocId = workerRecord?.id || profile.uid;
+    if (!window.confirm('Are you sure you want to remove this saved payout profile?')) return;
+
+    try {
+      const existing = workerRecord?.payoutProfiles || [];
+      const updated = existing.filter(p => p.id !== profId);
+      await setDoc(doc(db, 'workers', workerDocId), {
+        payoutProfiles: updated
+      }, { merge: true });
+
+      setToastMessage('Payout profile removed.');
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch (err: any) {
+      console.error('Error removing payout profile:', err);
+      alert('Could not remove payout profile: ' + err.message);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-cream/40 text-charcoal flex flex-col pb-16">
       {/* Mobile-First Header */}
@@ -283,6 +370,7 @@ export default function WorkerDashboard() {
         <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-charcoal/10">
           {[
             { id: 'overview', label: 'My Wages & Week', icon: DollarSign, domId: 'worker-nav-settlement' },
+            { id: 'profile', label: 'My Profile & Payouts', icon: User, domId: 'worker-nav-profile' },
             { id: 'attendance', label: 'My Attendance Calendar', icon: Calendar, domId: 'worker-nav-logs' },
             { id: 'requests', label: 'My Requests', icon: Clock, domId: 'worker-nav-requests' },
             { id: 'payments', label: 'Payment History', icon: CreditCard, domId: 'worker-nav-payments' }
@@ -431,6 +519,149 @@ export default function WorkerDashboard() {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: MY PROFILE & SAVED PAYOUT PROFILES */}
+        {activeTab === 'profile' && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Worker Profile Card */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-charcoal/10 shadow-xs space-y-5">
+              <div className="flex items-start justify-between gap-4 border-b border-charcoal/10 pb-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-ochre/10 text-ochre flex items-center justify-center font-bold text-lg">
+                    {(profile?.name || 'W').charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-charcoal">{profile?.name || workerRecord?.name || 'Site Worker'}</h2>
+                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-ochre/15 text-ochre uppercase tracking-wider inline-block mt-1">
+                      {workerRecord?.skill || (profile as any)?.skill || 'Artisan / Worker'}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 block">Daily Wage</span>
+                  <span className="font-mono font-bold text-base text-charcoal">
+                    KES {formatMoney(workerRecord?.dailyRate || 0)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                <div className="p-3.5 bg-cream/40 rounded-2xl border border-charcoal/10">
+                  <span className="text-[10px] uppercase font-bold text-charcoal/50 block">Phone / WhatsApp</span>
+                  <span className="font-bold text-xs text-charcoal flex items-center gap-1.5 mt-0.5">
+                    <Phone className="w-3.5 h-3.5 text-ochre" />
+                    {profile?.phone || workerRecord?.phone || 'Not set'}
+                  </span>
+                </div>
+
+                <div className="p-3.5 bg-cream/40 rounded-2xl border border-charcoal/10">
+                  <span className="text-[10px] uppercase font-bold text-charcoal/50 block">National ID</span>
+                  <span className="font-mono font-bold text-xs text-charcoal block mt-0.5">
+                    {workerRecord?.idNumber || (profile as any)?.idNumber || 'On file'}
+                  </span>
+                </div>
+
+                <div className="p-3.5 bg-cream/40 rounded-2xl border border-charcoal/10">
+                  <span className="text-[10px] uppercase font-bold text-charcoal/50 block">Assigned Project / Site</span>
+                  <span className="font-bold text-xs text-ochre flex items-center gap-1.5 mt-0.5">
+                    <Briefcase className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{workerRecord?.assignedProjectName || 'Workshop / In-House'}</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Saved Payout Profiles Section */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-charcoal/10 shadow-xs space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-charcoal/10 pb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-charcoal flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 text-ochre" />
+                    <span>Saved Payout Profiles</span>
+                  </h3>
+                  <p className="text-xs text-charcoal/60 mt-0.5">
+                    Save alternate numbers (e.g. wife's M-Pesa, brother's, or bank) so WhatsApp payments match automatically.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowPayoutModal(true)}
+                  className="px-4 py-2.5 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold transition-all shadow-md shadow-ochre/20 flex items-center gap-1.5 cursor-pointer self-start sm:self-auto shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Payout Profile</span>
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {/* Default Primary Profile */}
+                <div className="p-4 bg-cream/40 rounded-2xl border border-charcoal/10 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0">
+                      M
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs text-charcoal">Own M-Pesa (Primary)</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                          Primary
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-charcoal/60 mt-0.5 space-x-2">
+                        <span>Account Name: <strong className="text-charcoal">{workerRecord?.mpesaName || workerRecord?.name || profile?.name || 'Self'}</strong></span>
+                        <span>•</span>
+                        <span>Number: <strong className="font-mono text-charcoal">{workerRecord?.phone || profile?.phone}</strong></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Saved Payout Profiles */}
+                {(!workerRecord?.payoutProfiles || workerRecord.payoutProfiles.length === 0) ? (
+                  <div className="p-6 bg-cream/20 rounded-2xl border border-dashed border-charcoal/20 text-center space-y-1">
+                    <p className="text-xs font-semibold text-charcoal/60">No alternate payout profiles saved.</p>
+                    <p className="text-[11px] text-charcoal/40">
+                      Do you receive wages to a family member's M-Pesa or bank? Click "Add Payout Profile" above to save it.
+                    </p>
+                  </div>
+                ) : (
+                  workerRecord.payoutProfiles.map(prof => (
+                    <div key={prof.id} className="p-4 bg-white rounded-2xl border border-charcoal/15 flex items-center justify-between gap-3 hover:border-ochre/30 transition-all shadow-2xs">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-ochre/10 text-ochre flex items-center justify-center font-bold text-xs shrink-0 uppercase">
+                          {prof.type === 'bank' ? 'B' : 'M'}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-xs text-charcoal truncate">{prof.label}</span>
+                            <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cream text-charcoal/70">
+                              {prof.type === 'bank' ? 'Bank Transfer' : 'M-Pesa'}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-charcoal/60 mt-0.5 flex items-center gap-2 flex-wrap">
+                            <span>Account Name: <strong className="text-charcoal">{prof.accountName}</strong></span>
+                            <span>•</span>
+                            <span>Number: <strong className="font-mono text-charcoal">{prof.accountNumber}</strong></span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePayoutProfile(prof.id)}
+                        className="p-2 text-charcoal/40 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer shrink-0"
+                        title="Delete this payout profile"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -803,6 +1034,109 @@ export default function WorkerDashboard() {
                 >
                   <Check className="w-4 h-4" />
                   <span>{submittingExtra ? 'Submitting...' : 'Submit Extra Pay Request'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Add Saved Payout Profile */}
+      {showPayoutModal && (
+        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white max-w-md w-full rounded-3xl p-6 sm:p-8 shadow-2xl border border-charcoal/10 space-y-5 animate-fade-in my-8">
+            <div className="flex items-start justify-between gap-4 border-b border-charcoal/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-ochre/10 text-ochre flex items-center justify-center">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-charcoal">Add Saved Payout Profile</h3>
+                  <p className="text-xs text-charcoal/50">Save an alternate M-Pesa line or bank account.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPayoutModal(false)}
+                className="p-2 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePayoutProfile} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                  Profile Label <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Wife's M-Pesa, Brother's Line, Equity Bank"
+                  value={payoutLabel}
+                  onChange={(e) => setPayoutLabel(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-cream/40 border border-charcoal/15 rounded-xl text-xs font-semibold focus:outline-none focus:border-ochre text-charcoal"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                  Name on Account <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. MARY WANJIKU"
+                  value={payoutAccountName}
+                  onChange={(e) => setPayoutAccountName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-cream/40 border border-charcoal/15 rounded-xl text-xs font-semibold focus:outline-none focus:border-ochre text-charcoal"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                  Phone or Account Number <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 0722 123 456 or 0123456789"
+                  value={payoutAccountNumber}
+                  onChange={(e) => setPayoutAccountNumber(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-cream/40 border border-charcoal/15 rounded-xl text-xs font-mono font-semibold focus:outline-none focus:border-ochre text-charcoal"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                  Payout Type
+                </label>
+                <select
+                  value={payoutType}
+                  onChange={(e) => setPayoutType(e.target.value as any)}
+                  className="w-full px-3.5 py-2.5 bg-cream/40 border border-charcoal/15 rounded-xl text-xs font-semibold focus:outline-none focus:border-ochre text-charcoal cursor-pointer"
+                >
+                  <option value="mpesa">M-Pesa</option>
+                  <option value="bank">Bank Transfer</option>
+                  <option value="cash">Cash / Direct</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-charcoal/10">
+                <button
+                  type="button"
+                  onClick={() => setShowPayoutModal(false)}
+                  className="px-4 py-2.5 text-xs font-bold text-charcoal/60 hover:text-charcoal cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingPayout}
+                  className="px-6 py-2.5 bg-ochre hover:bg-ochre-dark text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-ochre/20 disabled:opacity-50 cursor-pointer"
+                >
+                  {savingPayout ? 'Saving...' : 'Save Payout Profile'}
                 </button>
               </div>
             </form>
