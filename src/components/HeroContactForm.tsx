@@ -3,21 +3,24 @@ import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useCMS } from '../hooks/useCMS';
 import { 
-  CheckCircle2, ArrowRight, ArrowLeft, Calendar, 
-  MapPin, AlertCircle, Phone, Mail, User, Check
+  CheckCircle2, ArrowRight, Calendar, 
+  MapPin, AlertCircle, Phone, Mail, User, Check, X, Loader2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function HeroContactForm() {
   const { content } = useCMS();
 
-  // Step 1 fields
+  // Basic hero contact fields
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
 
-  // Step 2 ("I Have a Project") fields
-  const [step, setStep] = useState<1 | 2>(1);
+  // "I Have a Project" Modal State & Fields
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [modalName, setModalName] = useState('');
+  const [modalEmail, setModalEmail] = useState('');
+  const [modalPhone, setModalPhone] = useState('');
   const [hasActiveProject, setHasActiveProject] = useState<boolean>(true);
   const [siteVisitDate, setSiteVisitDate] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
@@ -25,15 +28,34 @@ export default function HeroContactForm() {
   const [projectDescription, setProjectDescription] = useState<string>('');
   const [termsAccepted, setTermsAccepted] = useState<boolean>(false);
 
-  // UI state
+  // Geolocation state (Client-side)
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [locationNotice, setLocationNotice] = useState<string | null>(null);
+
+  // Submission & UI feedback states
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submittedType, setSubmittedType] = useState<'project' | 'general'>('general');
   const [error, setError] = useState<string | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-  // Handler for "Send Request" (General inquiry from Step 1)
+  // Open the "I Have a Project" modal and carry over current input values
+  const handleOpenProjectModal = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setModalError(null);
+
+    // Carry over values from initial form
+    setModalName(name.trim());
+    setModalEmail(email.trim());
+    setModalPhone(phone.trim());
+
+    setIsProjectModalOpen(true);
+  };
+
+  // Handler for "Send Request" (General inquiry from initial hero form)
   const handleSendGeneralRequest = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError(null);
@@ -43,7 +65,7 @@ export default function HeroContactForm() {
       return;
     }
     if (!email.trim() && !phone.trim()) {
-      setError('Please provide your phone number or email so we can reach you.');
+      setError('Please provide your phone number or email so our designers can reach you.');
       return;
     }
 
@@ -59,7 +81,7 @@ export default function HeroContactForm() {
         source: 'hero_general_request',
         status: 'new',
         priority: 'standard',
-        message: `[GENERAL REQUEST]\nClient submitted contact request from homepage hero.\nName: ${name.trim()}\nPhone: ${phone.trim() || 'Not provided'}\nEmail: ${email.trim() || 'Not provided'}`,
+        message: `[GENERAL REQUEST]\nClient submitted general inquiry from homepage hero.\nName: ${name.trim()}\nPhone: ${phone.trim() || 'Not provided'}\nEmail: ${email.trim() || 'Not provided'}`,
         createdAt: new Date().toISOString()
       };
 
@@ -74,62 +96,93 @@ export default function HeroContactForm() {
     }
   };
 
-  // Handler to proceed to Step 2 ("I Have a Project")
-  const handleProceedToProject = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!name.trim()) {
-      setError('Please enter your name first.');
-      return;
-    }
-    if (!phone.trim() && !email.trim()) {
-      setError('Please enter your phone number or email so our lead designers can reach you.');
+  // Geolocation reverse-geocoding helper for Client ("Use My Current Location")
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationNotice('Geolocation is not supported by your browser. Please enter manually.');
       return;
     }
 
-    setStep(2);
+    setDetectingLocation(true);
+    setLocationNotice(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+            { headers: { 'Accept-Language': 'en' } }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data.display_name || `Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}`;
+            setLocationAddress(addr);
+            setLocationNotice('Location detected! You can still edit the details above.');
+          } else {
+            setLocationAddress(`Nairobi (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
+            setLocationNotice('Coordinates captured. You can refine your street or apartment name.');
+          }
+        } catch {
+          setLocationAddress(`Nairobi (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
+          setLocationNotice('Coordinates captured. You can add your street or landmark.');
+        } finally {
+          setDetectingLocation(false);
+        }
+      },
+      (err) => {
+        console.warn('Geolocation error:', err);
+        setLocationNotice('Could not retrieve GPS location. Please type your address manually.');
+        setDetectingLocation(false);
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
   };
 
-  // Handler for submitting "I Have a Project" (Step 2)
-  const handleSubmitProject = async (e: React.FormEvent) => {
+  // Handler for submitting "I Have a Project" from the Modal
+  const handleSubmitProjectModal = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setModalError(null);
 
-    if (!name.trim()) {
-      setError('Please provide your name.');
+    const clientName = modalName.trim() || name.trim();
+    const clientPhone = modalPhone.trim() || phone.trim();
+    const clientEmail = modalEmail.trim() || email.trim();
+
+    if (!clientName) {
+      setModalError('Please enter your full name.');
       return;
     }
-    if (!phone.trim() && !email.trim()) {
-      setError('Please provide a phone number or email.');
+    if (!clientPhone && !clientEmail) {
+      setModalError('Please provide a phone number or email so we can contact you.');
       return;
     }
     if (!siteVisitDate) {
-      setError('Please select a date for your site visit.');
+      setModalError('Please select a date for your site visit.');
       return;
     }
     if (!locationAddress.trim()) {
-      setError('Please enter your project location / address.');
+      setModalError('Please enter your project address or use your current location.');
       return;
     }
     if (!termsAccepted) {
-      setError('Please accept the site visit terms to proceed.');
+      setModalError('Please accept the site visit terms (KES 5,000 within Nairobi) to proceed.');
       return;
     }
 
     setSubmitting(true);
     try {
       const payload: Record<string, any> = {
-        name: name.trim(),
-        email: email.trim() || 'no-email@provided.local',
-        phone: phone.trim() || '',
+        name: clientName,
+        email: clientEmail || 'no-email@provided.local',
+        phone: clientPhone || '',
         leadTag: 'project',
         hasActiveProject: true,
         requestType: 'project_request',
-        source: 'hero_project_request',
+        source: 'hero_project_modal',
         siteVisitDate,
         startDate: startDate || siteVisitDate,
         location: locationAddress.trim(),
+        address: locationAddress.trim(),
         description: projectDescription.trim(),
         scope: projectDescription.trim(),
         termsAccepted: true,
@@ -141,11 +194,18 @@ export default function HeroContactForm() {
       };
 
       await addDoc(collection(db, 'inquiries'), payload);
+      
+      // Update local hero fields to match submitted
+      setName(clientName);
+      setEmail(clientEmail);
+      setPhone(clientPhone);
+
+      setIsProjectModalOpen(false);
       setSubmittedType('project');
       setSubmitted(true);
     } catch (err: any) {
-      console.error('Error submitting project request:', err);
-      setError(err?.message || 'Could not submit your project request. Please try again.');
+      console.error('Error submitting project intake request:', err);
+      setModalError(err?.message || 'Could not submit your project request. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -154,9 +214,9 @@ export default function HeroContactForm() {
   const handleOpenWhatsApp = () => {
     const rawNumber = content?.contact?.whatsapp || '254714984268';
     const cleanNumber = rawNumber.replace(/[^0-9]/g, '');
-    let text = `Hello Pamnim Interior Designers! I just submitted a request on your website.\n\n*Name:* ${name || 'Client'}\n*Phone:* ${phone || '—'}`;
+    let text = `Hello Pamnim Interior Designers! I just submitted an inquiry on your website.\n\n*Name:* ${name || modalName || 'Client'}\n*Phone:* ${phone || modalPhone || '—'}`;
     if (submittedType === 'project') {
-      text += `\n*Site Visit Date:* ${siteVisitDate}\n*Start Date:* ${startDate || 'To be aligned'}\n*Location:* ${locationAddress}`;
+      text += `\n*Site Visit Date:* ${siteVisitDate}\n*Desired Start Date:* ${startDate || 'To be aligned'}\n*Location:* ${locationAddress}`;
       if (projectDescription) text += `\n*Description:* ${projectDescription}`;
     }
     window.open(`https://wa.me/${cleanNumber}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
@@ -176,12 +236,12 @@ export default function HeroContactForm() {
             <span>{submittedType === 'project' ? 'Project & Site Visit Booked' : 'Request Received'}</span>
           </div>
           <h3 className="text-2xl font-bold text-charcoal">
-            {submittedType === 'project' ? 'Thank You! We are ready for your project.' : 'Thank you for reaching out!'}
+            {submittedType === 'project' ? 'Thank you! We are ready for your project.' : 'Thank you for reaching out!'}
           </h3>
           <p className="text-xs sm:text-sm text-charcoal/70 max-w-sm mx-auto leading-relaxed">
             {submittedType === 'project'
-              ? `We have scheduled your requested site visit for ${siteVisitDate}. Our lead designer will call you shortly to confirm the details.`
-              : 'Our design team has received your details and will call or message you within 24 hours.'}
+              ? `We have recorded your site visit preference for ${siteVisitDate}. Our lead designer will call you shortly to confirm the appointment.`
+              : 'Our design team has received your inquiry and will reach out to you within 24 hours.'}
           </p>
         </div>
 
@@ -197,7 +257,6 @@ export default function HeroContactForm() {
             type="button"
             onClick={() => {
               setSubmitted(false);
-              setStep(1);
               setName('');
               setEmail('');
               setPhone('');
@@ -217,32 +276,34 @@ export default function HeroContactForm() {
   }
 
   return (
-    <div className="bg-white/95 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-charcoal/10 shadow-2xl transition-all duration-300">
-      {/* Header */}
-      <div className="mb-5">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-ochre/10 text-ochre text-[11px] font-bold uppercase tracking-widest mb-2">
-          <span>{step === 1 ? 'Start Your Interior Journey' : 'Step 2: Project & Site Visit Details'}</span>
+    <>
+      {/* ============================================================ */}
+      {/* HERO SECTION CONTACT FORM (REVERTED TO SIMPLE VERSION)       */}
+      {/* Fields: Name, Email, Phone Number only                       */}
+      {/* Action Options: "I Have a Project" (Dominant) & "Send Request"*/}
+      {/* ============================================================ */}
+      <div className="bg-white/95 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-charcoal/10 shadow-2xl transition-all duration-300">
+        <div className="mb-5">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-ochre/10 text-ochre text-[11px] font-bold uppercase tracking-widest mb-2">
+            <span>Start Your Interior Journey</span>
+          </div>
+          <h3 className="text-xl sm:text-2xl font-bold text-charcoal tracking-tight">
+            Book your consultation
+          </h3>
+          <p className="text-xs text-charcoal/60 mt-1">
+            Enter your details below to launch your project or send a general request.
+          </p>
         </div>
-        <h3 className="text-xl sm:text-2xl font-bold text-charcoal tracking-tight">
-          {step === 1 ? 'Book your free consultation' : 'Tell us about your project'}
-        </h3>
-        <p className="text-xs text-charcoal/60 mt-1">
-          {step === 1 
-            ? 'Enter your details below to launch your project or send a general request.' 
-            : 'Fill in your site visit preferences. Name and contact details carried over.'}
-        </p>
-      </div>
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-medium animate-fade-in flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
-          <span>{error}</span>
-        </div>
-      )}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-medium animate-fade-in flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+            <span>{error}</span>
+          </div>
+        )}
 
-      {/* STEP 1: SIMPLE FORM (NAME, EMAIL, PHONE) + 2 BUTTONS */}
-      {step === 1 && (
-        <form onSubmit={handleProceedToProject} className="space-y-4">
+        <form onSubmit={handleOpenProjectModal} className="space-y-4">
+          {/* Field 1: Name */}
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
               <User className="w-3.5 h-3.5 text-ochre" />
@@ -257,6 +318,7 @@ export default function HeroContactForm() {
             />
           </div>
 
+          {/* Field 2: Email */}
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
               <Mail className="w-3.5 h-3.5 text-ochre" />
@@ -270,6 +332,7 @@ export default function HeroContactForm() {
             />
           </div>
 
+          {/* Field 3: Phone Number */}
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
               <Phone className="w-3.5 h-3.5 text-ochre" />
@@ -284,19 +347,19 @@ export default function HeroContactForm() {
             />
           </div>
 
-          {/* TWO SIDE-BY-SIDE BUTTONS */}
+          {/* TWO SIDE-BY-SIDE ACTION OPTIONS */}
           <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
-            {/* Primary, bolder, more prominent button */}
+            {/* "I Have a Project" — Visually dominant / bolder button (Primary styling) */}
             <button
               type="submit"
               disabled={submitting}
-              className="w-full sm:flex-1 py-3.5 px-4 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-sm font-black tracking-wide shadow-lg shadow-ochre/25 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              className="w-full sm:flex-1 py-3.5 px-5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-sm font-black tracking-wide shadow-lg shadow-ochre/25 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             >
               <span>I Have a Project</span>
               <ArrowRight className="w-4 h-4 stroke-[2.5]" />
             </button>
 
-            {/* Plain secondary style for people without a live project */}
+            {/* "Send Request" — Secondary / lower-emphasis styling for general inquiries */}
             <button
               type="button"
               disabled={submitting}
@@ -308,151 +371,238 @@ export default function HeroContactForm() {
           </div>
 
           <p className="text-[11px] text-charcoal/50 text-center pt-1">
-            "I Have a Project" fast-tracks your site inspection and space planning.
+            "I Have a Project" opens our site inspection & intake form.
           </p>
         </form>
+      </div>
+
+      {/* ============================================================ */}
+      {/* "I HAVE A PROJECT" MODAL (NOT AN INLINE EXPAND)             */}
+      {/* ============================================================ */}
+      {isProjectModalOpen && (
+        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white w-full max-w-xl rounded-3xl p-6 sm:p-8 shadow-2xl border border-charcoal/10 my-8 space-y-5 relative max-h-[92vh] overflow-y-auto animate-scale-up">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-4 border-b border-charcoal/10 pb-4">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-ochre/10 text-ochre text-[10px] font-bold uppercase tracking-widest mb-1.5">
+                  <span>Project Intake & Site Visit</span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-bold text-charcoal tracking-tight">
+                  Tell us about your project
+                </h3>
+                <p className="text-xs text-charcoal/60 mt-0.5">
+                  Your contact info is pre-filled. Complete your site visit preferences below.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsProjectModalOpen(false)}
+                className="p-2 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer shrink-0"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {modalError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-medium flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                <span>{modalError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmitProjectModal} className="space-y-4">
+              {/* Pre-filled & Editable Contact Info */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-cream/40 rounded-2xl border border-charcoal/10">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-charcoal/50 mb-1">
+                    Your Name <span className="text-ochre">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={modalName}
+                    onChange={(e) => setModalName(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-white border border-charcoal/15 rounded-lg text-xs font-medium text-charcoal focus:border-ochre focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-charcoal/50 mb-1">
+                    Phone / WhatsApp <span className="text-ochre">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={modalPhone}
+                    onChange={(e) => setModalPhone(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-white border border-charcoal/15 rounded-lg text-xs font-medium text-charcoal focus:border-ochre focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-charcoal/50 mb-1">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={modalEmail}
+                    onChange={(e) => setModalEmail(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-white border border-charcoal/15 rounded-lg text-xs font-medium text-charcoal focus:border-ochre focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* 1. Active Project Confirmation */}
+              <div className="p-3.5 bg-white rounded-2xl border border-charcoal/15 flex items-center justify-between gap-3 shadow-2xs">
+                <div className="min-w-0">
+                  <label htmlFor="modal-active-proj" className="text-xs font-bold text-charcoal block cursor-pointer">
+                    Active Project Ready to Go Ahead
+                  </label>
+                  <span className="text-[11px] text-charcoal/50 block">
+                    Confirm you have an active residential or commercial property ready for execution.
+                  </span>
+                </div>
+                <input
+                  id="modal-active-proj"
+                  type="checkbox"
+                  checked={hasActiveProject}
+                  onChange={(e) => setHasActiveProject(e.target.checked)}
+                  className="w-4 h-4 text-ochre accent-ochre rounded focus:ring-ochre cursor-pointer shrink-0"
+                />
+              </div>
+
+              {/* 2. Address Capture with "Use My Current Location" button (Client-side) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-charcoal/70 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-ochre" />
+                    <span>Project Location & Address <span className="text-ochre">*</span></span>
+                  </label>
+
+                  {/* "Use My Current Location" button (Client only) */}
+                  <button
+                    type="button"
+                    onClick={handleUseCurrentLocation}
+                    disabled={detectingLocation}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-ochre hover:text-ochre-dark bg-ochre/10 hover:bg-ochre/20 px-2.5 py-1 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {detectingLocation ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>Detecting GPS...</span>
+                      </>
+                    ) : (
+                      <>
+                        <MapPin className="w-3 h-3" />
+                        <span>Use My Current Location</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <input
+                  type="text"
+                  required
+                  value={locationAddress}
+                  onChange={(e) => setLocationAddress(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal shadow-xs"
+                />
+
+                {locationNotice && (
+                  <p className="text-[11px] text-ochre-dark font-medium animate-fade-in">
+                    {locationNotice}
+                  </p>
+                )}
+              </div>
+
+              {/* 3. Describe Their Project (Free Text) */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1">
+                  Describe Your Project
+                </label>
+                <textarea
+                  rows={3}
+                  value={projectDescription}
+                  onChange={(e) => setProjectDescription(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal shadow-xs resize-none"
+                />
+              </div>
+
+              {/* 4. Book a Site Visit & Desired Start Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-ochre" />
+                    <span>Book Site Visit Date <span className="text-ochre">*</span></span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    min={todayStr}
+                    value={siteVisitDate}
+                    onChange={(e) => {
+                      setSiteVisitDate(e.target.value);
+                      if (!startDate) setStartDate(e.target.value);
+                    }}
+                    className="w-full px-3 py-2 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal shadow-xs cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-ochre" />
+                    <span>Desired Project Start Date</span>
+                  </label>
+                  <input
+                    type="date"
+                    min={siteVisitDate || todayStr}
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal shadow-xs cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* 5. Terms & Conditions Checkbox */}
+              <div className="p-3.5 bg-ochre/10 rounded-2xl border border-ochre/25">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 text-ochre accent-ochre rounded focus:ring-ochre cursor-pointer shrink-0"
+                  />
+                  <span className="text-[11px] font-semibold text-charcoal leading-snug">
+                    Site visit fee is 5,000 KES within Nairobi. Areas outside Nairobi are negotiable. <span className="text-ochre font-bold">*</span>
+                  </span>
+                </label>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full sm:flex-1 py-3.5 px-6 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-sm font-bold shadow-lg shadow-ochre/25 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <span>{submitting ? 'Submitting...' : 'Confirm & Book Site Visit'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsProjectModalOpen(false)}
+                  className="w-full sm:w-auto py-3 px-5 rounded-xl border border-charcoal/15 text-xs font-semibold text-charcoal/70 hover:bg-cream transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
-
-      {/* STEP 2: "I HAVE A PROJECT" DETAILED FLOW */}
-      {step === 2 && (
-        <form onSubmit={handleSubmitProject} className="space-y-4 animate-fade-in">
-          {/* Editable Contact Summary */}
-          <div className="p-3 bg-cream/70 rounded-xl border border-charcoal/10 text-xs flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-charcoal">{name}</span>
-              <span className="text-charcoal/40">•</span>
-              <span className="font-mono text-emerald-700 font-bold">{phone || email}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className="text-[11px] font-bold text-ochre hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <ArrowLeft className="w-3 h-3" />
-              <span>Edit Contact</span>
-            </button>
-          </div>
-
-          {/* 1. Active Project confirmation (checkbox / toggle) */}
-          <div className="p-3 bg-white rounded-xl border border-charcoal/15 flex items-center justify-between gap-3 shadow-2xs">
-            <div className="min-w-0">
-              <label htmlFor="active-proj-toggle" className="text-xs font-bold text-charcoal block cursor-pointer">
-                Active Project Ready to Go Ahead
-              </label>
-              <span className="text-[11px] text-charcoal/50 block">
-                Confirm you have an active residential or commercial space ready for execution.
-              </span>
-            </div>
-            <input
-              id="active-proj-toggle"
-              type="checkbox"
-              checked={hasActiveProject}
-              onChange={(e) => setHasActiveProject(e.target.checked)}
-              className="w-4 h-4 text-ochre accent-ochre rounded focus:ring-ochre cursor-pointer shrink-0"
-            />
-          </div>
-
-          {/* 2. Book a Site Visit & Desired Project Start Date */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-ochre" />
-                <span>Book Site Visit Date <span className="text-ochre">*</span></span>
-              </label>
-              <input
-                type="date"
-                required
-                min={todayStr}
-                value={siteVisitDate}
-                onChange={(e) => {
-                  setSiteVisitDate(e.target.value);
-                  if (!startDate) setStartDate(e.target.value);
-                }}
-                className="w-full px-3 py-2 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal shadow-xs cursor-pointer"
-              />
-            </div>
-
-            {/* When site visit date is picked, also ask for desired project start date */}
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-ochre" />
-                <span>Desired Start Date</span>
-              </label>
-              <input
-                type="date"
-                min={siteVisitDate || todayStr}
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal shadow-xs cursor-pointer"
-              />
-            </div>
-          </div>
-
-          {/* 3. Location and Address */}
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1 flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-ochre" />
-              <span>Location and Address <span className="text-ochre">*</span></span>
-            </label>
-            <input
-              type="text"
-              required
-              value={locationAddress}
-              onChange={(e) => setLocationAddress(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal shadow-xs"
-            />
-          </div>
-
-          {/* 4. Project Description (textarea) */}
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1">
-              Project Description
-            </label>
-            <textarea
-              rows={3}
-              value={projectDescription}
-              onChange={(e) => setProjectDescription(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal shadow-xs resize-none"
-            />
-          </div>
-
-          {/* 5. Terms Checkbox (Required) */}
-          <div className="p-3 bg-ochre/10 rounded-xl border border-ochre/25 space-y-1">
-            <label className="flex items-start gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                required
-                checked={termsAccepted}
-                onChange={(e) => setTermsAccepted(e.target.checked)}
-                className="mt-0.5 w-4 h-4 text-ochre accent-ochre rounded focus:ring-ochre cursor-pointer shrink-0"
-              />
-              <span className="text-[11px] font-semibold text-charcoal leading-snug">
-                I understand the site visit fee is KES 5,000 within Nairobi. Site visits outside Nairobi are negotiable. <span className="text-ochre font-bold">*</span>
-              </span>
-            </label>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full sm:flex-1 py-3.5 px-6 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-sm font-bold shadow-lg shadow-ochre/25 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <span>{submitting ? 'Submitting...' : 'Confirm & Book Site Visit'}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className="w-full sm:w-auto py-3 px-4 rounded-xl border border-charcoal/15 text-xs font-semibold text-charcoal/70 hover:bg-cream transition-colors cursor-pointer"
-            >
-              Back
-            </button>
-          </div>
-        </form>
-      )}
-    </div>
+    </>
   );
 }

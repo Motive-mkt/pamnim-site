@@ -19,6 +19,7 @@ import ServiceDetailPage from './pages/ServiceDetail';
 import ProjectTrackerPage from './pages/ProjectTrackerPage';
 import ClientPortal from './pages/dashboards/ClientPortal';
 import ClientReviewPage from './pages/ClientReviewPage';
+import ClientSetupPage from './pages/ClientSetupPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import { useAuth } from './hooks/useAuth';
@@ -49,6 +50,8 @@ function AppContent() {
         <Route path="/signup" element={<SignupPage mode="general" />} />
         <Route path="/signup/worker" element={<SignupPage mode="worker" />} />
         <Route path="/signup-worker" element={<SignupPage mode="worker" />} />
+        <Route path="/client-setup" element={<ClientSetupPage />} />
+        <Route path="/activate" element={<ClientSetupPage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/services/:categoryId" element={<CategoryDetailPage />} />

@@ -516,10 +516,10 @@ export default function OwnerDashboard() {
       return true;
     });
 
-    // Sort requests: Soonest site visit / start date appear first
+    // Sort requests: Closest / soonest desired start dates prioritized at the top
     return [...filtered].sort((a, b) => {
-      const dateA = a.siteVisitDate || a.startDate;
-      const dateB = b.siteVisitDate || b.startDate;
+      const dateA = a.startDate || a.siteVisitDate;
+      const dateB = b.startDate || b.siteVisitDate;
 
       if (dateA && dateB) {
         return new Date(dateA).getTime() - new Date(dateB).getTime();

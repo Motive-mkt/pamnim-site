@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import AdminLayout, { NavItemConfig } from '../../components/AdminLayout';
-import { collection, query, getDocs, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, where, onSnapshot, orderBy, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
 import { 
   Sparkles, MessageSquare, Compass, Phone, ArrowRight, ExternalLink, 
   Calendar, Briefcase, DollarSign, Receipt, CreditCard, Search, ArrowDownRight, 
-  CheckCircle2, Download, HelpCircle
+  CheckCircle2, Download, HelpCircle, MapPin, Edit3, Loader2
 } from 'lucide-react';
 import ProjectChat from '../../components/ProjectChat';
 import OnboardingWalkthrough from '../../components/onboarding/OnboardingWalkthrough';
@@ -41,6 +41,74 @@ export default function ClientPortal() {
   const [loadingPayments, setLoadingPayments] = useState(false);
   const [paymentSearch, setPaymentSearch] = useState('');
   const [forceOpenTour, setForceOpenTour] = useState(false);
+
+  // Address capture state (Client-side)
+  const [clientAddress, setClientAddress] = useState<string>((profile as any)?.address || '');
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [savingAddress, setSavingAddress] = useState(false);
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [addressSuccessMsg, setAddressSuccessMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if ((profile as any)?.address) {
+      setClientAddress((profile as any).address);
+    }
+  }, [profile]);
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+    setDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+            { headers: { 'Accept-Language': 'en' } }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data.display_name || `Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}`;
+            setClientAddress(addr);
+          } else {
+            setClientAddress(`Nairobi (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
+          }
+        } catch {
+          setClientAddress(`Nairobi (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
+        } finally {
+          setDetectingLocation(false);
+        }
+      },
+      (err) => {
+        console.warn('Geolocation error:', err);
+        alert('Could not detect GPS location. You can enter your address manually.');
+        setDetectingLocation(false);
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
+
+  const handleSaveAddress = async () => {
+    if (!profile?.uid) return;
+    setSavingAddress(true);
+    try {
+      await updateDoc(doc(db, 'profiles', profile.uid), {
+        address: clientAddress.trim(),
+        updatedAt: new Date().toISOString()
+      });
+      setIsEditingAddress(false);
+      setAddressSuccessMsg('Address updated successfully!');
+      setTimeout(() => setAddressSuccessMsg(null), 3000);
+    } catch (err: any) {
+      console.error('Error updating address:', err);
+      alert('Failed to save address: ' + err.message);
+    } finally {
+      setSavingAddress(false);
+    }
+  };
 
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -296,6 +364,97 @@ export default function ClientPortal() {
           </div>
 
           <Sparkles className="absolute -bottom-10 -right-10 w-64 h-64 text-white/5 pointer-events-none" />
+        </div>
+
+        {/* Client Address Card (Client-side Address Capture & Geolocation) */}
+        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-charcoal/10 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5 flex-1 min-w-0">
+            <div className="w-11 h-11 rounded-2xl bg-ochre/10 text-ochre flex items-center justify-center shrink-0 mt-0.5">
+              <MapPin className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold uppercase tracking-wider text-charcoal/50">My Project Property Address</span>
+                {addressSuccessMsg && (
+                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 animate-fade-in">
+                    {addressSuccessMsg}
+                  </span>
+                )}
+              </div>
+
+              {isEditingAddress ? (
+                <div className="mt-2.5 space-y-2.5 max-w-2xl">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <input
+                      type="text"
+                      value={clientAddress}
+                      onChange={(e) => setClientAddress(e.target.value)}
+                      placeholder="e.g. Apartment 4B, Riverside Drive, Nairobi"
+                      className="flex-1 px-3.5 py-2 bg-cream/30 border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre focus:bg-white text-charcoal"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleUseCurrentLocation}
+                      disabled={detectingLocation}
+                      className="px-3 py-2 rounded-xl bg-ochre/10 hover:bg-ochre/20 text-ochre text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                      title="Auto-detect address using Google Maps / GPS Geolocation"
+                    >
+                      {detectingLocation ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Detecting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <MapPin className="w-3.5 h-3.5" />
+                          <span>Use My Current Location</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveAddress}
+                      disabled={savingAddress}
+                      className="px-4 py-2 rounded-xl bg-ochre text-white text-xs font-bold hover:bg-ochre-dark transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {savingAddress ? 'Saving...' : 'Save Address'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setClientAddress((profile as any)?.address || '');
+                        setIsEditingAddress(false);
+                      }}
+                      className="px-3.5 py-2 rounded-xl border border-charcoal/15 text-charcoal/60 hover:bg-cream text-xs font-semibold cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm font-semibold text-charcoal mt-1 truncate">
+                  {clientAddress || (
+                    <span className="text-charcoal/40 italic font-normal">
+                      No property address recorded yet. Click edit to set your location.
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {!isEditingAddress && (
+            <button
+              type="button"
+              onClick={() => setIsEditingAddress(true)}
+              className="px-4 py-2.5 rounded-xl border border-charcoal/15 text-charcoal/70 hover:text-charcoal hover:bg-cream text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer self-start md:self-auto shrink-0"
+            >
+              <Edit3 className="w-3.5 h-3.5 text-ochre" />
+              <span>{clientAddress ? 'Edit Address' : 'Set Address'}</span>
+            </button>
+          )}
         </div>
 
         {/* Tab 1: Tracker */}

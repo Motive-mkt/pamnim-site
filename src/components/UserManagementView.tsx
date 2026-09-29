@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { 
   Users, UserPlus, CheckCircle2, Copy, Shield, Phone, Mail, 
   ExternalLink, Sparkles, Check, Clock, UserCheck, AlertCircle, ArrowUpRight, Trash2, XCircle,
-  HardHat, DollarSign, X, Briefcase
+  HardHat, DollarSign, X, Briefcase, MapPin, Edit3, Save, Share2, Send, Key
 } from 'lucide-react';
 import DeleteClientModal from './DeleteClientModal';
 import { WorkerSkill } from '../types/hrms';
@@ -42,6 +42,24 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
   // Selected role mapping for pending requests approval
   const [assignedRoles, setAssignedRoles] = useState<Record<string, string>>({});
   const [processingId, setProcessingId] = useState<string | null>(null);
+
+  // Owner-Created Client Accounts State (Replacing self-signup)
+  const [showCreateClientModal, setShowCreateClientModal] = useState(false);
+  const [submittingNewClient, setSubmittingNewClient] = useState(false);
+  const [newClientForm, setNewClientForm] = useState({
+    name: '',
+    username: '',
+    email: '',
+    phone: '',
+    address: ''
+  });
+  const [createdClientResult, setCreatedClientResult] = useState<{ client: any; link: string } | null>(null);
+  const [copiedClientId, setCopiedClientId] = useState<string | null>(null);
+
+  // Owner Address Edit State (Manual text entry only — no location button)
+  const [editingAddressClientId, setEditingAddressClientId] = useState<string | null>(null);
+  const [editingAddressValue, setEditingAddressValue] = useState<string>('');
+  const [savingAddressId, setSavingAddressId] = useState<string | null>(null);
 
   // Worker Approval Modal State (for Owner-only fields)
   const [showWorkerApprovalModal, setShowWorkerApprovalModal] = useState(false);
@@ -114,6 +132,122 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
     navigator.clipboard.writeText(link);
     setCopiedWorkerLink(true);
     setTimeout(() => setCopiedWorkerLink(false), 3000);
+  };
+
+  // Owner creates a client account directly from the admin panel: Name, Username, Email (no password set by owner)
+  const handleCreateClientAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClientForm.name.trim()) {
+      alert('Please provide the client full name.');
+      return;
+    }
+    if (!newClientForm.username.trim()) {
+      alert('Please provide a username for the client.');
+      return;
+    }
+    if (!newClientForm.email.trim()) {
+      alert('Please provide the client email address.');
+      return;
+    }
+
+    setSubmittingNewClient(true);
+    try {
+      const cleanUsername = newClientForm.username.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
+      const cleanEmail = newClientForm.email.trim().toLowerCase();
+      const newClientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+
+      const clientData: Record<string, any> = {
+        id: newClientId,
+        uid: newClientId,
+        name: newClientForm.name.trim(),
+        username: cleanUsername,
+        email: cleanEmail,
+        phone: newClientForm.phone.trim(),
+        address: newClientForm.address.trim(),
+        role: 'client',
+        status: 'invited', // Immediately exists so owner can send quotes/invoices before project starts!
+        createdBy: profile?.uid || 'admin',
+        createdByName: profile?.name || 'Owner',
+        createdAt: new Date().toISOString()
+      };
+
+      // 1. Create in profiles collection so quotes & invoices can select this prospect immediately
+      await setDoc(doc(db, 'profiles', newClientId), clientData);
+
+      // 2. Create in client_invitations collection for password setup lookup
+      const inviteUrl = `${window.location.origin}/client-setup?id=${newClientId}`;
+      await setDoc(doc(db, 'client_invitations', newClientId), {
+        ...clientData,
+        inviteUrl
+      });
+
+      setCreatedClientResult({
+        client: clientData,
+        link: inviteUrl
+      });
+
+      setNewClientForm({
+        name: '',
+        username: '',
+        email: '',
+        phone: '',
+        address: ''
+      });
+
+      setToast({ type: 'success', text: `Client account created for ${clientData.name}!` });
+      setTimeout(() => setToast(null), 4000);
+      if (onRefreshData) onRefreshData();
+    } catch (err: any) {
+      console.error('Error creating client account:', err);
+      alert('Failed to create client account: ' + err.message);
+    } finally {
+      setSubmittingNewClient(false);
+    }
+  };
+
+  const handleCopyClientLink = (clientId: string) => {
+    const link = `${window.location.origin}/client-setup?id=${clientId}`;
+    navigator.clipboard.writeText(link);
+    setCopiedClientId(clientId);
+    setTimeout(() => setCopiedClientId(null), 3000);
+  };
+
+  const handleSendClientLinkWhatsApp = (client: any) => {
+    const link = `${window.location.origin}/client-setup?id=${client.id}`;
+    const cleanPhone = (client.phone || '').replace(/[^0-9]/g, '');
+    const message = `Hello ${client.name}! Your client account with Pamnim Interior Designers is ready.\n\nPlease open this link to set your password and access your design portal, quotes, and project progress:\n${link}`;
+    if (cleanPhone) {
+      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+    } else {
+      navigator.clipboard.writeText(link);
+      alert(`Sign-in link copied to clipboard:\n${link}\n\nPlease share this with ${client.name}.`);
+    }
+  };
+
+  // Owner saves client address (Manual text entry only — no location button on owner's side)
+  const handleSaveClientAddress = async (clientId: string) => {
+    setSavingAddressId(clientId);
+    try {
+      await updateDoc(doc(db, 'profiles', clientId), {
+        address: editingAddressValue.trim(),
+        updatedAt: new Date().toISOString()
+      });
+      try {
+        await updateDoc(doc(db, 'client_invitations', clientId), {
+          address: editingAddressValue.trim(),
+          updatedAt: new Date().toISOString()
+        });
+      } catch (_) {}
+
+      setEditingAddressClientId(null);
+      setToast({ type: 'success', text: 'Client address updated successfully.' });
+      setTimeout(() => setToast(null), 3000);
+    } catch (err: any) {
+      console.error('Error updating client address:', err);
+      alert('Failed to update address: ' + err.message);
+    } finally {
+      setSavingAddressId(null);
+    }
   };
 
   const handleRoleSelectionChange = (reqId: string, role: string) => {
@@ -365,33 +499,29 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
 
   return (
     <div className="space-y-8">
-      {/* Share Link Banner */}
+      {/* Share Link & Account Provisioning Banner */}
       <div className="bg-ochre text-white p-5 sm:p-8 rounded-3xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 flex-wrap">
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="w-5 h-5 text-white/80" />
-            <span className="text-xs font-bold uppercase tracking-widest text-white/90">Share Access Link</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-white/90">Client & Worker Accounts</span>
           </div>
-          <h3 className="text-2xl font-bold">Client & Employee Registration</h3>
+          <h3 className="text-2xl font-bold">Owner-Provisioned Client Accounts</h3>
           <p className="text-white/80 text-sm max-w-lg mt-1">
-            Share this link with prospective clients or employees. Once they submit, review and assign their role below.
+            Create client accounts directly without requiring them to set passwords first. Share sign-in links so clients can set their own passwords.
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
           <button
-            onClick={handleCopySignupLink}
+            onClick={() => {
+              setCreatedClientResult(null);
+              setShowCreateClientModal(true);
+            }}
             className="px-5 py-3 bg-white text-ochre font-bold text-xs sm:text-sm rounded-2xl shadow-lg hover:bg-cream transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
-            {copiedLink ? (
-              <>
-                <Check className="w-4 h-4 text-emerald-600" /> Link Copied!
-              </>
-            ) : (
-              <>
-                <Copy className="w-4 h-4" /> Copy Client/Staff Link
-              </>
-            )}
+            <UserPlus className="w-4 h-4" />
+            <span>Create Client Account</span>
           </button>
 
           <button
@@ -621,72 +751,418 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
 
       {/* Active Clients Section */}
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-charcoal/10 shadow-sm space-y-6">
-        <div className="flex items-center justify-between border-b border-charcoal/10 pb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-charcoal/10 pb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
               <Users className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-bold text-lg text-charcoal">Active Clients</h3>
-              <p className="text-xs text-charcoal/50">Manage registered client accounts and access.</p>
+              <p className="text-xs text-charcoal/50">Owner-provisioned client accounts, sign-in links, and property addresses.</p>
             </div>
           </div>
-          <span className="text-xs font-bold px-3 py-1 bg-blue-50 text-blue-800 rounded-full">
-            {activeClients.length} Clients
-          </span>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                setCreatedClientResult(null);
+                setShowCreateClientModal(true);
+              }}
+              className="px-4 py-2 bg-ochre hover:bg-ochre-dark text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Create Client Account</span>
+            </button>
+
+            <span className="text-xs font-bold px-3 py-1 bg-blue-50 text-blue-800 rounded-full">
+              {activeClients.length} Clients
+            </span>
+          </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           {activeClients.length === 0 ? (
-            <div className="py-6 text-center text-charcoal/40 text-sm">
-              No active clients registered yet.
+            <div className="py-8 text-center text-charcoal/40 text-sm space-y-2">
+              <p>No active clients registered yet.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreatedClientResult(null);
+                  setShowCreateClientModal(true);
+                }}
+                className="text-ochre font-bold text-xs hover:underline cursor-pointer"
+              >
+                + Create your first client account
+              </button>
             </div>
           ) : (
-            activeClients.map(client => (
-              <div 
-                key={client.id}
-                className="p-4 rounded-2xl border border-charcoal/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-sm text-charcoal">{client.name || 'Unnamed Client'}</h4>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                      Client
-                    </span>
+            activeClients.map(client => {
+              const isEditingThisAddress = editingAddressClientId === client.id;
+              const hasCustomAddress = Boolean(client.address && client.address.trim());
+              const isInvited = client.status === 'invited';
+
+              return (
+                <div 
+                  key={client.id}
+                  className="p-4 sm:p-5 rounded-2xl border border-charcoal/10 space-y-3 bg-white hover:border-charcoal/20 transition-colors shadow-2xs"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-bold text-sm text-charcoal">{client.name || 'Unnamed Client'}</h4>
+                        {client.username && (
+                          <span className="text-xs font-mono text-charcoal/60 bg-charcoal/5 px-2 py-0.5 rounded-md">
+                            @{client.username}
+                          </span>
+                        )}
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                          Client
+                        </span>
+                        {isInvited ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                            Invited (Awaiting Password Setup)
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                            Active
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-3 text-xs text-charcoal/50 mt-1 flex-wrap">
+                        <span>{client.email || 'No email provided'}</span>
+                        {client.phone && (
+                          <>
+                            <span>•</span>
+                            <span className="font-mono text-charcoal/70">{client.phone}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action buttons (Copy link, WhatsApp, Make Owner, Delete) */}
+                    <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end pt-2 sm:pt-0">
+                      {/* Sign-in link generator/copy */}
+                      <button
+                        type="button"
+                        onClick={() => handleCopyClientLink(client.id)}
+                        className="px-3 py-1.5 rounded-xl border border-ochre/30 bg-ochre/5 hover:bg-ochre/15 text-ochre text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                        title="Copy personalized password set-up & sign-in link"
+                      >
+                        {copiedClientId === client.id ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Link Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Sign-in Link</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSendClientLinkWhatsApp(client)}
+                        className="px-3 py-1.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                        title="Share sign-in link on WhatsApp"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                        <span>WhatsApp</span>
+                      </button>
+
+                      {isOwner && (
+                        <button
+                          onClick={() => handleUpdateEmployeeRole(client.id, 'owner', client.name)}
+                          className="px-3 py-1.5 rounded-xl border border-purple-200 text-purple-700 hover:bg-purple-50 text-xs font-bold transition-all cursor-pointer"
+                        >
+                          Make Owner
+                        </button>
+                      )}
+
+                      {/* Delete Client action - visible strictly to role == 'owner' only */}
+                      {isOwner && (
+                        <button
+                          onClick={() => setClientToDelete(client)}
+                          className="px-3 py-1.5 rounded-xl bg-red-50 border border-red-200 text-red-700 hover:bg-red-600 hover:text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                          title="Permanently delete client account"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-charcoal/50 mt-0.5">{client.email || 'No email provided'}</p>
+
+                  {/* PART 2: OWNER-SIDE ADDRESS CAPTURE & EDIT (MANUAL TEXT ENTRY ONLY — NO LOCATION BUTTON) */}
+                  <div className="p-3 bg-cream/30 rounded-xl border border-charcoal/10 text-xs">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-2 flex-1 min-w-0">
+                        <MapPin className="w-3.5 h-3.5 text-ochre shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 block">Property / Project Address:</span>
+                          
+                          {isEditingThisAddress ? (
+                            <div className="mt-1.5 space-y-2 max-w-xl">
+                              {/* STRICT: Owner: manual text entry only — no location button on the owner's side */}
+                              <input
+                                type="text"
+                                value={editingAddressValue}
+                                onChange={(e) => setEditingAddressValue(e.target.value)}
+                                placeholder="Enter client address manually..."
+                                className="w-full px-3 py-1.5 bg-white border border-charcoal/20 rounded-lg text-xs font-medium text-charcoal focus:border-ochre focus:outline-none"
+                              />
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveClientAddress(client.id)}
+                                  disabled={savingAddressId === client.id}
+                                  className="px-3 py-1 bg-ochre text-white text-xs font-bold rounded-lg hover:bg-ochre-dark transition-colors cursor-pointer disabled:opacity-50"
+                                >
+                                  {savingAddressId === client.id ? 'Saving...' : 'Save Address'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingAddressClientId(null)}
+                                  className="px-2.5 py-1 border border-charcoal/15 text-charcoal/60 text-xs rounded-lg hover:bg-white cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-xs font-medium text-charcoal mt-0.5 truncate">
+                              {hasCustomAddress ? (
+                                client.address
+                              ) : (
+                                <span className="text-charcoal/40 italic">No address recorded</span>
+                              )}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {!isEditingThisAddress && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingAddressClientId(client.id);
+                            setEditingAddressValue(client.address || '');
+                          }}
+                          className="px-2.5 py-1 rounded-lg border border-charcoal/15 text-charcoal/70 hover:text-ochre hover:border-ochre text-[11px] font-bold transition-colors cursor-pointer shrink-0"
+                        >
+                          <Edit3 className="w-3 h-3 inline mr-1" />
+                          <span>{hasCustomAddress ? 'Edit' : 'Set Address'}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-
-                {/* Owner & Elevated Staff controls to manage client */}
-                {(isOwner || canApproveSignups) && client.role !== 'owner' && (
-                  <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-charcoal/5">
-                    {isOwner && (
-                      <button
-                        onClick={() => handleUpdateEmployeeRole(client.id, 'owner', client.name)}
-                        className="px-3 py-1.5 rounded-xl border border-purple-200 text-purple-700 hover:bg-purple-50 text-xs font-bold transition-all cursor-pointer"
-                      >
-                        Make Owner
-                      </button>
-                    )}
-
-                    {/* Delete Client action - visible strictly to role == 'owner' only */}
-                    {isOwner && (
-                      <button
-                        onClick={() => setClientToDelete(client)}
-                        className="px-3.5 py-1.5 rounded-xl bg-red-50 border border-red-200 text-red-700 hover:bg-red-600 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-                        title="Permanently delete client account"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Delete Client</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
+
+      {/* CREATE CLIENT ACCOUNT MODAL (PART 3) */}
+      {showCreateClientModal && (
+        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-2xl border border-charcoal/10 my-8 space-y-5 animate-scale-up">
+            <div className="flex items-start justify-between gap-4 border-b border-charcoal/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-ochre/10 text-ochre flex items-center justify-center">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-charcoal">Create Client Account</h3>
+                  <p className="text-xs text-charcoal/50">Account exists immediately so you can issue quotes or invoices right away.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCreateClientModal(false);
+                  setCreatedClientResult(null);
+                }}
+                className="p-2 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {createdClientResult ? (
+              <div className="space-y-4 animate-fade-in">
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-sm">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <span>Account Created for {createdClientResult.client.name}!</span>
+                  </div>
+                  <p className="text-xs text-emerald-700 leading-relaxed">
+                    This client is now available in your Quotes and Invoices dropdowns immediately. Share the sign-in link below so they can set their password.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-charcoal/60 uppercase tracking-wider block">
+                    Client Sign-in Link
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={createdClientResult.link}
+                      className="flex-1 px-3.5 py-2.5 bg-cream/30 border border-charcoal/15 rounded-xl text-xs font-mono text-charcoal truncate"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleCopyClientLink(createdClientResult.client.id)}
+                      className="px-4 py-2.5 rounded-xl bg-ochre text-white text-xs font-bold hover:bg-ochre-dark transition-colors cursor-pointer shrink-0 flex items-center gap-1.5"
+                    >
+                      {copiedClientId === createdClientResult.client.id ? (
+                        <>
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSendClientLinkWhatsApp(createdClientResult.client)}
+                    className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span>Send via WhatsApp</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateClientModal(false);
+                      setCreatedClientResult(null);
+                    }}
+                    className="py-3 px-5 rounded-xl border border-charcoal/15 text-charcoal/70 text-xs font-semibold hover:bg-cream cursor-pointer"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleCreateClientAccount} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-charcoal/70 uppercase tracking-wider mb-1">
+                    Client Full Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Sarah Mwangi"
+                    value={newClientForm.name}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewClientForm(prev => ({
+                        ...prev,
+                        name: val,
+                        username: prev.username || val.toLowerCase().replace(/[^a-z0-9]/g, '_')
+                      }));
+                    }}
+                    className="w-full px-4 py-2.5 rounded-xl border border-charcoal/15 bg-white text-xs sm:text-sm font-medium text-charcoal focus:border-ochre focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-charcoal/70 uppercase tracking-wider mb-1">
+                      Username <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. sarah_mwangi"
+                      value={newClientForm.username}
+                      onChange={(e) => setNewClientForm(prev => ({ ...prev, username: e.target.value }))}
+                      className="w-full px-4 py-2.5 rounded-xl border border-charcoal/15 bg-white text-xs sm:text-sm font-medium text-charcoal focus:border-ochre focus:outline-none font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-charcoal/70 uppercase tracking-wider mb-1">
+                      Email Address <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="sarah@example.com"
+                      value={newClientForm.email}
+                      onChange={(e) => setNewClientForm(prev => ({ ...prev, email: e.target.value }))}
+                      className="w-full px-4 py-2.5 rounded-xl border border-charcoal/15 bg-white text-xs sm:text-sm font-medium text-charcoal focus:border-ochre focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-charcoal/70 uppercase tracking-wider mb-1">
+                      Phone Number (Optional)
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="e.g. 0712345678"
+                      value={newClientForm.phone}
+                      onChange={(e) => setNewClientForm(prev => ({ ...prev, phone: e.target.value }))}
+                      className="w-full px-4 py-2.5 rounded-xl border border-charcoal/15 bg-white text-xs sm:text-sm font-medium text-charcoal focus:border-ochre focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    {/* Owner-side Address Input: Manual text entry only — no location button */}
+                    <label className="block text-xs font-bold text-charcoal/70 uppercase tracking-wider mb-1">
+                      Property Address (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Lavington, Nairobi"
+                      value={newClientForm.address}
+                      onChange={(e) => setNewClientForm(prev => ({ ...prev, address: e.target.value }))}
+                      className="w-full px-4 py-2.5 rounded-xl border border-charcoal/15 bg-white text-xs sm:text-sm font-medium text-charcoal focus:border-ochre focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-charcoal/50 leading-relaxed bg-cream/40 p-3 rounded-xl border border-charcoal/10">
+                  💡 No password is set by the owner. The account exists immediately so you can draft quotes or invoices. When you send the sign-in link, the client sets their own password.
+                </p>
+
+                <div className="pt-2 flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateClientModal(false)}
+                    className="px-4 py-2.5 rounded-xl border border-charcoal/15 text-charcoal/70 text-xs font-semibold hover:bg-cream cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingNewClient}
+                    className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold transition-all cursor-pointer shadow-md shadow-ochre/20 disabled:opacity-50"
+                  >
+                    {submittingNewClient ? 'Creating Account...' : 'Create Account & Generate Link'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Worker Approval Modal (Owner-Only Fields) */}
       {showWorkerApprovalModal && workerApprovalReq && (
