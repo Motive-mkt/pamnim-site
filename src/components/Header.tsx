@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { cn, getOptimizedImageUrl } from '../lib/utils';
 import { useCMS } from '../hooks/useCMS';
 import { motion, AnimatePresence } from 'motion/react';
+import NotificationCenter from './NotificationCenter';
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -138,6 +139,12 @@ export default function Header() {
 
           {/* Contact Actions Section */}
           <div id="contact-header" className="flex items-center gap-2 sm:gap-4 md:gap-6">
+            {user && (
+              <NotificationCenter 
+                buttonClassName={displayLight ? "border-white/20 text-white hover:bg-white/10" : "border-charcoal/10 text-charcoal"}
+              />
+            )}
+
             {/* Desktop Only Phone Number Label */}
             <div className={cn("hidden lg:flex items-center gap-2 transition-colors duration-300", displayLight ? "text-white" : "text-charcoal")}>
               <Phone className="w-4 h-4 text-ochre" />

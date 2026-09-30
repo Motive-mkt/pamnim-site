@@ -27,6 +27,7 @@ import HRMSManager from '../../components/HRMSManager';
 import QuickActions from '../../components/QuickActions';
 import ProjectActivityFeed from '../../components/ProjectActivityFeed';
 import CatalogManagerView from '../../components/CatalogManagerView';
+import { checkPortfolioDuplicates } from '../../services/portfolioDuplicateService';
 
 const iconMap: Record<string, any> = {
   Home,
@@ -679,12 +680,25 @@ export default function OwnerDashboard() {
     // Option A: Manual URL entry
     if (useManualUrl) {
       if (!newMedia.image) return;
+
+      // Duplicate check for Portfolio uploads
+      if (mediaType === 'portfolio_assets') {
+        const dupCheck = await checkPortfolioDuplicates([newMedia.image]);
+        if (dupCheck.hasDuplicate) {
+          setUploadError(dupCheck.message || 'The file has already been uploaded to the Portfolio.');
+          return;
+        }
+      }
+
       try {
         const isVideo = newMedia.image.endsWith('.mp4') || newMedia.image.includes('video');
+        const manualFileName = newMedia.image.split('?')[0].split('/').pop() || '';
         await addDoc(collection(db, mediaType), {
           title: newMedia.title.trim() || "",
           category: newMedia.category.trim() || "",
           image: newMedia.image,
+          fileName: manualFileName,
+          originalFilename: manualFileName,
           type: isVideo ? 'video' : 'image',
           createdAt: new Date().toISOString()
         });
@@ -703,6 +717,16 @@ export default function OwnerDashboard() {
     if (selectedFiles.length === 0) {
       alert("Please select or drop at least one file to upload.");
       return;
+    }
+
+    // Duplicate check for Portfolio uploads (PART 2)
+    if (mediaType === 'portfolio_assets') {
+      const dupCheck = await checkPortfolioDuplicates(selectedFiles);
+      if (dupCheck.hasDuplicate) {
+        setIsUploading(false);
+        setUploadError(dupCheck.message || 'Duplicate file detected: This file has already been uploaded to the Portfolio.');
+        return;
+      }
     }
 
     setIsUploading(true);
@@ -873,6 +897,8 @@ export default function OwnerDashboard() {
           title: itemTitle,
           category: newMedia.category.trim() || "",
           image: secureUrl,
+          fileName: file.name,
+          originalFilename: file.name,
           type: isVideo ? 'video' : 'image',
           createdAt: new Date().toISOString()
         });
@@ -2950,27 +2976,58 @@ export default function OwnerDashboard() {
               ) : (
                 /* Drag & Drop Bulk Media Upload Area */
                 <div className="space-y-4">
+                  {uploadError && (
+                    <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-xs flex items-start gap-2.5 animate-shake">
+                      <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <strong className="block text-red-800 font-bold mb-0.5">Duplicate File Blocked</strong>
+                        <span>{uploadError}</span>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => setUploadError(null)}
+                        className="text-red-400 hover:text-red-700 ml-2"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+
                   <div 
                     onDragOver={(e) => { 
                       e.preventDefault(); 
                       if (!isUploading) setDragActive(true);
                     }}
-                    onDragEnter={(e) => {
-                      e.preventDefault();
+                    onDragEnter={(e) => { 
+                      e.preventDefault(); 
                       if (!isUploading) setDragActive(true);
                     }}
-                    onDragLeave={(e) => {
-                      e.preventDefault();
+                    onDragLeave={(e) => { 
+                      e.preventDefault(); 
                       setDragActive(false);
                     }}
-                    onDrop={(e) => {
+                    onDrop={async (e) => {
                       e.preventDefault();
                       setDragActive(false);
                       if (isUploading) return;
                       if (e.dataTransfer.files) {
                         const files = Array.from(e.dataTransfer.files) as File[];
-                        // Robust media extension check secondary fallback to prevent browser MIME mismatch
                         const filtered = files.filter(f => isImageFile(f) || isVideoFile(f));
+                        if (filtered.length === 0) return;
+
+                        if (mediaType === 'portfolio_assets') {
+                          const dupCheck = await checkPortfolioDuplicates(filtered);
+                          if (dupCheck.hasDuplicate) {
+                            setUploadError(dupCheck.message);
+                            const nonDuplicates = filtered.filter(f => !dupCheck.duplicateFiles.includes(f.name));
+                            if (nonDuplicates.length > 0) {
+                              setSelectedFiles(prev => [...prev, ...nonDuplicates]);
+                            }
+                            return;
+                          }
+                        }
+
+                        setUploadError(null);
                         setSelectedFiles(prev => [...prev, ...filtered]);
                       }
                     }}
@@ -2991,11 +3048,29 @@ export default function OwnerDashboard() {
                       multiple 
                       accept="image/*,video/*"
                       className="hidden" 
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         if (e.target.files) {
                           const files = Array.from(e.target.files) as File[];
                           const filtered = files.filter(f => isImageFile(f) || isVideoFile(f));
+                          if (filtered.length === 0) return;
+
+                          if (mediaType === 'portfolio_assets') {
+                            const dupCheck = await checkPortfolioDuplicates(filtered);
+                            if (dupCheck.hasDuplicate) {
+                              setUploadError(dupCheck.message);
+                              const nonDuplicates = filtered.filter(f => !dupCheck.duplicateFiles.includes(f.name));
+                              if (nonDuplicates.length > 0) {
+                                setSelectedFiles(prev => [...prev, ...nonDuplicates]);
+                              }
+                              // Reset input so same file can be re-selected if renamed
+                              e.target.value = '';
+                              return;
+                            }
+                          }
+
+                          setUploadError(null);
                           setSelectedFiles(prev => [...prev, ...filtered]);
+                          e.target.value = '';
                         }
                       }}
                       disabled={isUploading}

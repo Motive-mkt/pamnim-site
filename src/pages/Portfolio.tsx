@@ -6,8 +6,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../hooks/useAuth';
-import { Play, Image as ImageIcon, Film, Trash2, AlertTriangle, X, CheckCircle2, Sparkles } from 'lucide-react';
+import { Play, Image as ImageIcon, Film, Trash2, AlertTriangle, X, CheckCircle2, Sparkles, Plus } from 'lucide-react';
 import { optimizeCloudinaryUrl, getCloudinaryVideoPoster } from '../services/cloudinaryService';
+import PortfolioUploadModal from '../components/PortfolioUploadModal';
 
 interface PortfolioItem {
   id: string;
@@ -29,6 +30,7 @@ export default function PortfolioPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showLeadModal, setShowLeadModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   // Video playback states - mapping item ID to playing boolean
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
@@ -177,11 +179,11 @@ export default function PortfolioPage() {
         </div>
 
         {/* Minimalist Tab System */}
-        <div id="portfolio-tabs" className="max-w-7xl mx-auto px-6 md:px-12 flex justify-center mb-16 select-none">
+        <div id="portfolio-tabs" className="max-w-7xl mx-auto px-6 md:px-12 flex flex-wrap items-center justify-center gap-3 mb-16 select-none">
           <div className="bg-charcoal/5 p-1 rounded-full flex gap-1">
             <button
               onClick={() => setActiveTab('image')}
-              className={`flex items-center gap-2 px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${
+              className={`flex items-center gap-2 px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all cursor-pointer ${
                 activeTab === 'image' 
                   ? "bg-charcoal text-white shadow-md shadow-charcoal/10" 
                   : "text-charcoal/50 hover:text-charcoal"
@@ -192,7 +194,7 @@ export default function PortfolioPage() {
             </button>
             <button
               onClick={() => setActiveTab('video')}
-              className={`flex items-center gap-2 px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${
+              className={`flex items-center gap-2 px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all cursor-pointer ${
                 activeTab === 'video' 
                   ? "bg-charcoal text-white shadow-md shadow-charcoal/10" 
                   : "text-charcoal/50 hover:text-charcoal"
@@ -202,6 +204,17 @@ export default function PortfolioPage() {
               Cinematic Walks
             </button>
           </div>
+
+          {/* Staff / Owner Upload Button */}
+          {isStaff && (
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="flex items-center gap-2 bg-ochre hover:bg-ochre-dark text-white px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all shadow-md shadow-ochre/20 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              Upload Media
+            </button>
+          )}
         </div>
 
         <div className="max-w-7xl mx-auto px-6 md:px-12">
@@ -233,22 +246,10 @@ export default function PortfolioPage() {
                       >
                         <img 
                           src={optimizeCloudinaryUrl(project.image, 'image')} 
-                          alt={project.title}
+                          alt=""
                           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                           referrerPolicy="no-referrer"
                         />
-                        {project.isGallery && (
-                          <div className="absolute top-4 left-4 z-20 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5 shadow-sm pointer-events-none">
-                            <Sparkles className="w-3 h-3 text-ochre" />
-                            <span>Featured Gallery</span>
-                          </div>
-                        )}
-                        {(project.category || project.title) && (
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent flex flex-col justify-end p-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            {project.category && <span className="text-ochre-light text-xs font-bold uppercase tracking-widest mb-1">{project.category}</span>}
-                            {project.title && <h3 className="text-white text-2xl font-bold tracking-tight">{project.title}</h3>}
-                          </div>
-                        )}
                         {/* Staff / Owner Quick Delete Button */}
                         {isStaff && (
                           <button
@@ -276,12 +277,6 @@ export default function PortfolioPage() {
                         transition={{ delay: index * 0.05 }}
                         className="bg-white rounded-3xl overflow-hidden border border-charcoal/5 elevation-subtle hover:elevation-raised transition-all flex flex-col group relative"
                       >
-                        {project.isGallery && (
-                          <div className="absolute top-4 left-4 z-30 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5 shadow-sm pointer-events-none">
-                            <Sparkles className="w-3 h-3 text-ochre" />
-                            <span>Featured Gallery</span>
-                          </div>
-                        )}
                         {/* Staff / Owner Quick Delete Button */}
                         {isStaff && (
                           <button
@@ -309,21 +304,11 @@ export default function PortfolioPage() {
                             />
                           ) : (
                             <div className="absolute inset-0 w-full h-full">
-                              {/* High-quality cover - if no separate cover exists, use a smart overlay */}
-                              <div className="absolute inset-0 bg-gradient-to-tr from-charcoal to-black/30 mix-blend-multiply z-10" />
-                              
-                              {/* Overlay Details */}
-                              {(project.category || project.title) && (
-                                <div className="absolute bottom-6 left-6 right-6 z-20 text-white pointer-events-none">
-                                  {project.category && <span className="text-ochre-light text-xs font-bold uppercase tracking-widest block mb-1">{project.category}</span>}
-                                  {project.title && <h3 className="text-xl md:text-2xl font-bold tracking-tight">{project.title}</h3>}
-                                </div>
-                              )}
-
                               {/* Elegant play button overlay */}
                               <button 
                                 onClick={() => setPlayingVideoId(project.id)}
-                                className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-cream hover:bg-ochre hover:text-white transition-all duration-300 flex items-center justify-center text-charcoal shadow-xl z-20 scale-95 group-hover:scale-100"
+                                className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-cream hover:bg-ochre hover:text-white transition-all duration-300 flex items-center justify-center text-charcoal shadow-xl z-20 scale-95 group-hover:scale-100 cursor-pointer"
+                                aria-label="Play video"
                               >
                                 <Play className="w-6 h-6 fill-current ml-1" />
                               </button>
@@ -331,7 +316,7 @@ export default function PortfolioPage() {
                               {getCloudinaryVideoPoster(project.image) ? (
                                 <img
                                   src={getCloudinaryVideoPoster(project.image)}
-                                  alt={project.title}
+                                  alt=""
                                   className="w-full h-full object-cover"
                                 />
                               ) : (
@@ -443,6 +428,16 @@ export default function PortfolioPage() {
           </div>
         </div>
       )}
+
+      {/* Staff Upload to Portfolio Modal */}
+      <PortfolioUploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onSuccess={() => {
+          setToast("Media successfully added to Portfolio!");
+          setTimeout(() => setToast(null), 4000);
+        }}
+      />
 
       <Footer />
     </div>

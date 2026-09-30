@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import DeleteClientModal from './DeleteClientModal';
 import { WorkerSkill } from '../types/hrms';
+import { createNotification } from '../services/notificationService';
 
 const SKILLS_LIST: WorkerSkill[] = [
   'Carpenter',
@@ -185,6 +186,16 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
         client: clientData,
         link: inviteUrl
       });
+
+      // Send in-app notification
+      createNotification({
+        userId: 'all_owners',
+        role: 'owner',
+        title: 'New Client Account Created',
+        body: `Client profile created for ${clientData.name} (@${cleanUsername}). Invite link ready to share.`,
+        link: '/admin?tab=users',
+        type: 'project'
+      }).catch(() => {});
 
       setNewClientForm({
         name: '',

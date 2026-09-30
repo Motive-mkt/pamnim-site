@@ -198,6 +198,14 @@ service cloud.firestore {
       allow create: if isValidInquiry(request.resource.data);
       allow read, update, delete: if isStaff();
     }
+
+    // In-App & Real-Time Notifications
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn();
+      allow create: if true;
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
     
     // Services & Materials Catalog (Owner / Staff access only)
     match /servicesMaterials/{itemId} {

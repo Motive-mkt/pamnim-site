@@ -7,6 +7,7 @@ import {
   MapPin, AlertCircle, Phone, Mail, User, Check, X, Loader2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { createNotification } from '../services/notificationService';
 
 export default function HeroContactForm() {
   const { content } = useCMS();
@@ -86,6 +87,17 @@ export default function HeroContactForm() {
       };
 
       await addDoc(collection(db, 'inquiries'), payload);
+
+      // Trigger owner notification
+      createNotification({
+        userId: 'all_owners',
+        role: 'owner',
+        title: 'New Contact Request',
+        body: `General inquiry from ${name.trim()} (${phone.trim() || email.trim()})`,
+        link: '/admin?tab=inquiries',
+        type: 'inquiry'
+      }).catch(() => {});
+
       setSubmittedType('general');
       setSubmitted(true);
     } catch (err: any) {
@@ -194,6 +206,16 @@ export default function HeroContactForm() {
       };
 
       await addDoc(collection(db, 'inquiries'), payload);
+
+      // Trigger owner notification
+      createNotification({
+        userId: 'all_owners',
+        role: 'owner',
+        title: 'New Project & Site Visit Request',
+        body: `${clientName} booked a site visit for ${siteVisitDate}. Location: ${locationAddress.trim()}`,
+        link: '/admin?tab=inquiries',
+        type: 'inquiry'
+      }).catch(() => {});
       
       // Update local hero fields to match submitted
       setName(clientName);

@@ -6,6 +6,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { auth } from '../lib/firebase';
 import { cn, getOptimizedImageUrl } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import NotificationCenter from './NotificationCenter';
 
 export interface NavItemConfig {
   id: string;
@@ -215,6 +216,9 @@ export default function AdminLayout({ children, activeTab, onTabChange, navItems
                 )}
               </button>
             )}
+
+            {/* Real-time Notification Center */}
+            <NotificationCenter />
 
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold text-charcoal">{profile?.name}</p>

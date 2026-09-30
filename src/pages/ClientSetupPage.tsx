@@ -7,6 +7,7 @@ import {
   Lock, Mail, User, MapPin, CheckCircle2, AlertCircle, 
   ArrowRight, Loader2, Sparkles, ShieldCheck 
 } from 'lucide-react';
+import { createNotification } from '../services/notificationService';
 
 export default function ClientSetupPage() {
   const [searchParams] = useSearchParams();
@@ -206,6 +207,16 @@ export default function ClientSetupPage() {
           console.warn('Note: Non-critical migration cleanup notice:', migrationErr);
         }
       }
+
+      // Notify owner & staff about account activation
+      createNotification({
+        userId: 'all_owners',
+        role: 'owner',
+        title: 'Client Account Activated',
+        body: `${name.trim()} has completed password setup and activated their client portal.`,
+        link: '/admin?tab=users',
+        type: 'project'
+      }).catch(() => {});
 
       setSuccess(true);
       setTimeout(() => {

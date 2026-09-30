@@ -4,6 +4,7 @@ import { collection, addDoc, onSnapshot, query, orderBy, doc, setDoc } from 'fir
 import { useAuth } from '../hooks/useAuth';
 import { Send, Tag, MessageSquare, User, Building, Clock, Paperclip } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { createNotification } from '../services/notificationService';
 
 interface ChatMessage {
   id: string;
@@ -96,6 +97,29 @@ export default function ProjectChat({
         lastUpdated: new Date().toISOString(),
         updatedBy: profile.name
       }, { merge: true });
+
+      // Send real-time notification
+      if (isStaff) {
+        // Staff messaged client
+        createNotification({
+          userId: clientId,
+          role: 'client',
+          title: `New message from ${profile.name || 'Pamnim Design Team'}`,
+          body: messageText,
+          link: '/client-portal?tab=chat',
+          type: 'chat'
+        }).catch(() => {});
+      } else {
+        // Client messaged studio
+        createNotification({
+          userId: 'all_staff',
+          role: 'owner',
+          title: `New message from client ${clientName || profile.name}`,
+          body: messageText,
+          link: `/admin?tab=chat`,
+          type: 'chat'
+        }).catch(() => {});
+      }
 
     } catch (err) {
       console.error('Error sending message:', err);

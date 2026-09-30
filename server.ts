@@ -8,7 +8,7 @@ import fs from "fs";
 import { initializeApp as initAdminApp, getApps as getAdminApps } from "firebase-admin/app";
 import { getAuth as getAdminAuth } from "firebase-admin/auth";
 import { initializeApp as initClientApp, getApps as getClientApps } from "firebase/app";
-import { getFirestore, doc, getDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
+import { getFirestore, doc, getDoc, deleteDoc, collection, getDocs, addDoc } from "firebase/firestore";
 
 dotenv.config();
 
@@ -72,6 +72,44 @@ async function startServer() {
   // API Routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
+  });
+
+  // Push & In-App Notification Dispatch Endpoint
+  app.post("/api/notifications/send", async (req, res) => {
+    try {
+      const { 
+        title, 
+        body, 
+        userId = "all_owners", 
+        role, 
+        link = "/admin", 
+        type = "system",
+        metadata = {} 
+      } = req.body;
+
+      if (!title) {
+        return res.status(400).json({ error: "Missing required notification title" });
+      }
+
+      const { db } = getBackendFirebase();
+      const notifPayload = {
+        title,
+        body: body || "",
+        userId,
+        role: role || "all",
+        link: link || "/admin",
+        type: type || "system",
+        metadata: metadata || {},
+        read: false,
+        createdAt: new Date().toISOString()
+      };
+
+      const docRef = await addDoc(collection(db, "notifications"), notifPayload);
+      return res.json({ success: true, id: docRef.id });
+    } catch (err: any) {
+      console.error("Error in /api/notifications/send:", err);
+      return res.status(500).json({ error: err.message || "Failed to dispatch notification" });
+    }
   });
 
   // Integrated Gemini Copywriter Assistant Endpoint

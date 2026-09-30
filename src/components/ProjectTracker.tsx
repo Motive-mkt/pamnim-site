@@ -8,6 +8,7 @@ import {
   AlertCircle, ChevronRight, Lock, MessageSquare, Play, Trash2, Edit3, ArrowRight, Upload
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { createNotification } from '../services/notificationService';
 
 export const STAGES = ['Started', 'In Progress', 'Almost Done', 'Complete'] as const;
 export type StageType = typeof STAGES[number];
@@ -118,6 +119,19 @@ export default function ProjectTracker({
         currentStageName: newStageName,
         updatedAt: new Date().toISOString()
       });
+
+      // Send milestone notification to client
+      if (project.clientId) {
+        createNotification({
+          userId: project.clientId,
+          role: 'client',
+          title: `Project Milestone: ${project.name}`,
+          body: `Stage updated to ${newStageName}. Check your progress tracker.`,
+          link: `/tracker/${project.id}`,
+          type: 'project'
+        }).catch(() => {});
+      }
+
       setShowStageConfirmModal(false);
       setPendingStageIndex(null);
       if (onProjectUpdated) onProjectUpdated();
@@ -209,6 +223,18 @@ export default function ProjectTracker({
           isFinished: true,
           updatedAt: new Date().toISOString()
         });
+      }
+
+      // Notify client about new progress media update
+      if (project.clientId) {
+        createNotification({
+          userId: project.clientId,
+          role: 'client',
+          title: `New Progress Photo: ${project.name}`,
+          body: noteText.trim() || 'A new on-site update was posted to your project tracker.',
+          link: `/tracker/${project.id}`,
+          type: 'project'
+        }).catch(() => {});
       }
 
       resetUploadState();
