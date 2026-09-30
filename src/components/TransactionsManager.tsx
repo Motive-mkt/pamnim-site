@@ -2,25 +2,30 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { collection, collectionGroup, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useCMS } from '../hooks/useCMS';
-import { PaymentReceipt } from '../types/documents';
+import { PaymentReceipt, SavedInvoice, SavedQuote } from '../types/documents';
 import { WorkerPayment } from '../types/hrms';
-import { generatePaymentReceiptPDF, formatMoney } from '../utils/pdfGenerator';
+import { generatePaymentReceiptPDF, generateDocumentPDF, formatMoney } from '../utils/pdfGenerator';
 import { 
   Receipt, Search, Filter, Download, ArrowUpDown, Calendar, 
   CreditCard, DollarSign, Wallet, Building2, User, RefreshCw, FileText, 
-  CheckCircle2, ArrowDownLeft, ArrowUpRight, HardHat, TrendingUp, TrendingDown
+  CheckCircle2, ArrowDownLeft, ArrowUpRight, HardHat, TrendingUp, TrendingDown,
+  FileSignature, Layers, Clock
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-export type TransactionType = 'client_payment' | 'worker_payout' | 'project_expense';
+export type TransactionType = 'client_payment' | 'worker_payout' | 'project_expense' | 'invoice' | 'quote';
 export type TransactionDirection = 'inflow' | 'outflow';
+export type DocumentFilterType = 'all' | 'invoices' | 'quotes' | 'receipts';
 
 export interface UnifiedTransaction {
   id: string;
   type: TransactionType;
+  docType: 'invoice' | 'quote' | 'receipt' | 'payout' | 'expense';
   direction: TransactionDirection; // 'inflow' (+) vs 'outflow' (-)
   date: string; // YYYY-MM-DD or ISO
   amount: number;
+  totalInvoiced?: number;
+  amountPaid?: number;
   partyName: string; // Client Name, Worker Name, or Vendor / Creator
   partyRole: 'Client' | 'Worker' | 'Site / Vendor';
   projectName?: string;
@@ -31,8 +36,11 @@ export interface UnifiedTransaction {
   notes?: string;
   recordedBy?: string;
   receiptData?: PaymentReceipt; // For client payments to generate official receipt PDF
+  rawInvoice?: SavedInvoice; // For generating official invoice PDF
+  rawQuote?: SavedQuote; // For generating official quote PDF
   balanceRemaining?: number;
   docNumber?: string;
+  status?: string;
   createdAt: string;
 }
 
@@ -41,6 +49,7 @@ export default function TransactionsManager() {
   const [transactions, setTransactions] = useState<UnifiedTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [docFilter, setDocFilter] = useState<DocumentFilterType>('all');
   const [selectedType, setSelectedType] = useState<'all' | TransactionType>('all');
   const [selectedDirection, setSelectedDirection] = useState<'all' | TransactionDirection>('all');
   const [selectedMethod, setSelectedMethod] = useState<string>('all');
@@ -97,6 +106,7 @@ export default function TransactionsManager() {
         unifiedList.push({
           id: `receipt_${r.id || r.receiptNumber}`,
           type: 'client_payment',
+          docType: 'receipt',
           direction: 'inflow',
           date: dateStr,
           amount: Number(r.amount) || 0,
@@ -115,6 +125,72 @@ export default function TransactionsManager() {
           createdAt: r.createdAt || dateStr
         });
       });
+
+      // 2. Fetch Invoices (Documents)
+      try {
+        const invSnap = await getDocs(collection(db, 'invoices'));
+        invSnap.docs.forEach((docSnap) => {
+          const invData = docSnap.data() as SavedInvoice;
+          const dateStr = invData.date || (invData.createdAt ? invData.createdAt.split('T')[0] : '');
+          unifiedList.push({
+            id: `inv_doc_${docSnap.id}`,
+            type: 'invoice',
+            docType: 'invoice',
+            direction: 'inflow',
+            date: dateStr,
+            amount: Number(invData.totalInvoiced) || 0,
+            totalInvoiced: Number(invData.totalInvoiced) || 0,
+            amountPaid: Number(invData.amountPaid) || 0,
+            partyName: invData.clientName || 'Client',
+            partyRole: 'Client',
+            projectName: invData.projectName,
+            projectId: invData.projectId,
+            paymentMethod: invData.selectedPaymentMethod || invData.paymentMethod || 'Invoice',
+            referenceCode: invData.docNumber || '—',
+            category: `Invoice (${invData.status || 'sent'})`,
+            notes: invData.notes || '',
+            recordedBy: invData.createdBy || 'Pamnim Finance',
+            balanceRemaining: invData.balanceDue,
+            docNumber: invData.docNumber,
+            status: invData.status,
+            rawInvoice: { id: docSnap.id, ...invData },
+            createdAt: invData.createdAt || dateStr
+          });
+        });
+      } catch (invErr) {
+        console.warn('Error reading invoices for transactions:', invErr);
+      }
+
+      // 3. Fetch Quotes (Documents)
+      try {
+        const qSnap = await getDocs(collection(db, 'quotes'));
+        qSnap.docs.forEach((docSnap) => {
+          const qData = docSnap.data() as SavedQuote;
+          const dateStr = qData.date || (qData.createdAt ? qData.createdAt.split('T')[0] : '');
+          unifiedList.push({
+            id: `quote_doc_${docSnap.id}`,
+            type: 'quote',
+            docType: 'quote',
+            direction: 'inflow',
+            date: dateStr,
+            amount: Number(qData.subtotal) || 0,
+            partyName: qData.clientName || 'Client',
+            partyRole: 'Client',
+            projectName: qData.projectName,
+            paymentMethod: 'Quote',
+            referenceCode: qData.docNumber || '—',
+            category: `Quote (${qData.status || 'draft'})`,
+            notes: qData.notes || '',
+            recordedBy: qData.createdBy || 'Pamnim Design',
+            docNumber: qData.docNumber,
+            status: qData.status,
+            rawQuote: { id: docSnap.id, ...qData },
+            createdAt: qData.createdAt || dateStr
+          });
+        });
+      } catch (qErr) {
+        console.warn('Error reading quotes for transactions:', qErr);
+      }
 
       // 2. Fetch Worker Payments (HRMS Labor Payouts - Outflow)
       const knownWagePayoutKeys = new Set<string>();
@@ -136,6 +212,7 @@ export default function TransactionsManager() {
           unifiedList.push({
             id: `wp_${d.id}`,
             type: 'worker_payout',
+            docType: 'payout',
             direction: 'outflow',
             date: dateStr,
             amount: amt,
@@ -214,6 +291,7 @@ export default function TransactionsManager() {
               unifiedList.push({
                 id: `exp_${pDoc.id}_${eDoc.id}`,
                 type: 'project_expense',
+                docType: 'expense',
                 direction: 'outflow',
                 date: dateStr,
                 amount: amt,
@@ -265,7 +343,12 @@ export default function TransactionsManager() {
     const thisYearStr = todayStr.slice(0, 4);
 
     return transactions.filter(t => {
-      // Type match
+      // Document Type Filter: Invoices, Quotes, Receipts, or All (Unfiltered)
+      if (docFilter === 'invoices' && t.docType !== 'invoice') return false;
+      if (docFilter === 'quotes' && t.docType !== 'quote') return false;
+      if (docFilter === 'receipts' && t.docType !== 'receipt') return false;
+
+      // Type match (when 'all' documents is selected)
       if (selectedType !== 'all' && t.type !== selectedType) {
         return false;
       }
@@ -305,7 +388,16 @@ export default function TransactionsManager() {
 
       return true;
     });
-  }, [transactions, selectedType, selectedDirection, searchQuery, selectedMethod, timeFilter]);
+  }, [transactions, docFilter, selectedType, selectedDirection, searchQuery, selectedMethod, timeFilter]);
+
+  // Document Counts by Type
+  const docCounts = useMemo(() => {
+    const all = transactions.length;
+    const invoices = transactions.filter(t => t.docType === 'invoice').length;
+    const quotes = transactions.filter(t => t.docType === 'quote').length;
+    const receipts = transactions.filter(t => t.docType === 'receipt').length;
+    return { all, invoices, quotes, receipts };
+  }, [transactions]);
 
   // Financial Statistics
   const stats = useMemo(() => {
@@ -316,10 +408,28 @@ export default function TransactionsManager() {
     let laborOutflow = 0;
     let siteExpenseOutflow = 0;
 
+    let totalInvoiced = 0;
+    let totalInvoicesPaid = 0;
+    let totalInvoicesBalanceDue = 0;
+
+    let totalQuotesValue = 0;
+    let acceptedQuotesValue = 0;
+
     filteredTransactions.forEach(t => {
+      if (t.docType === 'invoice') {
+        totalInvoiced += t.amount;
+        totalInvoicesPaid += (t.amountPaid || 0);
+        totalInvoicesBalanceDue += (t.balanceRemaining ?? Math.max(0, t.amount - (t.amountPaid || 0)));
+      } else if (t.docType === 'quote') {
+        totalQuotesValue += t.amount;
+        if (t.status === 'accepted') {
+          acceptedQuotesValue += t.amount;
+        }
+      }
+
       if (t.direction === 'inflow') {
         inflow += t.amount;
-        const m = t.paymentMethod.toLowerCase();
+        const m = (t.paymentMethod || '').toLowerCase();
         if (m.includes('mpesa') || m.includes('m-pesa')) mpesaInflow += t.amount;
         else if (m.includes('bank')) bankInflow += t.amount;
       } else {
@@ -337,14 +447,19 @@ export default function TransactionsManager() {
       mpesaInflow,
       bankInflow,
       laborOutflow,
-      siteExpenseOutflow
+      siteExpenseOutflow,
+      totalInvoiced,
+      totalInvoicesPaid,
+      totalInvoicesBalanceDue,
+      totalQuotesValue,
+      acceptedQuotesValue
     };
   }, [filteredTransactions]);
 
-  // Counts by Type
+  // Counts by Type for sub-pills
   const counts = useMemo(() => {
     const all = transactions.length;
-    const clientPayments = transactions.filter(t => t.type === 'client_payment').length;
+    const clientPayments = transactions.filter(t => t.type === 'client_payment' || t.docType === 'receipt').length;
     const workerPayouts = transactions.filter(t => t.type === 'worker_payout').length;
     const siteExpenses = transactions.filter(t => t.type === 'project_expense').length;
     return { all, clientPayments, workerPayouts, siteExpenses };
@@ -378,6 +493,88 @@ export default function TransactionsManager() {
     } catch (err) {
       console.error('Failed to generate receipt PDF:', err);
       alert('Could not generate receipt PDF. Please try again.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const handleDownloadInvoicePDF = async (inv: SavedInvoice) => {
+    try {
+      setDownloadingId(inv.id || inv.docNumber);
+      const invoiceData = {
+        docNumber: inv.docNumber,
+        date: inv.date,
+        dueDate: inv.dueDate,
+        clientName: inv.clientName || 'Client',
+        clientEmail: inv.clientEmail,
+        clientPhone: inv.clientPhone,
+        clientAddress: inv.clientAddress,
+        projectName: inv.projectName,
+        items: (inv.items || []).map((i: any) => ({
+          id: i.id || Math.random().toString(),
+          description: i.unit ? `${i.description || i.name} (${i.quantity} ${i.unit})` : (i.description || i.name || 'Item'),
+          quantity: Number(i.quantity) || 1,
+          unitPrice: Number(i.unitPrice) || 0,
+          amount: Number(i.amount) || ((Number(i.quantity) || 1) * (Number(i.unitPrice) || 0))
+        })),
+        subtotal: inv.subtotal || inv.totalInvoiced || 0,
+        discount: inv.discount,
+        taxAmount: inv.taxAmount,
+        total: inv.totalInvoiced || 0,
+        amountPaid: inv.amountPaid || 0,
+        balanceDue: inv.balanceDue ?? ((inv.totalInvoiced || 0) - (inv.amountPaid || 0)),
+        notes: inv.notes || '',
+        status: inv.status,
+        companyInfo: {
+          name: 'Pamnim Interior Designers',
+          address: content.contact?.address || 'Nairobi, Kenya',
+          phone: content.contact?.phone || '+254 714 984 268',
+          email: content.contact?.email || 'hinteriors01@gmail.com'
+        }
+      };
+      await generateDocumentPDF('invoice', invoiceData);
+    } catch (err) {
+      console.error('Failed to generate invoice PDF:', err);
+      alert('Could not generate invoice PDF. Please try again.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const handleDownloadQuotePDF = async (qt: SavedQuote) => {
+    try {
+      setDownloadingId(qt.id || qt.docNumber);
+      const quoteData = {
+        docNumber: qt.docNumber,
+        date: qt.date,
+        validUntil: qt.validUntil,
+        clientName: qt.clientName || 'Client',
+        clientEmail: qt.clientEmail,
+        clientPhone: qt.clientPhone,
+        clientAddress: qt.clientAddress,
+        projectName: qt.projectName,
+        items: (qt.items || []).map((i: any) => ({
+          id: i.id || Math.random().toString(),
+          description: i.unit ? `${i.description || i.name} (${i.quantity} ${i.unit})` : (i.description || i.name || 'Item'),
+          quantity: Number(i.quantity) || 1,
+          unitPrice: Number(i.unitPrice) || 0,
+          amount: Number(i.amount) || ((Number(i.quantity) || 1) * (Number(i.unitPrice) || 0))
+        })),
+        subtotal: qt.subtotal || 0,
+        total: qt.subtotal || 0,
+        notes: qt.notes || '',
+        status: qt.status,
+        companyInfo: {
+          name: 'Pamnim Interior Designers',
+          address: content.contact?.address || 'Nairobi, Kenya',
+          phone: content.contact?.phone || '+254 714 984 268',
+          email: content.contact?.email || 'hinteriors01@gmail.com'
+        }
+      };
+      await generateDocumentPDF('quote', quoteData);
+    } catch (err) {
+      console.error('Failed to generate quote PDF:', err);
+      alert('Could not generate quote PDF. Please try again.');
     } finally {
       setDownloadingId(null);
     }
@@ -432,16 +629,16 @@ export default function TransactionsManager() {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2.5">
             <Receipt className="w-6 h-6 text-ochre" />
-            <span>Unified Transactions & Cash Ledger</span>
+            <span>Transactions, Invoices & Cash Ledger</span>
           </h2>
           <p className="text-xs sm:text-sm text-charcoal/60 mt-1">
-            Consolidated real-time ledger merging customer invoice payments, worker wage payouts, and project site expenses.
+            Consolidated real-time ledger merging customer invoices, quotes, payment receipts, artisan payouts, and site expenses.
           </p>
         </div>
 
@@ -465,146 +662,307 @@ export default function TransactionsManager() {
         </div>
       </div>
 
-      {/* Financial Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Inflow (Revenue) */}
-        <div className="p-5 rounded-2xl bg-white border border-emerald-200/80 shadow-sm space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Total Inflow (Income)</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <ArrowDownLeft className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-xl sm:text-2xl font-black font-mono text-emerald-700">
-            KES {formatMoney(stats.inflow)}
-          </div>
-          <p className="text-[11px] text-charcoal/50">
-            Client invoice payments & receipts
-          </p>
-        </div>
-
-        {/* Total Outflow (Expenses + Wages) */}
-        <div className="p-5 rounded-2xl bg-white border border-rose-200/80 shadow-sm space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-800">Total Outflow (Expenses)</span>
-            <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
-              <ArrowUpRight className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-xl sm:text-2xl font-black font-mono text-rose-700">
-            KES {formatMoney(stats.outflow)}
-          </div>
-          <div className="flex items-center gap-2 text-[10px] text-charcoal/50">
-            <span>Labor: KES {formatMoney(stats.laborOutflow)}</span>
-            <span>•</span>
-            <span>Site: KES {formatMoney(stats.siteExpenseOutflow)}</span>
-          </div>
-        </div>
-
-        {/* Net Cash Position */}
-        <div className={cn(
-          "p-5 rounded-2xl border shadow-sm space-y-2",
-          stats.netCash >= 0 ? "bg-emerald-50/40 border-emerald-300" : "bg-red-50/40 border-red-300"
-        )}>
-          <div className="flex items-center justify-between">
-            <span className={cn(
-              "text-[11px] font-bold uppercase tracking-wider",
-              stats.netCash >= 0 ? "text-emerald-900" : "text-red-900"
-            )}>
-              Net Cash Position
-            </span>
-            <div className={cn(
-              "w-8 h-8 rounded-xl flex items-center justify-center",
-              stats.netCash >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
-            )}>
-              {stats.netCash >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-            </div>
-          </div>
-          <div className={cn(
-            "text-xl sm:text-2xl font-black font-mono",
-            stats.netCash >= 0 ? "text-emerald-800" : "text-red-700"
+      {/* PART 3: Primary Document Filter Control (Invoices / Quotes / Receipts / All) */}
+      <div className="bg-white p-2 rounded-2xl border border-charcoal/10 shadow-sm flex items-center gap-1.5 overflow-x-auto">
+        <button
+          type="button"
+          onClick={() => {
+            setDocFilter('all');
+            setSelectedType('all');
+          }}
+          className={cn(
+            "px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer",
+            docFilter === 'all'
+              ? "bg-charcoal text-white shadow-sm"
+              : "text-charcoal/70 hover:bg-cream hover:text-charcoal"
+          )}
+        >
+          <Layers className="w-4 h-4" />
+          <span>All Documents & Ledger</span>
+          <span className={cn(
+            "text-[10px] px-2 py-0.5 rounded-full font-bold",
+            docFilter === 'all' ? "bg-white/20 text-white" : "bg-charcoal/10 text-charcoal/70"
           )}>
-            {stats.netCash >= 0 ? `+KES ${formatMoney(stats.netCash)}` : `-KES ${formatMoney(Math.abs(stats.netCash))}`}
-          </div>
-          <p className="text-[11px] text-charcoal/60">
-            Inflow minus Outflow across all records
-          </p>
-        </div>
+            {docCounts.all}
+          </span>
+        </button>
 
-        {/* M-Pesa Collections */}
-        <div className="p-5 rounded-2xl bg-white border border-charcoal/10 shadow-sm space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/50">M-Pesa Inflow</span>
-            <div className="w-8 h-8 rounded-xl bg-green-50 text-green-700 flex items-center justify-center font-bold text-xs">
-              M
+        <button
+          type="button"
+          onClick={() => {
+            setDocFilter('invoices');
+            setSelectedType('all');
+          }}
+          className={cn(
+            "px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer",
+            docFilter === 'invoices'
+              ? "bg-blue-600 text-white shadow-sm"
+              : "text-charcoal/70 hover:bg-blue-50 hover:text-blue-700"
+          )}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Invoices</span>
+          <span className={cn(
+            "text-[10px] px-2 py-0.5 rounded-full font-bold",
+            docFilter === 'invoices' ? "bg-white/20 text-white" : "bg-blue-100 text-blue-800"
+          )}>
+            {docCounts.invoices}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setDocFilter('quotes');
+            setSelectedType('all');
+          }}
+          className={cn(
+            "px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer",
+            docFilter === 'quotes'
+              ? "bg-amber-600 text-white shadow-sm"
+              : "text-charcoal/70 hover:bg-amber-50 hover:text-amber-700"
+          )}
+        >
+          <FileSignature className="w-4 h-4" />
+          <span>Quotes</span>
+          <span className={cn(
+            "text-[10px] px-2 py-0.5 rounded-full font-bold",
+            docFilter === 'quotes' ? "bg-white/20 text-white" : "bg-amber-100 text-amber-800"
+          )}>
+            {docCounts.quotes}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setDocFilter('receipts');
+            setSelectedType('all');
+          }}
+          className={cn(
+            "px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer",
+            docFilter === 'receipts'
+              ? "bg-emerald-600 text-white shadow-sm"
+              : "text-charcoal/70 hover:bg-emerald-50 hover:text-emerald-700"
+          )}
+        >
+          <Receipt className="w-4 h-4" />
+          <span>Receipts</span>
+          <span className={cn(
+            "text-[10px] px-2 py-0.5 rounded-full font-bold",
+            docFilter === 'receipts' ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-800"
+          )}>
+            {docCounts.receipts}
+          </span>
+        </button>
+      </div>
+
+      {/* Dynamic Financial Summary Cards tailored to the active filter */}
+      {docFilter === 'invoices' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-5 rounded-2xl bg-white border border-blue-200 shadow-sm space-y-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-blue-800">Total Invoiced</span>
+            <div className="text-xl sm:text-2xl font-black font-mono text-blue-700">
+              KES {formatMoney(stats.totalInvoiced)}
+            </div>
+            <p className="text-[11px] text-charcoal/50">Across {docCounts.invoices} invoices</p>
+          </div>
+          <div className="p-5 rounded-2xl bg-white border border-emerald-200 shadow-sm space-y-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Amount Collected</span>
+            <div className="text-xl sm:text-2xl font-black font-mono text-emerald-700">
+              KES {formatMoney(stats.totalInvoicesPaid)}
+            </div>
+            <p className="text-[11px] text-charcoal/50">Paid against invoices</p>
+          </div>
+          <div className="p-5 rounded-2xl bg-white border border-amber-200 shadow-sm space-y-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">Outstanding Balance Due</span>
+            <div className="text-xl sm:text-2xl font-black font-mono text-amber-700">
+              KES {formatMoney(stats.totalInvoicesBalanceDue)}
+            </div>
+            <p className="text-[11px] text-charcoal/50">Awaiting client payment</p>
+          </div>
+          <div className="p-5 rounded-2xl bg-white border border-charcoal/10 shadow-sm space-y-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/60">Total Invoices</span>
+            <div className="text-xl sm:text-2xl font-black font-mono text-charcoal">
+              {docCounts.invoices}
+            </div>
+            <p className="text-[11px] text-charcoal/50">Official billing records</p>
+          </div>
+        </div>
+      ) : docFilter === 'quotes' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-5 rounded-2xl bg-white border border-amber-200 shadow-sm space-y-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">Total Quoted Value</span>
+            <div className="text-xl sm:text-2xl font-black font-mono text-amber-700">
+              KES {formatMoney(stats.totalQuotesValue)}
+            </div>
+            <p className="text-[11px] text-charcoal/50">Across {docCounts.quotes} quotes</p>
+          </div>
+          <div className="p-5 rounded-2xl bg-white border border-emerald-200 shadow-sm space-y-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Accepted Quotes</span>
+            <div className="text-xl sm:text-2xl font-black font-mono text-emerald-700">
+              KES {formatMoney(stats.acceptedQuotesValue)}
+            </div>
+            <p className="text-[11px] text-charcoal/50">Client approved proposals</p>
+          </div>
+          <div className="p-5 rounded-2xl bg-white border border-blue-200 shadow-sm space-y-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-blue-800">Pending / Sent</span>
+            <div className="text-xl sm:text-2xl font-black font-mono text-blue-700">
+              KES {formatMoney(Math.max(0, stats.totalQuotesValue - stats.acceptedQuotesValue))}
+            </div>
+            <p className="text-[11px] text-charcoal/50">Awaiting client decision</p>
+          </div>
+          <div className="p-5 rounded-2xl bg-white border border-charcoal/10 shadow-sm space-y-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/60">Total Quotes</span>
+            <div className="text-xl sm:text-2xl font-black font-mono text-charcoal">
+              {docCounts.quotes}
+            </div>
+            <p className="text-[11px] text-charcoal/50">Generated estimates</p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Total Inflow (Revenue) */}
+          <div className="p-5 rounded-2xl bg-white border border-emerald-200/80 shadow-sm space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Total Inflow (Income)</span>
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <ArrowDownLeft className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-xl sm:text-2xl font-black font-mono text-emerald-700">
+              KES {formatMoney(stats.inflow)}
+            </div>
+            <p className="text-[11px] text-charcoal/50">
+              Client invoice payments & receipts
+            </p>
+          </div>
+
+          {/* Total Outflow (Expenses + Wages) */}
+          <div className="p-5 rounded-2xl bg-white border border-rose-200/80 shadow-sm space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-rose-800">Total Outflow (Expenses)</span>
+              <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                <ArrowUpRight className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-xl sm:text-2xl font-black font-mono text-rose-700">
+              KES {formatMoney(stats.outflow)}
+            </div>
+            <div className="flex items-center gap-2 text-[10px] text-charcoal/50">
+              <span>Labor: KES {formatMoney(stats.laborOutflow)}</span>
+              <span>•</span>
+              <span>Site: KES {formatMoney(stats.siteExpenseOutflow)}</span>
             </div>
           </div>
-          <div className="text-xl sm:text-2xl font-black font-mono text-green-700">
-            KES {formatMoney(stats.mpesaInflow)}
+
+          {/* Net Cash Position */}
+          <div className={cn(
+            "p-5 rounded-2xl border shadow-sm space-y-2",
+            stats.netCash >= 0 ? "bg-emerald-50/40 border-emerald-300" : "bg-red-50/40 border-red-300"
+          )}>
+            <div className="flex items-center justify-between">
+              <span className={cn(
+                "text-[11px] font-bold uppercase tracking-wider",
+                stats.netCash >= 0 ? "text-emerald-900" : "text-red-900"
+              )}>
+                Net Cash Position
+              </span>
+              <div className={cn(
+                "w-8 h-8 rounded-xl flex items-center justify-center",
+                stats.netCash >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
+              )}>
+                {stats.netCash >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+              </div>
+            </div>
+            <div className={cn(
+              "text-xl sm:text-2xl font-black font-mono",
+              stats.netCash >= 0 ? "text-emerald-800" : "text-red-700"
+            )}>
+              {stats.netCash >= 0 ? `+KES ${formatMoney(stats.netCash)}` : `-KES ${formatMoney(Math.abs(stats.netCash))}`}
+            </div>
+            <p className="text-[11px] text-charcoal/60">
+              Inflow minus Outflow across all records
+            </p>
           </div>
-          <p className="text-[11px] text-charcoal/40">Bank Inflow: KES {formatMoney(stats.bankInflow)}</p>
+
+          {/* M-Pesa Collections */}
+          <div className="p-5 rounded-2xl bg-white border border-charcoal/10 shadow-sm space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/50">M-Pesa Inflow</span>
+              <div className="w-8 h-8 rounded-xl bg-green-50 text-green-700 flex items-center justify-center font-bold text-xs">
+                M
+              </div>
+            </div>
+            <div className="text-xl sm:text-2xl font-black font-mono text-green-700">
+              KES {formatMoney(stats.mpesaInflow)}
+            </div>
+            <p className="text-[11px] text-charcoal/40">Bank Inflow: KES {formatMoney(stats.bankInflow)}</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Transaction Type Tabs & Filters */}
       <div className="space-y-3">
-        {/* Navigation Tabs */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-charcoal/10 pb-3">
-          <button
-            type="button"
-            onClick={() => setSelectedType('all')}
-            className={cn(
-              "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
-              selectedType === 'all' 
-                ? "bg-charcoal text-white shadow-xs" 
-                : "bg-cream/60 text-charcoal/70 hover:bg-cream hover:text-charcoal"
-            )}
-          >
-            All Transactions ({counts.all})
-          </button>
+        {/* Navigation Sub-Tabs */}
+        {docFilter === 'all' && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-charcoal/10 pb-3">
+            <button
+              type="button"
+              onClick={() => setSelectedType('all')}
+              className={cn(
+                "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                selectedType === 'all' 
+                  ? "bg-charcoal text-white shadow-xs" 
+                  : "bg-cream/60 text-charcoal/70 hover:bg-cream hover:text-charcoal"
+              )}
+            >
+              All Records ({counts.all})
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setSelectedType('client_payment')}
-            className={cn(
-              "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
-              selectedType === 'client_payment' 
-                ? "bg-emerald-700 text-white shadow-xs" 
-                : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-            )}
-          >
-            <ArrowDownLeft className="w-3.5 h-3.5" />
-            <span>Client Payments ({counts.clientPayments})</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setSelectedType('client_payment')}
+              className={cn(
+                "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                selectedType === 'client_payment' 
+                  ? "bg-emerald-700 text-white shadow-xs" 
+                  : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+              )}
+            >
+              <ArrowDownLeft className="w-3.5 h-3.5" />
+              <span>Payments & Receipts ({counts.clientPayments})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setSelectedType('worker_payout')}
-            className={cn(
-              "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
-              selectedType === 'worker_payout' 
-                ? "bg-amber-700 text-white shadow-xs" 
-                : "bg-amber-50 text-amber-800 hover:bg-amber-100"
-            )}
-          >
-            <HardHat className="w-3.5 h-3.5" />
-            <span>Worker Wages ({counts.workerPayouts})</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setSelectedType('worker_payout')}
+              className={cn(
+                "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                selectedType === 'worker_payout' 
+                  ? "bg-amber-700 text-white shadow-xs" 
+                  : "bg-amber-50 text-amber-800 hover:bg-amber-100"
+              )}
+            >
+              <HardHat className="w-3.5 h-3.5" />
+              <span>Worker Wages ({counts.workerPayouts})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setSelectedType('project_expense')}
-            className={cn(
-              "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
-              selectedType === 'project_expense' 
-                ? "bg-purple-700 text-white shadow-xs" 
-                : "bg-purple-50 text-purple-800 hover:bg-purple-100"
-            )}
-          >
-            <ArrowUpRight className="w-3.5 h-3.5" />
-            <span>Project Site Expenses ({counts.siteExpenses})</span>
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => setSelectedType('project_expense')}
+              className={cn(
+                "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                selectedType === 'project_expense' 
+                  ? "bg-purple-700 text-white shadow-xs" 
+                  : "bg-purple-50 text-purple-800 hover:bg-purple-100"
+              )}
+            >
+              <ArrowUpRight className="w-3.5 h-3.5" />
+              <span>Project Site Expenses ({counts.siteExpenses})</span>
+            </button>
+          </div>
+        )}
 
         {/* Filter and Search Bar */}
         <div className="bg-white p-4 rounded-2xl border border-charcoal/10 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
@@ -613,7 +971,12 @@ export default function TransactionsManager() {
             <Search className="w-4 h-4 text-charcoal/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search receipt #, name, project, ref..."
+              placeholder={
+                docFilter === 'invoices' ? "Search invoice #, client, project..." :
+                docFilter === 'quotes' ? "Search quote #, client, project..." :
+                docFilter === 'receipts' ? "Search receipt #, client, ref..." :
+                "Search doc #, name, project, ref..."
+              }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-cream/40 border border-charcoal/10 rounded-xl text-xs focus:outline-none focus:border-ochre focus:bg-white"
@@ -623,35 +986,37 @@ export default function TransactionsManager() {
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-start md:justify-end">
             {/* Direction Filter */}
-            <div className="flex items-center gap-1 bg-cream/40 p-1 rounded-xl border border-charcoal/10 text-xs">
-              <button
-                onClick={() => setSelectedDirection('all')}
-                className={cn(
-                  "px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer",
-                  selectedDirection === 'all' ? "bg-white text-charcoal shadow-xs" : "text-charcoal/60 hover:text-charcoal"
-                )}
-              >
-                In / Out
-              </button>
-              <button
-                onClick={() => setSelectedDirection('inflow')}
-                className={cn(
-                  "px-2 py-1 rounded-lg font-bold transition-all cursor-pointer text-emerald-700",
-                  selectedDirection === 'inflow' ? "bg-white shadow-xs" : "hover:text-emerald-800"
-                )}
-              >
-                + Inflow
-              </button>
-              <button
-                onClick={() => setSelectedDirection('outflow')}
-                className={cn(
-                  "px-2 py-1 rounded-lg font-bold transition-all cursor-pointer text-rose-700",
-                  selectedDirection === 'outflow' ? "bg-white shadow-xs" : "hover:text-rose-800"
-                )}
-              >
-                - Outflow
-              </button>
-            </div>
+            {docFilter === 'all' && (
+              <div className="flex items-center gap-1 bg-cream/40 p-1 rounded-xl border border-charcoal/10 text-xs">
+                <button
+                  onClick={() => setSelectedDirection('all')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer",
+                    selectedDirection === 'all' ? "bg-white text-charcoal shadow-xs" : "text-charcoal/60 hover:text-charcoal"
+                  )}
+                >
+                  In / Out
+                </button>
+                <button
+                  onClick={() => setSelectedDirection('inflow')}
+                  className={cn(
+                    "px-2 py-1 rounded-lg font-bold transition-all cursor-pointer text-emerald-700",
+                    selectedDirection === 'inflow' ? "bg-white shadow-xs" : "hover:text-emerald-800"
+                  )}
+                >
+                  + Inflow
+                </button>
+                <button
+                  onClick={() => setSelectedDirection('outflow')}
+                  className={cn(
+                    "px-2 py-1 rounded-lg font-bold transition-all cursor-pointer text-rose-700",
+                    selectedDirection === 'outflow' ? "bg-white shadow-xs" : "hover:text-rose-800"
+                  )}
+                >
+                  - Outflow
+                </button>
+              </div>
+            )}
 
             {/* Method Filter */}
             <div className="flex items-center gap-1 bg-cream/40 p-1 rounded-xl border border-charcoal/10 text-xs">
@@ -732,24 +1097,33 @@ export default function TransactionsManager() {
         {loading ? (
           <div className="p-16 text-center text-charcoal/40 text-xs flex flex-col items-center justify-center gap-2">
             <RefreshCw className="w-5 h-5 animate-spin text-ochre" />
-            <span>Loading unified financial ledger...</span>
+            <span>Loading financial records...</span>
           </div>
         ) : filteredTransactions.length === 0 ? (
           <div className="p-16 text-center text-charcoal/40 text-xs space-y-2">
             <Receipt className="w-8 h-8 text-charcoal/20 mx-auto" />
-            <p className="font-bold text-charcoal/60">No financial transactions match your query.</p>
-            <p className="text-[11px]">When client payments, worker payouts, or site expenses are logged, they reflect here automatically.</p>
+            <p className="font-bold text-charcoal/60">
+              {docFilter === 'invoices' ? 'No invoices found.' :
+               docFilter === 'quotes' ? 'No quotes found.' :
+               docFilter === 'receipts' ? 'No receipts found.' :
+               'No financial records match your query.'}
+            </p>
+            <p className="text-[11px]">
+              {docFilter === 'invoices' ? 'Create an invoice from the Invoices tab to see it logged here.' :
+               docFilter === 'quotes' ? 'Create a quote from the Quotes tab to see it logged here.' :
+               'When invoices, quotes, receipts, or site expenses are logged, they reflect here automatically.'}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-charcoal text-white text-[11px] font-bold uppercase tracking-wider">
-                  <th className="p-3.5 pl-5">Type & Ref</th>
+                  <th className="p-3.5 pl-5">Document / Type</th>
                   <th className="p-3.5">Date</th>
-                  <th className="p-3.5">Party & Project</th>
-                  <th className="p-3.5">Category & Method</th>
-                  <th className="p-3.5">Reference Code</th>
+                  <th className="p-3.5">Client / Party & Project</th>
+                  <th className="p-3.5">Category & Status</th>
+                  <th className="p-3.5">Reference / Doc #</th>
                   <th className="p-3.5 text-right">Amount (KES)</th>
                   <th className="p-3.5 pr-5 text-right">Actions</th>
                 </tr>
@@ -762,28 +1136,40 @@ export default function TransactionsManager() {
 
                   return (
                     <tr key={t.id} className="hover:bg-cream/20 transition-all">
-                      {/* Type & Direction & DocNumber */}
+                      {/* Document Type & Direction */}
                       <td className="p-3.5 pl-5">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2.5">
                           <div className={cn(
-                            "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 font-bold",
-                            isInflow ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+                            "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 font-bold",
+                            t.docType === 'invoice' ? "bg-blue-50 text-blue-700" :
+                            t.docType === 'quote' ? "bg-amber-50 text-amber-700" :
+                            t.docType === 'receipt' ? "bg-emerald-50 text-emerald-700" :
+                            t.docType === 'payout' ? "bg-amber-50 text-amber-700" :
+                            "bg-purple-50 text-purple-700"
                           )}>
-                            {isInflow ? <ArrowDownLeft className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
+                            {t.docType === 'invoice' ? <FileText className="w-4 h-4" /> :
+                             t.docType === 'quote' ? <FileSignature className="w-4 h-4" /> :
+                             t.docType === 'receipt' ? <Receipt className="w-4 h-4" /> :
+                             t.docType === 'payout' ? <HardHat className="w-4 h-4" /> :
+                             <ArrowUpRight className="w-4 h-4" />}
                           </div>
                           <div>
                             <span className={cn(
                               "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full inline-block",
-                              t.type === 'client_payment' ? "bg-emerald-100 text-emerald-800" :
-                              t.type === 'worker_payout' ? "bg-amber-100 text-amber-800" :
+                              t.docType === 'invoice' ? "bg-blue-100 text-blue-800" :
+                              t.docType === 'quote' ? "bg-amber-100 text-amber-800" :
+                              t.docType === 'receipt' ? "bg-emerald-100 text-emerald-800" :
+                              t.docType === 'payout' ? "bg-amber-100 text-amber-800" :
                               "bg-purple-100 text-purple-800"
                             )}>
-                              {t.type === 'client_payment' ? 'Client Payment' :
-                               t.type === 'worker_payout' ? 'Worker Wage' :
+                              {t.docType === 'invoice' ? 'Invoice' :
+                               t.docType === 'quote' ? 'Quote' :
+                               t.docType === 'receipt' ? 'Receipt' :
+                               t.docType === 'payout' ? 'Worker Wage' :
                                'Site Expense'}
                             </span>
                             {t.docNumber && (
-                              <div className="font-mono text-[10px] text-charcoal/50 mt-0.5">
+                              <div className="font-mono font-bold text-[11px] text-charcoal mt-0.5">
                                 {t.docNumber}
                               </div>
                             )}
@@ -792,11 +1178,11 @@ export default function TransactionsManager() {
                       </td>
 
                       {/* Date */}
-                      <td className="p-3.5 text-charcoal/70 whitespace-nowrap">
+                      <td className="p-3.5 text-charcoal/70 whitespace-nowrap font-medium">
                         {t.date ? new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                       </td>
 
-                      {/* Party & Project */}
+                      {/* Client / Party & Project */}
                       <td className="p-3.5">
                         <div className="font-bold text-charcoal flex items-center gap-1.5">
                           <span>{t.partyName}</span>
@@ -809,15 +1195,27 @@ export default function TransactionsManager() {
                         )}
                       </td>
 
-                      {/* Category & Method */}
+                      {/* Category & Status */}
                       <td className="p-3.5">
                         <div className="font-semibold text-charcoal">{t.category}</div>
-                        <span className={cn(
-                          "inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded-full mt-0.5",
-                          isMpesa ? "bg-green-100 text-green-800" : isBank ? "bg-blue-100 text-blue-800" : "bg-charcoal/10 text-charcoal"
-                        )}>
-                          {t.paymentMethod || 'Payment'}
-                        </span>
+                        {t.status ? (
+                          <span className={cn(
+                            "inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded-full mt-0.5",
+                            t.status === 'paid' || t.status === 'accepted' ? "bg-emerald-100 text-emerald-800" :
+                            t.status === 'partial' ? "bg-amber-100 text-amber-800" :
+                            t.status === 'sent' ? "bg-blue-100 text-blue-800" :
+                            "bg-charcoal/10 text-charcoal/70"
+                          )}>
+                            {t.status}
+                          </span>
+                        ) : (
+                          <span className={cn(
+                            "inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded-full mt-0.5",
+                            isMpesa ? "bg-green-100 text-green-800" : isBank ? "bg-blue-100 text-blue-800" : "bg-charcoal/10 text-charcoal"
+                          )}>
+                            {t.paymentMethod || 'Record'}
+                          </span>
+                        )}
                       </td>
 
                       {/* Reference Code */}
@@ -831,29 +1229,58 @@ export default function TransactionsManager() {
                         )}
                       </td>
 
-                      {/* Amount (KES) with Inflow (+) / Outflow (-) color styling */}
+                      {/* Amount (KES) */}
                       <td className="p-3.5 text-right font-mono font-bold whitespace-nowrap">
                         <span className={cn(
                           "text-sm font-black",
+                          t.docType === 'invoice' ? "text-blue-700" :
+                          t.docType === 'quote' ? "text-amber-700" :
                           isInflow ? "text-emerald-700" : "text-rose-600"
                         )}>
-                          {isInflow ? '+' : '−'} KES {formatMoney(t.amount)}
+                          {t.docType === 'invoice' || t.docType === 'quote' ? '' : (isInflow ? '+' : '−')} KES {formatMoney(t.amount)}
                         </span>
                         {typeof t.balanceRemaining === 'number' && (
-                          <div className="text-[10px] text-charcoal/40 font-normal">
-                            Rem: KES {formatMoney(t.balanceRemaining)}
+                          <div className="text-[10px] text-charcoal/50 font-normal">
+                            Bal: KES {formatMoney(t.balanceRemaining)}
+                          </div>
+                        )}
+                        {typeof t.amountPaid === 'number' && t.amountPaid > 0 && (
+                          <div className="text-[10px] text-emerald-600 font-normal">
+                            Paid: KES {formatMoney(t.amountPaid)}
                           </div>
                         )}
                       </td>
 
                       {/* Actions */}
                       <td className="p-3.5 pr-5 text-right whitespace-nowrap">
-                        {t.receiptData ? (
+                        {t.rawInvoice ? (
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadInvoicePDF(t.rawInvoice!)}
+                            disabled={downloadingId === (t.rawInvoice.id || t.docNumber)}
+                            className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold inline-flex items-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                            title="Download Official Invoice PDF"
+                          >
+                            <Download className="w-3 h-3" />
+                            <span>{downloadingId === (t.rawInvoice.id || t.docNumber) ? 'PDF...' : 'Invoice PDF'}</span>
+                          </button>
+                        ) : t.rawQuote ? (
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadQuotePDF(t.rawQuote!)}
+                            disabled={downloadingId === (t.rawQuote.id || t.docNumber)}
+                            className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold inline-flex items-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                            title="Download Official Quote PDF"
+                          >
+                            <Download className="w-3 h-3" />
+                            <span>{downloadingId === (t.rawQuote.id || t.docNumber) ? 'PDF...' : 'Quote PDF'}</span>
+                          </button>
+                        ) : t.receiptData ? (
                           <button
                             type="button"
                             onClick={() => handleDownloadPDF(t.receiptData!)}
                             disabled={downloadingId === (t.receiptData.id || t.receiptData.receiptNumber)}
-                            className="px-3 py-1.5 rounded-xl bg-charcoal hover:bg-ochre text-white text-[11px] font-bold inline-flex items-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold inline-flex items-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-50"
                             title="Download Official Receipt PDF"
                           >
                             <Download className="w-3 h-3" />

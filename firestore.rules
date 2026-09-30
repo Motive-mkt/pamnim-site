@@ -212,6 +212,11 @@ service cloud.firestore {
       allow read, write: if isStaff();
     }
 
+    // Reusable Saved Payment Details (Owner / Staff access only)
+    match /savedPaymentDetails/{detailId} {
+      allow read, write: if isStaff();
+    }
+
     // Invoices & Quotes Archives (Staff manage, clients read their own invoices & payment receipts)
     match /invoices/{invoiceId} {
       allow read: if isStaff() || (isSignedIn() && resource.data.clientId == request.auth.uid);

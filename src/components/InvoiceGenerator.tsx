@@ -8,13 +8,16 @@ import { useCMS } from '../hooks/useCMS';
 import { 
   Plus, Trash2, Download, FileText, Sparkles, Building2, User, Phone, Mail, 
   DollarSign, Calendar, CheckCircle2, Layers, AlertCircle, RefreshCw, Briefcase,
-  CreditCard, Check, ArrowRight, Save, History, X, Share2, Lock, HelpCircle
+  CreditCard, Check, ArrowRight, Save, History, X, Share2, Lock, HelpCircle,
+  Bookmark, ListFilter, BookmarkCheck
 } from 'lucide-react';
 import { generateDocumentPDF, shareDocumentPDF, formatMoney, PDFLineItem } from '../utils/pdfGenerator';
 import { cn } from '../lib/utils';
 import CatalogManagerModal from './CatalogManagerModal';
 import CatalogAutocomplete from './CatalogAutocomplete';
 import SavedInvoicesList from './SavedInvoicesList';
+import SavedPaymentDetailsModal from './SavedPaymentDetailsModal';
+import { subscribeToSavedPaymentDetails, SavedPaymentDetail } from '../services/paymentDetailsService';
 import { CatalogItem } from '../types/catalog';
 import { SavedInvoice, InvoiceStatus, InvoiceMode, RecipientType, InvoiceLineItem, Lead } from '../types/documents';
 
@@ -90,6 +93,11 @@ export default function InvoiceGenerator() {
   const [paymentMethodSelection, setPaymentMethodSelection] = useState<'bank' | 'mpesa' | 'cash' | 'cheque' | 'all'>('all');
   const [notes, setNotes] = useState('');
 
+  // Reusable Saved Payment Details Presets
+  const [savedPaymentEntries, setSavedPaymentEntries] = useState<SavedPaymentDetail[]>([]);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentModalMode, setPaymentModalMode] = useState<'preserve' | 'manage'>('preserve');
+
   // Catalog State for Inline Picker
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
@@ -129,6 +137,14 @@ export default function InvoiceGenerator() {
   useEffect(() => {
     setNotes(getPaymentInstructions(paymentMethodSelection));
   }, [paymentMethodSelection, content?.contact?.paymentDetailsByMethod]);
+
+  // Subscribe to Reusable Saved Payment Details
+  useEffect(() => {
+    const unsub = subscribeToSavedPaymentDetails((entries) => {
+      setSavedPaymentEntries(entries);
+    });
+    return () => unsub();
+  }, []);
 
   // 1. Fetch Registered Clients
   useEffect(() => {
@@ -1373,52 +1389,129 @@ export default function InvoiceGenerator() {
             </div>
           </div>
 
-          {/* 4. Payment Details & Terms (Powered by Settings) */}
+          {/* 4. Payment Details & Terms (Preserve & Reusable Presets) */}
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-charcoal/10 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-charcoal/10 pb-4">
               <div>
                 <h4 className="text-base font-bold text-charcoal flex items-center gap-2">
                   <CreditCard className="w-4 h-4 text-ochre" />
-                  <span>Payment Instructions (Managed from Settings)</span>
+                  <span>Payment Instructions & Bank/M-Pesa Details</span>
                 </h4>
                 <p className="text-xs text-charcoal/50">
-                  Pulls saved payment methods automatically without re-typing per invoice.
+                  Select a saved preset or type new instructions and click "Preserve Payment Details" to save for future invoices.
                 </p>
               </div>
 
-              {/* Method Selector Pills */}
-              <div className="flex items-center gap-1 bg-cream/70 p-1 rounded-2xl border border-charcoal/10 flex-wrap">
-                {(['all', 'bank', 'mpesa', 'cash', 'cheque'] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setPaymentMethodSelection(m)}
-                    className={cn(
-                      "px-2.5 py-1 rounded-xl text-[11px] font-bold capitalize transition-all cursor-pointer",
-                      paymentMethodSelection === m
-                        ? "bg-white text-charcoal shadow-xs"
-                        : "text-charcoal/60 hover:text-charcoal"
-                    )}
-                  >
-                    {m === 'all' ? 'All Methods' : m}
-                  </button>
-                ))}
+              {/* Action Buttons: Preserve & Manage */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentModalMode('preserve');
+                    setIsPaymentModalOpen(true);
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                  title="Save current instructions as a reusable preset"
+                >
+                  <Bookmark className="w-3.5 h-3.5" />
+                  <span>Preserve Payment Details</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentModalMode('manage');
+                    setIsPaymentModalOpen(true);
+                  }}
+                  className="px-3 py-1.5 rounded-xl border border-charcoal/15 bg-cream/50 hover:bg-cream text-charcoal text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                  title="Manage saved payment details"
+                >
+                  <ListFilter className="w-3.5 h-3.5 text-charcoal/60" />
+                  <span>Manage Saved ({savedPaymentEntries.length})</span>
+                </button>
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal/60 mb-1.5">
-                Invoice Payment Terms & Bank/M-Pesa Note
-              </label>
+            {/* Quick Auto-Fill Chips from Saved Payment Entries */}
+            {savedPaymentEntries.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] text-charcoal/60">
+                  <span className="font-bold uppercase tracking-wider text-[10px]">
+                    Quick Auto-Fill from Saved Presets:
+                  </span>
+                  <span className="text-[10px] text-charcoal/40">Click any preset to fill instructions</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {savedPaymentEntries.map((entry) => (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      onClick={() => setNotes(entry.details)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold border border-charcoal/10 bg-cream/30 hover:bg-ochre/10 hover:border-ochre/40 hover:text-ochre transition-all flex items-center gap-1.5 cursor-pointer text-charcoal"
+                      title={entry.details}
+                    >
+                      <span className={cn(
+                        "w-2 h-2 rounded-full",
+                        entry.method === 'bank' ? 'bg-blue-500' :
+                        entry.method === 'mpesa' ? 'bg-emerald-500' :
+                        entry.method === 'cash' ? 'bg-amber-500' : 'bg-purple-500'
+                      )} />
+                      <span className="font-bold text-[11px]">{entry.title}</span>
+                      <span className="text-[10px] text-charcoal/40 uppercase">({entry.method})</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Method Selector Pills & Textarea */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-charcoal/60">
+                  Invoice Payment Terms & Instructions Note
+                </label>
+                <div className="flex items-center gap-1 bg-cream/70 p-0.5 rounded-xl border border-charcoal/10 flex-wrap">
+                  {(['all', 'bank', 'mpesa', 'cash', 'cheque'] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setPaymentMethodSelection(m)}
+                      className={cn(
+                        "px-2 py-0.5 rounded-lg text-[10px] font-bold capitalize transition-all cursor-pointer",
+                        paymentMethodSelection === m
+                          ? "bg-white text-charcoal shadow-xs"
+                          : "text-charcoal/60 hover:text-charcoal"
+                      )}
+                    >
+                      {m === 'all' ? 'All Defaults' : m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <textarea
                 rows={4}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
+                placeholder="Enter bank account details, M-Pesa paybill, or payment terms..."
                 className="w-full p-3.5 bg-cream/30 border border-charcoal/15 rounded-2xl text-xs font-mono text-charcoal focus:outline-none focus:border-ochre leading-relaxed"
               />
-              <p className="text-[11px] text-charcoal/40 mt-1">
-                Updated from CMS Settings. You can also customize instructions directly above.
-              </p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-charcoal/50 gap-1">
+                <span>Customize text freely. Click <strong>"Preserve Payment Details"</strong> to save this exact text for future invoices.</span>
+                {notes.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentModalMode('preserve');
+                      setIsPaymentModalOpen(true);
+                    }}
+                    className="text-ochre hover:text-ochre-dark font-bold text-xs inline-flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+                  >
+                    <Bookmark className="w-3 h-3" />
+                    <span>Preserve This Note</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1572,6 +1665,19 @@ export default function InvoiceGenerator() {
           handleCatalogSelect(catItem);
           setIsCatalogModalOpen(false);
         }}
+      />
+
+      {/* SAVED PAYMENT DETAILS MODAL */}
+      <SavedPaymentDetailsModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        savedEntries={savedPaymentEntries}
+        currentInvoiceNotes={notes}
+        onApplyDetails={(detailsText) => {
+          setNotes(detailsText);
+          setIsPaymentModalOpen(false);
+        }}
+        initialMode={paymentModalMode}
       />
     </div>
   );

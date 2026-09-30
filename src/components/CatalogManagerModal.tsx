@@ -274,14 +274,15 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
 
                 <div>
                   <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">
-                    Category <span className="text-ochre">*</span>
+                    Category (Optional)
                   </label>
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     className="w-full p-3 bg-white border border-charcoal/10 rounded-xl text-xs font-bold text-charcoal focus:outline-none focus:border-ochre cursor-pointer"
                   >
-                    <option value="Product">Product</option>
+                    <option value="">None / General (No Category)</option>
+                    <option value="Product">Product / Material</option>
                     <option value="Service">Service</option>
                   </select>
                 </div>

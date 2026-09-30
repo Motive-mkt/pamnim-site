@@ -477,13 +477,14 @@ export default function CatalogManagerView() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-charcoal/70 mb-1">
-                    Category <span className="text-ochre">*</span>
+                    Category (Optional)
                   </label>
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-cream/40 border border-charcoal/15 rounded-xl text-xs sm:text-sm font-semibold focus:outline-none focus:border-ochre focus:bg-white text-charcoal cursor-pointer"
                   >
+                    <option value="">None / Uncategorized</option>
                     {DEFAULT_CATALOG_CATEGORIES.map(c => (
                       <option key={c} value={c}>{c}</option>
                     ))}

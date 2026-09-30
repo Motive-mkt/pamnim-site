@@ -41,7 +41,7 @@ export default function CatalogAutocomplete({
   const [showInlineAdd, setShowInlineAdd] = useState(false);
   const [newPrice, setNewPrice] = useState<number | ''>('');
   const [newUnit, setNewUnit] = useState<string>('pcs');
-  const [newCategory, setNewCategory] = useState<string>('Materials & Finishes');
+  const [newCategory, setNewCategory] = useState<string>('');
   const [isSavingNew, setIsSavingNew] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -117,7 +117,7 @@ export default function CatalogAutocomplete({
         sellingPrice: Number(newPrice) || 0,
         purchasePrice: 0,
         unit: newUnit.trim() || 'pcs',
-        category: newCategory.trim() || 'Custom Material',
+        category: newCategory.trim() || '',
         createdAt: new Date().toISOString()
       };
 
