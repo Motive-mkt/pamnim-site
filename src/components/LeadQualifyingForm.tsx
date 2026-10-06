@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
+import React, { useState } from 'react';
+import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useCMS } from '../hooks/useCMS';
 import { 
-  CheckCircle2, Send, MessageSquare, Clock, 
-  HelpCircle, ArrowRight, ShieldCheck, Phone, Mail, User, X, Layers
+  CheckCircle2, MessageSquare, HelpCircle, 
+  Phone, Mail, User, X, Layers, MapPin, Home, Check
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { createNotification } from '../services/notificationService';
+import { PROPERTY_STATUS_OPTIONS, PROJECT_SCOPE_OPTIONS } from './HeroContactForm';
 
-export type LeadTag = 'high-value' | 'incomplete' | 'general';
+export type LeadTag = 'high-value' | 'project' | 'incomplete' | 'general';
 
 export const DESIRED_TIMELINES = [
   'ASAP',
@@ -37,210 +39,111 @@ export default function LeadQualifyingForm({
 }: LeadQualifyingFormProps) {
   const { content } = useCMS();
 
-  // CMS-managed services list
-  const servicesList = (content?.services && Array.isArray(content.services) && content.services.length > 0)
-    ? content.services
-    : [];
-
-  // Gating Question: Yes or No (default null or 'yes' for instant clarity)
-  const [hasActiveProject, setHasActiveProject] = useState<boolean | null>(null);
-
   // Form Fields
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [selectedService, setSelectedService] = useState('');
-  const [timeline, setTimeline] = useState<string>(DESIRED_TIMELINES[1]);
-  const [scope, setScope] = useState('');
-  const [generalInquiry, setGeneralInquiry] = useState('');
+  const [email, setEmail] = useState('');
+  const [locationAddress, setLocationAddress] = useState('');
+  const [propertyStatus, setPropertyStatus] = useState<string>(PROPERTY_STATUS_OPTIONS[0].value);
+  const [projectScope, setProjectScope] = useState<string>('');
 
   // UI States
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [submittedTag, setSubmittedTag] = useState<LeadTag | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Partial / Abandoned Lead Tracking
-  const partialDocIdRef = useRef<string | null>(null);
-  const isFinalSubmittedRef = useRef<boolean>(false);
-  const debounceTimerRef = useRef<any>(null);
+  const rawNumber = content?.contact?.whatsapp || '254714984268';
+  const cleanNumber = rawNumber.replace(/[^0-9]/g, '');
+  const directWhatsAppUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(
+    "Hi Pamnim Interiors, I'd like to discuss a project for my space."
+  )}`;
 
-  // Helper to build formatted message for Firestore
-  const buildMessageContent = useCallback((isProject: boolean, isPartial = false): string => {
-    const serviceInfo = selectedService ? `\nService Needed: ${selectedService}` : '';
-    if (isPartial) {
-      return `[INCOMPLETE PROJECT LEAD]\nUser started project inquiry but abandoned before submission.${serviceInfo}\nScope draft: ${scope.trim() || '—'}\nTimeline: ${timeline}`;
-    }
-    if (isProject) {
-      return `[HIGH-VALUE PROJECT INQUIRY]${serviceInfo}\nTimeline: ${timeline}\n\nProject Scope & Objectives:\n${scope.trim() || 'Not specified'}`;
-    }
-    return `${selectedService ? `Service of Interest: ${selectedService}\n\n` : ''}${generalInquiry.trim() || 'General inquiry submitted from website.'}`;
-  }, [selectedService, timeline, scope, generalInquiry]);
-
-  // Clean payload helper (stripping undefined values for Firestore safety)
-  const buildPayload = useCallback((tag: LeadTag, isPartial = false) => {
-    const isProject = hasActiveProject === true;
-    const msg = buildMessageContent(isProject, isPartial);
-
-    const payload: Record<string, any> = {
-      name: name.trim() || (isPartial ? 'Interested Visitor (Abandoned)' : 'Client'),
-      email: email.trim() || (isPartial ? 'abandoned-lead@pamnim.temp' : 'no-email@provided.local'),
-      status: 'new',
-      leadTag: tag,
-      hasActiveProject: isProject,
-      source,
-      message: msg,
-      createdAt: new Date().toISOString(),
-      priority: tag === 'high-value' ? 'high' : (tag === 'incomplete' ? 'follow-up' : 'standard')
-    };
-
-    if (phone.trim()) payload.phone = phone.trim();
-    if (selectedService.trim()) {
-      payload.selectedService = selectedService.trim();
-      payload.projectType = selectedService.trim();
-    }
-    if (isProject) {
-      if (timeline) payload.timeline = timeline;
-      if (scope.trim()) payload.scope = scope.trim();
-    } else {
-      if (generalInquiry.trim()) payload.generalInquiry = generalInquiry.trim();
-    }
-
-    return payload;
-  }, [hasActiveProject, name, email, phone, selectedService, timeline, scope, generalInquiry, source, buildMessageContent]);
-
-  // Background capture for Abandoned / Incomplete Leads
-  const captureIncompleteLead = useCallback(async () => {
-    if (isFinalSubmittedRef.current) return;
-    if (hasActiveProject !== true) return;
-    // Only capture if user entered at least some identifiable information
-    const hasIdentifiers = name.trim().length > 1 || email.trim().length > 3 || phone.trim().length > 4 || scope.trim().length > 10;
-    if (!hasIdentifiers) return;
-
-    try {
-      const payload = buildPayload('incomplete', true);
-
-      if (partialDocIdRef.current) {
-        await updateDoc(doc(db, 'inquiries', partialDocIdRef.current), {
-          ...payload,
-          updatedAt: new Date().toISOString()
-        });
-      } else {
-        const docRef = await addDoc(collection(db, 'inquiries'), payload);
-        partialDocIdRef.current = docRef.id;
-      }
-    } catch (err) {
-      console.warn('Silent incomplete lead capture notice:', err);
-    }
-  }, [hasActiveProject, name, email, phone, scope, buildPayload]);
-
-  // Trigger debounced capture on field blur or text entry when hasActiveProject is Yes
-  useEffect(() => {
-    if (hasActiveProject !== true || isFinalSubmittedRef.current) return;
-
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    debounceTimerRef.current = setTimeout(() => {
-      captureIncompleteLead();
-    }, 2800);
-
-    return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    };
-  }, [hasActiveProject, name, email, phone, scope, timeline, captureIncompleteLead]);
-
-  // Also capture when user switches tabs or navigates away (visibilitychange)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden' && !isFinalSubmittedRef.current && hasActiveProject === true) {
-        captureIncompleteLead();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [hasActiveProject, captureIncompleteLead]);
-
-  // Final Form Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (hasActiveProject === null) {
-      setError('Please let us know if you have an active project ready to launch.');
-      return;
-    }
-
     if (!name.trim()) {
-      setError('Please provide your name.');
+      setError('Please enter your full name.');
+      return;
+    }
+    if (!phone.trim()) {
+      setError('Please provide your Phone or WhatsApp number.');
+      return;
+    }
+    if (!locationAddress.trim()) {
+      setError('Please enter the property location or estate.');
+      return;
+    }
+    if (!propertyStatus) {
+      setError('Please select the status of your space.');
+      return;
+    }
+    if (!projectScope) {
+      setError('Please select what best describes your project.');
       return;
     }
 
-    if (!email.trim() && !phone.trim()) {
-      setError('Please provide either an email or phone number so we can reach you.');
-      return;
-    }
-
-    if (hasActiveProject && !scope.trim()) {
-      setError('Please briefly describe your project scope or space requirements.');
-      return;
-    }
-
-    if (!hasActiveProject && !generalInquiry.trim()) {
-      setError('Please enter your inquiry or question.');
-      return;
-    }
+    const statusObj = PROPERTY_STATUS_OPTIONS.find(o => o.value === propertyStatus) || PROPERTY_STATUS_OPTIONS[0];
+    const hasActiveProject = statusObj.priority !== 'low';
 
     setSubmitting(true);
-    isFinalSubmittedRef.current = true;
 
     try {
-      const finalTag: LeadTag = hasActiveProject ? 'high-value' : 'general';
-      const payload = buildPayload(finalTag, false);
+      const payload: Record<string, any> = {
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email.trim() || 'no-email@provided.local',
+        location: locationAddress.trim(),
+        address: locationAddress.trim(),
+        propertyStatus,
+        projectScope,
+        selectedService: projectScope,
+        projectType: projectScope,
+        scope: projectScope,
+        leadTag: statusObj.leadTag,
+        priority: statusObj.priority,
+        hasActiveProject,
+        requestType: hasActiveProject ? 'project_request' : 'general_request',
+        source,
+        status: 'new',
+        message: `[LEAD INTAKE REQUEST]\nProject Scope: ${projectScope}\nProperty Location / Estate: ${locationAddress.trim()}\nSpace Status: ${propertyStatus} (${statusObj.priority.toUpperCase()} PRIORITY)\nPhone / WhatsApp: ${phone.trim()}\nEmail: ${email.trim() || 'Not provided'}`,
+        createdAt: new Date().toISOString()
+      };
 
-      if (partialDocIdRef.current) {
-        // Upgrade the existing partial lead document
-        await updateDoc(doc(db, 'inquiries', partialDocIdRef.current), {
-          ...payload,
-          updatedAt: new Date().toISOString()
-        });
-      } else {
-        await addDoc(collection(db, 'inquiries'), payload);
-      }
+      await addDoc(collection(db, 'inquiries'), payload);
+
+      // Trigger owner notification
+      createNotification({
+        userId: 'all_owners',
+        role: 'owner',
+        title: statusObj.priority === 'high' ? 'High-Priority Design Lead' : 'New Design Consultation Request',
+        body: `${name.trim()} (${locationAddress.trim()}) — ${projectScope}`,
+        link: '/admin?tab=inquiries',
+        type: 'inquiry'
+      }).catch(() => {});
 
       // Meta Pixel Lead tracking if configured
       if (typeof (window as any).fbq === 'function') {
         try {
           (window as any).fbq('track', 'Lead', {
-            content_name: hasActiveProject ? 'High-Value Project Lead' : 'General Inquiry',
-            lead_tag: finalTag,
+            content_name: projectScope,
+            lead_tag: statusObj.leadTag,
+            status: propertyStatus,
+            location: locationAddress.trim(),
             source
           });
-        } catch (e) {
+        } catch {
           // ignore tracking error
         }
       }
 
-      setSubmittedTag(finalTag);
       setSubmitted(true);
     } catch (err: any) {
       console.error('Error submitting qualified lead:', err);
-      setError(err?.message || 'Could not send your message. Please try again or reach out on WhatsApp.');
-      isFinalSubmittedRef.current = false;
+      setError(err?.message || 'Could not send your request. Please try again or chat with us on WhatsApp.');
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleOpenWhatsApp = () => {
-    const rawNumber = content?.contact?.whatsapp || '254714984268';
-    const cleanNumber = rawNumber.replace(/[^0-9]/g, '');
-    let text = `Hello Pamnim Interior Designers! I'd like to discuss a project.\n\n*Name:* ${name || 'Client'}\n*Phone:* ${phone || '—'}`;
-    if (hasActiveProject) {
-      text += `\n*Timeline:* ${timeline}\n*Scope:* ${scope}`;
-    } else {
-      text += `\n*Inquiry:* ${generalInquiry || 'General Inquiry'}`;
-    }
-    window.open(`https://wa.me/${cleanNumber}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
   };
 
   // Success view
@@ -257,29 +160,28 @@ export default function LeadQualifyingForm({
         </div>
 
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-ochre/10 text-ochre text-xs font-bold uppercase tracking-wider">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>{submittedTag === 'high-value' ? 'High-Priority Project Received' : 'Message Received'}</span>
-          </div>
+          <p className="text-xs font-bold uppercase tracking-widest text-ochre flex items-center justify-center gap-1.5">
+            <Check className="w-3.5 h-3.5" />
+            <span>Consultation Request Received</span>
+          </p>
           <h3 className="text-2xl sm:text-3xl font-bold text-charcoal">
-            {submittedTag === 'high-value' ? 'Thank you! Your project is fast-tracked.' : 'Thank you for reaching out!'}
+            Thank you, {name.split(' ')[0]}!
           </h3>
           <p className="text-sm sm:text-base text-charcoal/70 max-w-md mx-auto leading-relaxed">
-            {submittedTag === 'high-value'
-              ? 'Our senior interior design team has received your project brief. We will review your scope and get in touch within a few hours to arrange a discovery session.'
-              : 'We have received your note and will get back to you within 24 business hours.'}
+            Our senior designer has received your project details for <span className="font-semibold text-charcoal">{locationAddress}</span> and will call you within 24 hours.
           </p>
         </div>
 
         <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <button
-            type="button"
-            onClick={handleOpenWhatsApp}
+          <a
+            href={directWhatsAppUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             className="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md shadow-emerald-700/20"
           >
             <MessageSquare className="w-4 h-4" />
-            <span>Chat Directly on WhatsApp</span>
-          </button>
+            <span>Or Chat Directly on WhatsApp</span>
+          </a>
 
           {onClose && (
             <button
@@ -305,9 +207,9 @@ export default function LeadQualifyingForm({
       {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-ochre/10 text-ochre text-[11px] font-bold uppercase tracking-widest mb-2">
-            <span>Consultation & Project Launch</span>
-          </div>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-ochre mb-1.5">
+            Consultation & Project Launch
+          </p>
           <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-charcoal tracking-tight">
             {title || 'Tell us about your space'}
           </h3>
@@ -335,241 +237,157 @@ export default function LeadQualifyingForm({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-        {/* GATING QUESTION */}
-        <div className="p-4 sm:p-5 bg-cream/70 rounded-2xl border border-charcoal/10 space-y-3">
-          <label className="block text-xs font-bold uppercase tracking-wider text-charcoal/80">
-            Do you have an active project ready to launch? <span className="text-ochre">*</span>
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                setHasActiveProject(true);
-                setError(null);
-              }}
-              className={cn(
-                "p-3 rounded-xl border text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer",
-                hasActiveProject === true
-                  ? "bg-ochre text-white border-ochre shadow-md shadow-ochre/25 ring-2 ring-ochre/30"
-                  : "bg-white text-charcoal/80 border-charcoal/15 hover:border-ochre/50 hover:bg-white"
-              )}
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Yes, Ready to Launch</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setHasActiveProject(false);
-                setError(null);
-              }}
-              className={cn(
-                "p-3 rounded-xl border text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer",
-                hasActiveProject === false
-                  ? "bg-charcoal text-white border-charcoal shadow-md shadow-charcoal/20"
-                  : "bg-white text-charcoal/80 border-charcoal/15 hover:border-charcoal/50 hover:bg-white"
-              )}
-            >
-              <MessageSquare className="w-4 h-4" />
-              <span>No, Just Inquiring</span>
-            </button>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* 1. Full Name & 2. Phone / WhatsApp */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
+              <User className="w-3.5 h-3.5 text-ochre" />
+              <span>Full Name <span className="text-ochre">*</span></span>
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="e.g., Jane Doe"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal placeholder:text-charcoal/35 shadow-xs transition-colors"
+            />
           </div>
-          <p className="text-[11px] text-charcoal/50">
-            {hasActiveProject === true 
-              ? 'High-Priority Routing: Your brief will be routed directly to our lead designers.'
-              : hasActiveProject === false
-              ? 'General Inquiry: Ask us anything about our materials, process, or availability.'
-              : 'Please select an option to continue.'}
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
+              <Phone className="w-3.5 h-3.5 text-ochre" />
+              <span>Phone / WhatsApp <span className="text-ochre">*</span></span>
+            </label>
+            <input
+              type="tel"
+              required
+              placeholder="e.g., 0712 345 678"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal placeholder:text-charcoal/35 shadow-xs transition-colors"
+            />
+          </div>
+        </div>
+
+        {/* 3. Email Address (Optional) & 4. Property Location / Estate (Required) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
+              <Mail className="w-3.5 h-3.5 text-ochre" />
+              <span>Email Address <span className="text-charcoal/40 font-normal lowercase">(optional)</span></span>
+            </label>
+            <input
+              type="email"
+              placeholder="e.g., jane@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal placeholder:text-charcoal/35 shadow-xs transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-ochre" />
+              <span>Property Location / Estate <span className="text-ochre">*</span></span>
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="e.g., Kilimani, Runda, Karen"
+              value={locationAddress}
+              onChange={(e) => setLocationAddress(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal placeholder:text-charcoal/35 shadow-xs transition-colors"
+            />
+            <p className="text-[10px] text-charcoal/50 mt-1">
+              e.g., Kilimani, Runda, Westlands, Karen, Syokimau
+            </p>
+          </div>
+        </div>
+
+        {/* 5. Property Readiness / Status (Required - Lead Intent Filter) */}
+        <div>
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
+            <Home className="w-3.5 h-3.5 text-ochre" />
+            <span>What is the status of your space? <span className="text-ochre">*</span></span>
+          </label>
+          <div className="space-y-1.5">
+            {PROPERTY_STATUS_OPTIONS.map((option) => {
+              const isSelected = propertyStatus === option.value;
+              return (
+                <label
+                  key={option.value}
+                  className={cn(
+                    "flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition-all",
+                    isSelected
+                      ? "bg-ochre/10 border-ochre text-charcoal shadow-2xs"
+                      : "bg-white border-charcoal/15 text-charcoal/75 hover:border-charcoal/30"
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name={`propertyStatus_${source}`}
+                    value={option.value}
+                    checked={isSelected}
+                    onChange={(e) => setPropertyStatus(e.target.value)}
+                    className="w-3.5 h-3.5 text-ochre accent-ochre focus:ring-ochre cursor-pointer shrink-0"
+                  />
+                  <span className="leading-snug">{option.label}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 6. Project Scope (Required) */}
+        <div>
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
+            <Layers className="w-3.5 h-3.5 text-ochre" />
+            <span>What best describes your project? <span className="text-ochre">*</span></span>
+          </label>
+          <select
+            required
+            value={projectScope}
+            onChange={(e) => setProjectScope(e.target.value)}
+            className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal shadow-xs transition-colors cursor-pointer"
+          >
+            <option value="" disabled>Select project scope...</option>
+            {PROJECT_SCOPE_OPTIONS.map((scopeOption) => (
+              <option key={scopeOption} value={scopeOption}>
+                {scopeOption}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Primary Button CTA & Microcopy */}
+        <div className="pt-2 space-y-2.5">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full py-3.5 px-6 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-sm font-bold tracking-wide shadow-lg shadow-ochre/25 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer disabled:opacity-50"
+          >
+            <span>{submitting ? 'Submitting Request...' : 'Request Call with Designer →'}</span>
+          </button>
+
+          <p className="text-[11px] text-charcoal/60 text-center italic leading-relaxed px-2">
+            No commitment. We will call you within 24 hours to discuss your project vision and details.
           </p>
         </div>
 
-        {/* YES: PROJECT SCOPE & QUALIFICATION EXPANSION */}
-        {hasActiveProject === true && (
-          <div className="space-y-4 p-4 sm:p-5 bg-ochre/5 rounded-2xl border border-ochre/20 animate-fade-in">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-ochre">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Project Details (High-Value Lead)</span>
-            </div>
-
-            {/* Service Needed Dropdown (from CMS services) */}
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
-                <Layers className="w-3.5 h-3.5 text-ochre" />
-                <span>Service Needed</span>
-              </label>
-              <select
-                value={selectedService}
-                onChange={(e) => setSelectedService(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal cursor-pointer shadow-xs"
-              >
-                <option value="">-- Select service needed (optional) --</option>
-                {servicesList.map((srv: any, idx: number) => {
-                  const title = srv.title || srv.name || `Service ${idx + 1}`;
-                  return (
-                    <option key={srv.id || idx} value={title}>
-                      {title}
-                    </option>
-                  );
-                })}
-                <option value="General Interior Consultation">General Interior Consultation</option>
-                <option value="Other Custom Project">Other Custom Project</option>
-              </select>
-            </div>
-
-            {/* Desired Timeline Dropdown */}
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-ochre" />
-                <span>Desired Timeline <span className="text-ochre">*</span></span>
-              </label>
-              <select
-                value={timeline}
-                onChange={(e) => setTimeline(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal cursor-pointer shadow-xs"
-              >
-                {DESIRED_TIMELINES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Project Scope Textarea */}
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5">
-                Project Scope & Key Spaces <span className="text-ochre">*</span>
-              </label>
-              <textarea
-                rows={3}
-                value={scope}
-                onChange={(e) => setScope(e.target.value)}
-                className="w-full p-3.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal shadow-xs"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* NO: SIMPLE INQUIRY */}
-        {hasActiveProject === false && (
-          <div className="space-y-4 p-4 sm:p-5 bg-charcoal/5 rounded-2xl border border-charcoal/10 animate-fade-in">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-charcoal/70">
-              <MessageSquare className="w-4 h-4 text-charcoal/60" />
-              <span>General Inquiry</span>
-            </div>
-
-            {/* Service Needed Dropdown in No Path */}
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
-                <Layers className="w-3.5 h-3.5 text-ochre" />
-                <span>Service of Interest</span>
-              </label>
-              <select
-                value={selectedService}
-                onChange={(e) => setSelectedService(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal cursor-pointer shadow-xs"
-              >
-                <option value="">-- Select service of interest (optional) --</option>
-                {servicesList.map((srv: any, idx: number) => {
-                  const title = srv.title || srv.name || `Service ${idx + 1}`;
-                  return (
-                    <option key={srv.id || idx} value={title}>
-                      {title}
-                    </option>
-                  );
-                })}
-                <option value="General Interior Consultation">General Interior Consultation</option>
-                <option value="General Question / Workshop Visit">General Question / Workshop Visit</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5">
-                How can we assist you? <span className="text-ochre">*</span>
-              </label>
-              <textarea
-                rows={3}
-                value={generalInquiry}
-                onChange={(e) => setGeneralInquiry(e.target.value)}
-                className="w-full p-3.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal shadow-xs"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* COMMON CONTACT FIELDS (Always visible once choice made or previewed) */}
-        {hasActiveProject !== null && (
-          <div className="space-y-4 pt-1 animate-fade-in">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1 flex items-center gap-1">
-                  <User className="w-3.5 h-3.5 text-charcoal/50" />
-                  <span>Your Full Name <span className="text-ochre">*</span></span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-cream/50 border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre focus:bg-white text-charcoal shadow-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1 flex items-center gap-1">
-                  <Phone className="w-3.5 h-3.5 text-charcoal/50" />
-                  <span>Phone / WhatsApp <span className="text-ochre">*</span></span>
-                </label>
-                <input
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-cream/50 border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre focus:bg-white text-charcoal shadow-xs"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1 flex items-center gap-1">
-                <Mail className="w-3.5 h-3.5 text-charcoal/50" />
-                <span>Email Address {hasActiveProject ? <span className="text-ochre">*</span> : <span className="text-charcoal/40 text-[10px]">(optional)</span>}</span>
-              </label>
-              <input
-                type="email"
-                required={hasActiveProject === true}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-cream/50 border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre focus:bg-white text-charcoal shadow-xs"
-              />
-            </div>
-
-            {/* Actions */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-1.5 text-[11px] text-charcoal/50">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Your information is strictly private and never shared.</span>
-              </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full sm:w-auto px-7 py-3 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-ochre/25 transition-all cursor-pointer disabled:opacity-50"
-                >
-                  <Send className="w-4 h-4" />
-                  <span>
-                    {submitting 
-                      ? 'Submitting...' 
-                      : hasActiveProject 
-                      ? 'Submit Project Brief' 
-                      : 'Send Inquiry'}
-                  </span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Secondary WhatsApp Direct Route */}
+        <div className="pt-2 border-t border-charcoal/10">
+          <a
+            href={directWhatsAppUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-2.5 px-4 rounded-xl border border-charcoal/15 hover:border-emerald-600/40 bg-cream/40 hover:bg-emerald-50/50 text-charcoal/80 hover:text-emerald-800 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>Or Chat Directly on WhatsApp</span>
+          </a>
+        </div>
       </form>
     </div>
   );

@@ -356,8 +356,8 @@ export default function PortfolioPage() {
 
       {/* Modal containing shared LeadQualifyingForm */}
       {showLeadModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs animate-fade-in overflow-y-auto">
-          <div className="relative w-full max-w-2xl bg-white rounded-3xl elevation-modal overflow-hidden animate-scale-up my-8 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6 bg-charcoal/60 backdrop-blur-xs animate-fade-in overflow-y-auto">
+          <div className="relative w-full max-w-2xl bg-white rounded-3xl elevation-modal overflow-hidden animate-scale-up my-auto max-h-[90vh] overflow-y-auto">
             <LeadQualifyingForm
               variant="modal"
               source="portfolio_modal"
@@ -371,7 +371,7 @@ export default function PortfolioPage() {
 
       {/* Delete Confirmation Modal for Staff/Owner */}
       {deletingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs animate-fade-in">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs animate-fade-in">
           <div className="bg-white w-full max-w-md rounded-3xl border border-red-200 elevation-modal overflow-hidden p-6 space-y-4 animate-scale-up">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">

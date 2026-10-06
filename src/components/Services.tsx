@@ -324,7 +324,7 @@ export default function Services() {
       {/* High-Converting dedicated service modal */}
       <AnimatePresence>
         {selectedService && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
             {/* Backdrop overlay */}
             <motion.div 
               initial={{ opacity: 0 }}
@@ -340,7 +340,7 @@ export default function Services() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 350 }}
-              className="bg-cream border border-charcoal/10 rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl relative z-10 p-6 md:p-10 lg:p-12 scrollbar-thin"
+              className="bg-cream border border-charcoal/10 rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl relative z-10 p-6 md:p-10 lg:p-12 my-auto scrollbar-thin"
             >
               {/* Close Button */}
               <button 

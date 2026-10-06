@@ -2241,10 +2241,20 @@ export default function OwnerDashboard() {
                        {inquiry.location && (
                          <div className="p-2.5 bg-white rounded-xl border border-ochre/20 shadow-2xs">
                            <span className="text-[10px] uppercase font-bold text-charcoal/50 block flex items-center gap-1">
-                             <MapPin className="w-3 h-3 text-ochre" /> Location / Address
+                             <MapPin className="w-3 h-3 text-ochre" /> Location / Estate
                            </span>
                            <span className="font-semibold text-charcoal text-xs sm:text-sm truncate block" title={inquiry.location}>
                              {inquiry.location}
+                           </span>
+                         </div>
+                       )}
+                       {inquiry.propertyStatus && (
+                         <div className="p-2.5 bg-white rounded-xl border border-ochre/20 shadow-2xs">
+                           <span className="text-[10px] uppercase font-bold text-charcoal/50 block flex items-center gap-1">
+                             Space Status
+                           </span>
+                           <span className="font-semibold text-charcoal text-xs sm:text-sm block">
+                             {inquiry.propertyStatus}
                            </span>
                          </div>
                        )}
