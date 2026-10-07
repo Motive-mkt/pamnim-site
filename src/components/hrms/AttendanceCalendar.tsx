@@ -10,11 +10,7 @@ import {
   getKenyanPublicHolidays, getAllHolidays, getWeekId, getWeekDates, 
   getDayMultiplier, formatAttendanceStatus 
 } from '../../utils/hrmsUtils';
-import { 
-  Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, X, 
-  CheckCircle2, Users, AlertCircle, Sparkles, Filter, HardHat, 
-  Check, Clock, Sun, CloudRain
-} from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, X, CheckCircle2, Users, AlertCircle, Filter, HardHat, Check, Clock, Sun, CloudRain } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface AttendanceCalendarProps {
@@ -433,7 +429,7 @@ export default function AttendanceCalendar({ workers, projects }: AttendanceCale
                   onClick={() => handleOpenDaySheet(dateStr)}
                   className={cn(
                     "min-h-[85px] sm:min-h-[110px] p-2 sm:p-3 transition-colors cursor-pointer flex flex-col justify-between group",
-                    !isCurrentMonth ? "bg-cream/15 text-charcoal/30" : "bg-white hover:bg-cream/30",
+                    !isCurrentMonth ? "bg-cream/15 text-charcoal/60" : "bg-white hover:bg-cream/30",
                     isToday && "ring-2 ring-ochre/80 bg-ochre/5"
                   )}
                 >
@@ -441,13 +437,13 @@ export default function AttendanceCalendar({ workers, projects }: AttendanceCale
                   <div className="flex items-start justify-between gap-1">
                     <span className={cn(
                       "text-xs sm:text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full",
-                      isToday ? "bg-ochre text-white shadow-xs" : isCurrentMonth ? "text-charcoal" : "text-charcoal/30"
+                      isToday ? "bg-ochre text-white shadow-xs" : isCurrentMonth ? "text-charcoal" : "text-charcoal/60"
                     )}>
                       {dayNum}
                     </span>
 
                     {holiday && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-800 border border-purple-200 truncate max-w-[80px]" title={holiday.name}>
+                      <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-800 border border-purple-200 truncate max-w-[80px]" title={holiday.name}>
                         {holiday.name}
                       </span>
                     )}
@@ -457,25 +453,25 @@ export default function AttendanceCalendar({ workers, projects }: AttendanceCale
                   <div className="space-y-1 mt-1">
                     {dayRecords.length > 0 ? (
                       <div className="space-y-0.5">
-                        <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-700">
+                        <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-700">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
                           <span>{presentCount} full{halfCount > 0 ? `, ${halfCount} half` : ''}</span>
                         </div>
                         {absentCount > 0 && (
-                          <div className="flex items-center gap-1 text-[10px] font-bold text-rose-600">
+                          <div className="flex items-center gap-1 text-[11px] font-bold text-rose-600">
                             <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                             <span>{absentCount} absent</span>
                           </div>
                         )}
                         {leaveCount > 0 && (
-                          <div className="flex items-center gap-1 text-[10px] font-bold text-blue-600">
+                          <div className="flex items-center gap-1 text-[11px] font-bold text-blue-600">
                             <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                             <span>{leaveCount} leave</span>
                           </div>
                         )}
                       </div>
                     ) : (
-                      <span className="text-[10px] text-charcoal/30 italic group-hover:text-ochre block">
+                      <span className="text-[11px] text-charcoal/60 italic group-hover:text-ochre block">
                         Tap to log
                       </span>
                     )}
@@ -519,7 +515,7 @@ export default function AttendanceCalendar({ workers, projects }: AttendanceCale
                 >
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-charcoal/50 uppercase tracking-widest">{dayName}</span>
+                      <span className="text-xs font-bold text-charcoal/65 uppercase tracking-widest">{dayName}</span>
                       <span className={cn(
                         "text-sm font-bold w-6 h-6 rounded-full flex items-center justify-center",
                         isToday ? "bg-ochre text-white" : "text-charcoal"
@@ -530,10 +526,10 @@ export default function AttendanceCalendar({ workers, projects }: AttendanceCale
 
                     {holiday && (
                       <div className="p-2 rounded-xl bg-purple-50 border border-purple-200 mt-2">
-                        <span className="text-[10px] font-bold text-purple-900 block leading-tight">
+                        <span className="text-[11px] font-bold text-purple-900 block leading-tight">
                           {holiday.name}
                         </span>
-                        <span className="text-[9px] text-purple-700">Paid Public Holiday</span>
+                        <span className="text-[11px] text-purple-700">Paid Public Holiday</span>
                       </div>
                     )}
                   </div>
@@ -542,20 +538,20 @@ export default function AttendanceCalendar({ workers, projects }: AttendanceCale
                     {dayRecords.length > 0 ? (
                       <>
                         <div className="flex justify-between text-xs">
-                          <span className="text-charcoal/50">Present:</span>
+                          <span className="text-charcoal/65">Present:</span>
                           <span className="font-bold text-emerald-700">{presentCount} full{halfCount > 0 ? `, ${halfCount} half` : ''}</span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-charcoal/50">Absent:</span>
+                          <span className="text-charcoal/65">Absent:</span>
                           <span className="font-bold text-rose-700">{absentCount}</span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-charcoal/50">Leave:</span>
+                          <span className="text-charcoal/65">Leave:</span>
                           <span className="font-bold text-blue-700">{leaveCount}</span>
                         </div>
                       </>
                     ) : (
-                      <span className="text-xs text-charcoal/40 italic block text-center group-hover:text-ochre">
+                      <span className="text-xs text-charcoal/60 italic block text-center group-hover:text-ochre">
                         No logs recorded (Tap to fill)
                       </span>
                     )}
@@ -569,11 +565,11 @@ export default function AttendanceCalendar({ workers, projects }: AttendanceCale
 
       {/* Day Attendance Sheet Modal */}
       {selectedDayModal && (
-        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white max-w-2xl w-full rounded-3xl p-6 sm:p-8 shadow-2xl border border-charcoal/10 my-8 space-y-6">
             <div className="flex items-start justify-between gap-4 border-b border-charcoal/10 pb-4">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-ochre block">Attendance Sheet</span>
+                <span className="text-[11px] font-bold uppercase tracking-widest text-ochre block">Attendance Sheet</span>
                 <h3 className="text-xl font-bold text-charcoal">
                   {new Date(selectedDayModal + 'T00:00:00').toLocaleDateString('en-GB', {
                     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
@@ -589,7 +585,7 @@ export default function AttendanceCalendar({ workers, projects }: AttendanceCale
                 type="button"
                 onClick={() => setSelectedDayModal(null)}
                 aria-label="Close modal"
-                className="p-2 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-charcoal/60 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -606,11 +602,11 @@ export default function AttendanceCalendar({ workers, projects }: AttendanceCale
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-sm text-charcoal">{w.name}</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-charcoal/10 text-charcoal/70">
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white border border-charcoal/10 text-charcoal/70">
                           {w.skill}
                         </span>
                       </div>
-                      <span className="text-xs text-charcoal/50">{w.phone}</span>
+                      <span className="text-xs text-charcoal/65">{w.phone}</span>
                     </div>
 
                     <div className="flex items-center gap-1 flex-wrap">
@@ -653,7 +649,7 @@ export default function AttendanceCalendar({ workers, projects }: AttendanceCale
                 type="button"
                 onClick={handleSaveDaySheet}
                 disabled={sheetSaving}
-                className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md shadow-ochre/20 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
               >
                 <Check className="w-4 h-4" />
                 <span>{sheetSaving ? 'Saving Changes...' : 'Save Attendance Sheet'}</span>
@@ -665,7 +661,7 @@ export default function AttendanceCalendar({ workers, projects }: AttendanceCale
 
       {/* Add Custom Holiday / Closure Modal */}
       {showHolidayModal && (
-        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4">
           <div className="bg-white max-w-md w-full rounded-3xl p-6 sm:p-8 shadow-2xl border border-charcoal/10 space-y-5 animate-fade-in">
             <div className="flex items-start justify-between gap-4 border-b border-charcoal/10 pb-4">
               <div className="flex items-center gap-3">
@@ -674,14 +670,14 @@ export default function AttendanceCalendar({ workers, projects }: AttendanceCale
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-charcoal">Add Site Closure / Holiday</h3>
-                  <p className="text-xs text-charcoal/50">Custom weather day, public gazette, or site closure.</p>
+                  <p className="text-xs text-charcoal/65">Custom weather day, public gazette, or site closure.</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowHolidayModal(false)}
                 aria-label="Close modal"
-                className="p-2 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-charcoal/60 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -689,7 +685,7 @@ export default function AttendanceCalendar({ workers, projects }: AttendanceCale
 
             <form onSubmit={handleAddCustomHoliday} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Closure / Holiday Label <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -703,7 +699,7 @@ export default function AttendanceCalendar({ workers, projects }: AttendanceCale
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Date <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -725,7 +721,7 @@ export default function AttendanceCalendar({ workers, projects }: AttendanceCale
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md shadow-ochre/20 flex items-center gap-2 transition-all cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Save Holiday / Closure</span>

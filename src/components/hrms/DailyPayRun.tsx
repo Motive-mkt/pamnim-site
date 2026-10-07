@@ -5,11 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { Worker, WorkerSkill, AttendanceRecord, AttendanceStatus } from '../../types/hrms';
 import { formatMoney } from '../../utils/pdfGenerator';
 import { getWeekId, getDayMultiplier } from '../../utils/hrmsUtils';
-import { 
-  Zap, CheckCircle2, XCircle, AlertCircle, Clock, Calendar, 
-  Filter, Sparkles, RefreshCw, ChevronDown, HardHat, Check, X,
-  ShieldCheck, ArrowRight
-} from 'lucide-react';
+import { Zap, CheckCircle2, XCircle, AlertCircle, Clock, Calendar, Filter, RefreshCw, ChevronDown, HardHat, Check, X, ShieldCheck, ArrowRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface DailyPayRunProps {
@@ -248,7 +244,7 @@ export default function DailyPayRun({ workers, projects, onComplete }: DailyPayR
           <div className="flex items-center gap-3 bg-cream/40 p-2.5 rounded-2xl border border-charcoal/10 shrink-0">
             <Calendar className="w-4 h-4 text-ochre shrink-0" />
             <div>
-              <span className="block text-[10px] font-bold uppercase tracking-widest text-charcoal/40">Pay Run Date</span>
+              <span className="block text-[11px] font-bold uppercase tracking-widest text-charcoal/60">Pay Run Date</span>
               <input
                 type="date"
                 value={selectedDate}
@@ -262,27 +258,27 @@ export default function DailyPayRun({ workers, projects, onComplete }: DailyPayR
         {/* Tally Metrics Strip */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-2">
           <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-2xl p-3">
-            <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-widest block">Full Day</span>
+            <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-widest block">Full Day</span>
             <span className="text-lg font-bold text-emerald-900">{stats.presentFull}</span>
           </div>
           <div className="bg-amber-50/70 border border-amber-200/60 rounded-2xl p-3">
-            <span className="text-[10px] font-bold text-amber-800 uppercase tracking-widest block">Half Day</span>
+            <span className="text-[11px] font-bold text-amber-800 uppercase tracking-widest block">Half Day</span>
             <span className="text-lg font-bold text-amber-900">{stats.presentHalf}</span>
           </div>
           <div className="bg-rose-50/70 border border-rose-200/60 rounded-2xl p-3">
-            <span className="text-[10px] font-bold text-rose-800 uppercase tracking-widest block">Absent</span>
+            <span className="text-[11px] font-bold text-rose-800 uppercase tracking-widest block">Absent</span>
             <span className="text-lg font-bold text-rose-900">{stats.absent}</span>
           </div>
           <div className="bg-blue-50/70 border border-blue-200/60 rounded-2xl p-3">
-            <span className="text-[10px] font-bold text-blue-800 uppercase tracking-widest block">On Leave</span>
+            <span className="text-[11px] font-bold text-blue-800 uppercase tracking-widest block">On Leave</span>
             <span className="text-lg font-bold text-blue-900">{stats.onLeave}</span>
           </div>
           <div className="bg-purple-50/70 border border-purple-200/60 rounded-2xl p-3">
-            <span className="text-[10px] font-bold text-purple-800 uppercase tracking-widest block">Holiday</span>
+            <span className="text-[11px] font-bold text-purple-800 uppercase tracking-widest block">Holiday</span>
             <span className="text-lg font-bold text-purple-900">{stats.holiday}</span>
           </div>
           <div className="bg-ochre/10 border border-ochre/20 rounded-2xl p-3">
-            <span className="text-[10px] font-bold text-ochre uppercase tracking-widest block">Daily Accrual</span>
+            <span className="text-[11px] font-bold text-ochre uppercase tracking-widest block">Daily Accrual</span>
             <span className="text-base sm:text-lg font-bold text-charcoal truncate block">
               {formatMoney(stats.totalAccruedWage)}
             </span>
@@ -365,7 +361,7 @@ export default function DailyPayRun({ workers, projects, onComplete }: DailyPayR
           </div>
         ) : filteredWorkers.length === 0 ? (
           <div className="p-10 text-center bg-white rounded-3xl border border-charcoal/10">
-            <HardHat className="w-8 h-8 text-charcoal/30 mx-auto mb-2" />
+            <HardHat className="w-8 h-8 text-charcoal/60 mx-auto mb-2" />
             <p className="text-sm font-bold text-charcoal">No active site workers found</p>
             <p className="text-xs text-charcoal/60 mt-1">Check filter settings or register workers in the Site Workers tab.</p>
           </div>
@@ -398,11 +394,11 @@ export default function DailyPayRun({ workers, projects, onComplete }: DailyPayR
                 <div className="space-y-1 min-w-[200px]">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-charcoal text-sm">{worker.name}</span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cream/70 text-charcoal/70 border border-charcoal/10">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-cream/70 text-charcoal/70 border border-charcoal/10">
                       {worker.skill}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-charcoal/50">
+                  <div className="flex items-center gap-3 text-xs text-charcoal/65">
                     <span>{worker.phone}</span>
                     <span>•</span>
                     <span className="truncate max-w-[150px]">{projectName}</span>
@@ -438,15 +434,15 @@ export default function DailyPayRun({ workers, projects, onComplete }: DailyPayR
                 {/* Accrued Amount for Worker */}
                 <div className="flex items-center justify-between md:justify-end gap-3 pt-2 md:pt-0 border-t md:border-t-0 border-charcoal/5 min-w-[120px] shrink-0 text-right">
                   <div className="text-left md:text-right">
-                    <span className="text-[10px] uppercase font-bold text-charcoal/40 block">Accrued Day Pay</span>
+                    <span className="text-[11px] uppercase font-bold text-charcoal/60 block">Accrued Day Pay</span>
                     <span className={cn(
                       "text-sm font-bold",
-                      calculatedPay > 0 ? "text-emerald-700" : "text-charcoal/40"
+                      calculatedPay > 0 ? "text-emerald-700" : "text-charcoal/60"
                     )}>
                       {formatMoney(calculatedPay)}
                     </span>
                   </div>
-                  <span className="text-[11px] text-charcoal/40 hidden sm:inline">
+                  <span className="text-[11px] text-charcoal/60 hidden sm:inline">
                     ({multiplier}d)
                   </span>
                 </div>
@@ -469,7 +465,7 @@ export default function DailyPayRun({ workers, projects, onComplete }: DailyPayR
                 {formatMoney(stats.totalAccruedWage)}
               </span>
             </div>
-            <span className="text-[11px] text-white/50 block">
+            <span className="text-[11px] text-white/60 block">
               {stats.presentFull + stats.presentHalf} paid on {selectedDate} ({stats.absent} absent)
             </span>
           </div>
@@ -479,7 +475,7 @@ export default function DailyPayRun({ workers, projects, onComplete }: DailyPayR
           type="button"
           onClick={() => setShowConfirmModal(true)}
           disabled={submitting || activeWorkers.length === 0}
-          className="w-full sm:w-auto px-7 py-3 rounded-2xl bg-ochre hover:bg-ochre-dark text-white font-bold text-sm shadow-lg shadow-ochre/20 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+          className="w-full sm:w-auto px-7 py-3 rounded-2xl bg-ochre hover:bg-ochre-dark text-white font-bold text-sm shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
         >
           <CheckCircle2 className="w-4 h-4" />
           <span>Confirm & Log All</span>
@@ -488,7 +484,7 @@ export default function DailyPayRun({ workers, projects, onComplete }: DailyPayR
 
       {/* Confirmation Modal */}
       {showConfirmModal && (
-        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4">
           <div className="bg-white max-w-md w-full rounded-3xl p-6 sm:p-8 shadow-2xl border border-charcoal/10 space-y-5 animate-fade-in">
             <div className="flex items-center gap-3 text-ochre">
               <div className="w-10 h-10 rounded-2xl bg-ochre/10 flex items-center justify-center">
@@ -496,7 +492,7 @@ export default function DailyPayRun({ workers, projects, onComplete }: DailyPayR
               </div>
               <div>
                 <h3 className="text-lg font-bold text-charcoal">Confirm Daily Pay Run</h3>
-                <span className="text-xs text-charcoal/50">{selectedDate}</span>
+                <span className="text-xs text-charcoal/65">{selectedDate}</span>
               </div>
             </div>
 
@@ -535,7 +531,7 @@ export default function DailyPayRun({ workers, projects, onComplete }: DailyPayR
                 type="button"
                 onClick={handleConfirmAndSave}
                 disabled={submitting}
-                className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md shadow-ochre/20 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
               >
                 <Check className="w-4 h-4" />
                 <span>{submitting ? 'Saving Records...' : 'Confirm & Save'}</span>

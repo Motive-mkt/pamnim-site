@@ -1,198 +1,138 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
-import { motion } from 'motion/react';
-import { ChevronRight, MessageSquare, Image as ImageIcon } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import PageHeader from '../components/ui/PageHeader';
+import CtaBand from '../components/ui/CtaBand';
 import { serviceCategories } from '../data/servicesData';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { optimizeHeroCloudinaryUrl } from '../services/cloudinaryService';
-import BrandIconBox from '../components/BrandIconBox';
+import { useCategoryImages } from '../hooks/useCategoryImages';
 
 export default function ServiceDetailPage() {
   const { categoryId, serviceSlug } = useParams();
+  const [dbService, setDbService] = useState<any>(null);
+  const { imagesFor } = useCategoryImages();
 
-  const category = serviceCategories.find(c => c.id === categoryId);
+  // Hooks must run before any early return
+  useEffect(() => {
+    let cancelled = false;
+    const fetchDbService = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'detailedServices', `${categoryId}_${serviceSlug}`));
+        if (!cancelled && docSnap.exists()) setDbService(docSnap.data());
+      } catch (err) {
+        console.error('Error fetching detailed service:', err);
+      }
+    };
+    setDbService(null);
+    fetchDbService();
+    return () => {
+      cancelled = true;
+    };
+  }, [categoryId, serviceSlug]);
+
+  const category = serviceCategories.find((c) => c.id === categoryId);
   if (!category) {
     return <Navigate to="/services" replace />;
   }
 
-  const staticService = category.items.find(s => s.slug === serviceSlug);
+  const staticService = category.items.find((s) => s.slug === serviceSlug);
   if (!staticService) {
     return <Navigate to={`/services/${category.id}`} replace />;
   }
 
-  const [dbService, setDbService] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchDbService = async () => {
-      try {
-        const docRef = doc(db, 'detailedServices', `${categoryId}_${serviceSlug}`);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setDbService(docSnap.data());
-        }
-      } catch (err) {
-        console.error("Error fetching detailed service:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDbService();
-  }, [categoryId, serviceSlug]);
-
-  // Merge static and DB data (DB data overrides if exists)
+  // Owner-edited content wins over the built-in defaults
   const serviceName = dbService?.name || staticService.name;
   const serviceDesc = dbService?.desc || staticService.desc;
-  const heroImage = dbService?.heroImage || staticService.heroImage;
-  const galleryImages = dbService?.images || staticService.images || ["", "", ""];
+  const categoryPhoto = imagesFor(category.id)[0];
+  const heroImage: string | undefined = dbService?.heroImage || staticService.heroImage || categoryPhoto;
+  const galleryImages: string[] = ((dbService?.images || staticService.images || []) as string[]).filter(Boolean);
+
+  const otherServices = category.items.filter((s) => s.slug !== staticService.slug);
 
   return (
-    <div className="min-h-screen bg-cream flex flex-col justify-between">
-      <div>
-        <Header />
+    <div className="flex min-h-screen flex-col bg-cream">
+      <Header />
 
-        {/* 6. Breadcrumb at the top of the page */}
-        <div className="pt-32 pb-4 bg-cream border-b border-charcoal/5">
-          <div className="max-w-7xl mx-auto px-6 md:px-12 flex items-center gap-2 text-xs font-mono text-charcoal/40">
-            <Link to="/services" className="hover:text-ochre transition-colors duration-200">
-              Services
-            </Link>
-            <ChevronRight className="w-3.5 h-3.5 text-charcoal/20" />
-            <Link to={`/services/${category.id}`} className="hover:text-ochre transition-colors duration-200">
-              {category.title}
-            </Link>
-            <ChevronRight className="w-3.5 h-3.5 text-charcoal/20" />
-            <span className="text-ochre font-medium">{serviceName}</span>
-          </div>
-        </div>
+      <PageHeader
+        eyebrow={category.title}
+        title={serviceName}
+        description={serviceDesc}
+        breadcrumbs={[
+          { label: 'Home', to: '/' },
+          { label: 'Services', to: '/services' },
+          { label: category.title, to: `/services/${category.id}` },
+          { label: serviceName }
+        ]}
+      />
 
-        {/* 1. Hero image: full-width image at the top */}
-        <div className="max-w-7xl mx-auto px-6 md:px-12 pt-8">
-          {heroImage ? (
-            <div className="w-full aspect-[21/9] rounded-3xl overflow-hidden border border-charcoal/5 elevation-raised bg-cream">
+      <main className="section flex-1">
+        <div className="container-x">
+          {heroImage && (
+            <div className="aspect-[21/9] overflow-hidden rounded-xl bg-charcoal/5">
               <img
                 src={optimizeHeroCloudinaryUrl(heroImage)}
-                alt={`${serviceName} Hero`}
-                className="w-full h-full object-cover object-center"
+                alt=""
+                width={1600}
+                height={686}
+                decoding="async"
                 referrerPolicy="no-referrer"
+                className="h-full w-full object-cover"
               />
             </div>
-          ) : (
-            <div className="w-full aspect-[21/9] rounded-3xl border-2 border-dashed border-charcoal/10 bg-white/40 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden group hover:border-ochre/20 transition-colors duration-300">
-              <div className="mb-4">
-                <BrandIconBox icon={ImageIcon} />
+          )}
+
+          {galleryImages.length > 0 && (
+            <div className="mt-14 md:mt-20">
+              <h2 className="mb-6 text-3xl md:text-4xl">Project photos</h2>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5">
+                {galleryImages.map((imgUrl, index) => (
+                  <div key={`${imgUrl}-${index}`} className="aspect-[4/3] overflow-hidden rounded-xl bg-charcoal/5">
+                    <img
+                      src={imgUrl}
+                      alt=""
+                      width={1200}
+                      height={900}
+                      loading="lazy"
+                      decoding="async"
+                      referrerPolicy="no-referrer"
+                      className="h-full w-full object-cover transition-transform duration-700 ease-out hover:scale-[1.03]"
+                    />
+                  </div>
+                ))}
               </div>
-              <p className="text-xs font-bold text-charcoal/40 uppercase tracking-widest mb-1">
-                Hero Image coming soon
-              </p>
-              <p className="text-[11px] text-charcoal/30 max-w-[280px]">
-                A luxury hero view is currently being curated for this service page.
-              </p>
+            </div>
+          )}
+
+          {otherServices.length > 0 && (
+            <div className="mt-14 md:mt-20">
+              <h2 className="mb-2 text-3xl md:text-4xl">Also in {category.title.toLowerCase()}</h2>
+              <ul className="mt-6 divide-y divide-charcoal/10 border-y border-charcoal/10">
+                {otherServices.map((item) => (
+                  <li key={item.slug}>
+                    <Link
+                      to={`/services/${category.id}/${item.slug}`}
+                      className="group flex min-h-14 items-center justify-between gap-6 py-4 text-lg hover:text-ochre"
+                    >
+                      <span className="font-serif text-2xl">{item.name}</span>
+                      <ArrowRight className="h-4 w-4 shrink-0 text-charcoal/40 group-hover:text-ochre" aria-hidden="true" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>
+      </main>
 
-        {/* Service Core Detail: 2. Service Name H1 & 3. Brief description */}
-        <main className="section-rhythm max-w-7xl mx-auto px-6 md:px-12">
-          <div className="max-w-4xl">
-            <span className="text-xs font-bold tracking-[0.2em] text-ochre uppercase mb-3 block">
-              DETAILED SERVICE STUDY
-            </span>
-            <motion.h1 
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif text-charcoal font-medium mb-6 leading-tight"
-            >
-              {serviceName}
-            </motion.h1>
-            <motion.p 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1 }}
-              className="text-base sm:text-lg md:text-xl text-charcoal/60 leading-relaxed font-sans mb-12"
-            >
-              {serviceDesc}
-            </motion.p>
-          </div>
-
-          {/* 4. Three image cards */}
-          <div className="mt-12 space-y-6">
-            <h3 className="text-xs font-bold tracking-[0.2em] text-charcoal/30 uppercase pb-3 border-b border-charcoal/5">
-              PROJECT PORTFOLIO LOOKBOOK
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[0, 1, 2].map((index) => {
-                const imgUrl = galleryImages[index];
-                return imgUrl ? (
-                  <div key={index} className="aspect-[4/3] rounded-3xl overflow-hidden border border-charcoal/5 elevation-subtle hover:elevation-raised transition-shadow bg-cream">
-                    <img
-                      src={imgUrl}
-                      alt={`${serviceName} project reference ${index + 1}`}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-                ) : (
-                  <div 
-                    key={index} 
-                    className="aspect-[4/3] rounded-3xl border-2 border-dashed border-charcoal/10 bg-white/40 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden group hover:border-ochre/20 transition-colors duration-300"
-                  >
-                    <div className="mb-4">
-                      <BrandIconBox icon={ImageIcon} />
-                    </div>
-                    <p className="text-xs font-bold text-charcoal/40 uppercase tracking-widest mb-1">
-                      Photo coming soon
-                    </p>
-                    <p className="text-[11px] text-charcoal/30 max-w-[180px]">
-                      Aesthetic portfolio updates are currently in progress.
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </main>
-
-        {/* 5. CTA band: "Get a Quote" */}
-        <section className="section-rhythm bg-cream">
-          <div className="max-w-5xl mx-auto px-6 md:px-12 text-center">
-            <div className="bg-charcoal text-white rounded-3xl p-10 md:p-16 relative overflow-hidden border border-white/5 elevation-modal">
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-ochre to-transparent opacity-50" />
-              
-              <div className="relative z-10 space-y-6">
-                <span className="text-xs font-bold tracking-[0.2em] text-ochre uppercase block">TAILORED HOME SERVICE</span>
-                
-                <h2 className="text-3xl md:text-4xl lg:text-5xl font-serif font-medium leading-tight max-w-2xl mx-auto">
-                  Bring <span className="italic font-light text-ochre-light">{serviceName}</span> to your residence
-                </h2>
-                
-                <p className="text-white/60 text-sm md:text-base max-w-xl mx-auto leading-relaxed">
-                  Every home deserves architectural precision. Speak with our experts to discuss custom scheduling, design coordination, and direct material options.
-                </p>
-
-                <div className="pt-6 flex justify-center">
-                  <Link 
-                    to="/contact"
-                    className="w-full sm:w-auto bg-ochre hover:bg-ochre/90 text-white px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg shadow-ochre/20 text-sm"
-                  >
-                    <MessageSquare className="w-5 h-5" />
-                    Get a Quote
-                  </Link>
-                </div>
-              </div>
-              
-              {/* Soft lighting */}
-              <div className="absolute -top-40 -left-40 w-80 h-80 rounded-full bg-ochre/10 blur-3xl opacity-30" />
-              <div className="absolute -bottom-40 -right-40 w-80 h-80 rounded-full bg-ochre/10 blur-3xl opacity-30" />
-            </div>
-          </div>
-        </section>
-      </div>
+      <CtaBand
+        title={<>Interested in {serviceName.toLowerCase()}?</>}
+        description="Tell us about your space and we will send a clear scope, timeline and price. The first consultation is free."
+        whatsappText={`Hello Pamnim Interiors, I'd like to ask about ${serviceName.toLowerCase()}.`}
+      />
       <Footer />
     </div>
   );

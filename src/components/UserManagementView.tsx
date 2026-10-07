@@ -2,11 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db, auth } from '../lib/firebase';
 import { collection, query, getDocs, doc, setDoc, deleteDoc, onSnapshot, where, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../hooks/useAuth';
-import { 
-  Users, UserPlus, CheckCircle2, Copy, Shield, Phone, Mail, 
-  ExternalLink, Sparkles, Check, Clock, UserCheck, AlertCircle, ArrowUpRight, Trash2, XCircle,
-  HardHat, DollarSign, X, Briefcase, MapPin, Edit3, Save, Share2, Send, Key
-} from 'lucide-react';
+import { Users, UserPlus, CheckCircle2, Copy, Shield, Phone, Mail, ExternalLink, Check, Clock, UserCheck, AlertCircle, ArrowUpRight, Trash2, XCircle, HardHat, DollarSign, X, Briefcase, MapPin, Edit3, Save, Share2, Send, Key } from 'lucide-react';
 import DeleteClientModal from './DeleteClientModal';
 import { WorkerSkill } from '../types/hrms';
 import { createNotification } from '../services/notificationService';
@@ -514,7 +510,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
       <div className="bg-ochre text-white p-5 sm:p-8 rounded-3xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 flex-wrap">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="w-5 h-5 text-white/80" />
+            <Users className="w-5 h-5 text-white/80" />
             <span className="text-xs font-bold uppercase tracking-widest text-white/90">Client & Worker Accounts</span>
           </div>
           <h3 className="text-2xl font-bold">Owner-Provisioned Client Accounts</h3>
@@ -562,7 +558,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
               </div>
               <div>
                 <h3 className="font-bold text-lg text-charcoal">Pending Sign-Up Requests</h3>
-                <p className="text-xs text-charcoal/50">Review registration requests and assign roles. Workers require owner-only wage & trade configuration.</p>
+                <p className="text-xs text-charcoal/65">Review registration requests and assign roles. Workers require owner-only wage & trade configuration.</p>
               </div>
             </div>
 
@@ -572,11 +568,11 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
           </div>
 
           {loading ? (
-            <div className="py-8 text-center text-charcoal/40 animate-pulse text-sm">
+            <div className="py-8 text-center text-charcoal/60 animate-pulse text-sm">
               Loading requests...
             </div>
           ) : pendingRequests.length === 0 ? (
-            <div className="py-8 text-center text-charcoal/40 text-sm">
+            <div className="py-8 text-center text-charcoal/60 text-sm">
               No pending sign-up requests right now.
             </div>
           ) : (
@@ -590,7 +586,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                     <div className="flex items-center gap-2 flex-wrap">
                       <h4 className="font-bold text-base text-charcoal truncate">{req.name || 'Unnamed Request'}</h4>
                       {req.role === 'worker' && (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-ochre/15 text-ochre flex items-center gap-1">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-ochre/15 text-ochre flex items-center gap-1">
                           <HardHat className="w-3 h-3" /> Worker Request
                         </span>
                       )}
@@ -672,7 +668,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
             </div>
             <div>
               <h3 className="font-bold text-lg text-charcoal">Team & Employee Permissions</h3>
-              <p className="text-xs text-charcoal/50">Manage active staff roles (Owner, Elevated Employee, Regular Employee).</p>
+              <p className="text-xs text-charcoal/65">Manage active staff roles (Owner, Elevated Employee, Regular Employee).</p>
             </div>
           </div>
         </div>
@@ -691,7 +687,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h4 className="font-bold text-sm text-charcoal">{member.name}</h4>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
                       isMemberOwner 
                         ? 'bg-purple-100 text-purple-800' 
                         : isElevated 
@@ -701,12 +697,12 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                       {isMemberOwner ? 'Owner' : isElevated ? 'Elevated Employee' : 'Regular Employee'}
                     </span>
                     {isSelf && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-charcoal/10 text-charcoal">
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-charcoal/10 text-charcoal">
                         You
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-charcoal/50 mt-0.5 truncate">{member.email}</p>
+                  <p className="text-xs text-charcoal/65 mt-0.5 truncate">{member.email}</p>
                 </div>
 
                 {/* Owner & Elevated Staff controls to promote / demote staff & remove staff */}
@@ -769,7 +765,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
             </div>
             <div>
               <h3 className="font-bold text-lg text-charcoal">Active Clients</h3>
-              <p className="text-xs text-charcoal/50">Owner-provisioned client accounts, sign-in links, and property addresses.</p>
+              <p className="text-xs text-charcoal/65">Owner-provisioned client accounts, sign-in links, and property addresses.</p>
             </div>
           </div>
 
@@ -794,7 +790,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
 
         <div className="space-y-4">
           {activeClients.length === 0 ? (
-            <div className="py-8 text-center text-charcoal/40 text-sm space-y-2">
+            <div className="py-8 text-center text-charcoal/60 text-sm space-y-2">
               <p>No active clients registered yet.</p>
               <button
                 type="button"
@@ -827,21 +823,21 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                             @{client.username}
                           </span>
                         )}
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                           Client
                         </span>
                         {isInvited ? (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
                             Invited (Awaiting Password Setup)
                           </span>
                         ) : (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
                             Active
                           </span>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-3 text-xs text-charcoal/50 mt-1 flex-wrap">
+                      <div className="flex items-center gap-3 text-xs text-charcoal/65 mt-1 flex-wrap">
                         <span>{client.email || 'No email provided'}</span>
                         {client.phone && (
                           <>
@@ -913,7 +909,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                       <div className="flex items-start gap-2 flex-1 min-w-0">
                         <MapPin className="w-3.5 h-3.5 text-ochre shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 block">Property / Project Address:</span>
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/60 block">Property / Project Address:</span>
                           
                           {isEditingThisAddress ? (
                             <div className="mt-1.5 space-y-2 max-w-xl">
@@ -948,7 +944,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                               {hasCustomAddress ? (
                                 client.address
                               ) : (
-                                <span className="text-charcoal/40 italic">No address recorded</span>
+                                <span className="text-charcoal/60 italic">No address recorded</span>
                               )}
                             </p>
                           )}
@@ -979,7 +975,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
 
       {/* CREATE CLIENT ACCOUNT MODAL (PART 3) */}
       {showCreateClientModal && (
-        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+        <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
           <div className="bg-white w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-2xl border border-charcoal/10 my-8 space-y-5 animate-scale-up">
             <div className="flex items-start justify-between gap-4 border-b border-charcoal/10 pb-4">
               <div className="flex items-center gap-3">
@@ -988,7 +984,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                 </div>
                 <div>
                   <h3 className="font-bold text-lg text-charcoal">Create Client Account</h3>
-                  <p className="text-xs text-charcoal/50">Account exists immediately so you can issue quotes or invoices right away.</p>
+                  <p className="text-xs text-charcoal/65">Account exists immediately so you can issue quotes or invoices right away.</p>
                 </div>
               </div>
               <button
@@ -997,7 +993,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                   setShowCreateClientModal(false);
                   setCreatedClientResult(null);
                 }}
-                className="p-2 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-charcoal/60 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1149,8 +1145,8 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                   </div>
                 </div>
 
-                <p className="text-[11px] text-charcoal/50 leading-relaxed bg-cream/40 p-3 rounded-xl border border-charcoal/10">
-                  💡 No password is set by the owner. The account exists immediately so you can draft quotes or invoices. When you send the sign-in link, the client sets their own password.
+                <p className="text-[11px] text-charcoal/65 leading-relaxed bg-cream/40 p-3 rounded-xl border border-charcoal/10">
+                  No password is set by the owner. The account exists immediately so you can draft quotes or invoices. When you send the sign-in link, the client sets their own password.
                 </p>
 
                 <div className="pt-2 flex items-center justify-end gap-3">
@@ -1164,7 +1160,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                   <button
                     type="submit"
                     disabled={submittingNewClient}
-                    className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold transition-all cursor-pointer shadow-md shadow-ochre/20 disabled:opacity-50"
+                    className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold transition-all cursor-pointer shadow-md disabled:opacity-50"
                   >
                     {submittingNewClient ? 'Creating Account...' : 'Create Account & Generate Link'}
                   </button>
@@ -1177,7 +1173,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
 
       {/* Worker Approval Modal (Owner-Only Fields) */}
       {showWorkerApprovalModal && workerApprovalReq && (
-        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-2xl border border-charcoal/10 my-8 space-y-6">
             <div className="flex items-start justify-between gap-4 border-b border-charcoal/10 pb-4">
               <div className="flex items-center gap-3">
@@ -1186,7 +1182,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                 </div>
                 <div>
                   <h3 className="font-bold text-lg text-charcoal">Approve Site Worker</h3>
-                  <p className="text-xs text-charcoal/50">Configure owner-only wage, trade, and project assignments.</p>
+                  <p className="text-xs text-charcoal/65">Configure owner-only wage, trade, and project assignments.</p>
                 </div>
               </div>
               <button
@@ -1195,7 +1191,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                   setShowWorkerApprovalModal(false);
                   setWorkerApprovalReq(null);
                 }}
-                className="p-2 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-charcoal/60 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1203,22 +1199,22 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
 
             {/* Worker Submitted Information */}
             <div className="p-4 bg-cream/30 rounded-2xl border border-charcoal/10 space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40 block">Worker Submission</span>
+              <span className="text-[11px] font-bold uppercase tracking-widest text-charcoal/60 block">Worker Submission</span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 <div>
-                  <span className="text-charcoal/50">Name: </span>
+                  <span className="text-charcoal/65">Name: </span>
                   <span className="font-bold text-charcoal">{workerApprovalReq.name}</span>
                 </div>
                 <div>
-                  <span className="text-charcoal/50">Phone (M-Pesa): </span>
+                  <span className="text-charcoal/65">Phone (M-Pesa): </span>
                   <span className="font-bold text-charcoal">{workerApprovalReq.phone || workerApprovalReq.whatsapp}</span>
                 </div>
                 <div>
-                  <span className="text-charcoal/50">National ID: </span>
+                  <span className="text-charcoal/65">National ID: </span>
                   <span className="font-bold text-charcoal">{workerApprovalReq.idNumber || 'Not provided'}</span>
                 </div>
                 <div>
-                  <span className="text-charcoal/50">Email: </span>
+                  <span className="text-charcoal/65">Email: </span>
                   <span className="font-bold text-charcoal">{workerApprovalReq.email}</span>
                 </div>
               </div>
@@ -1248,7 +1244,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                   Daily Wage Rate (KES) <span className="text-red-500">* (Owner-only)</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-charcoal/40">KES</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-charcoal/60">KES</span>
                   <input
                     type="number"
                     min={100}
@@ -1263,7 +1259,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                     className="w-full pl-14 pr-4 py-3 rounded-2xl border border-charcoal/15 text-sm font-bold text-charcoal outline-none focus:border-ochre"
                   />
                 </div>
-                <span className="text-[11px] text-charcoal/40 mt-1 block">Hidden from worker view. Used for daily pay calculations and weekly settlements.</span>
+                <span className="text-[11px] text-charcoal/60 mt-1 block">Hidden from worker view. Used for daily pay calculations and weekly settlements.</span>
               </div>
 
               {/* Owner-Only Field 3: Status */}
@@ -1330,7 +1326,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                 <button
                   type="submit"
                   disabled={processingId === workerApprovalReq.id}
-                  className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-ochre text-white text-xs font-bold shadow-lg shadow-ochre/20 hover:bg-ochre-dark transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-ochre text-white text-xs font-bold shadow-lg hover:bg-ochre-dark transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>{processingId === workerApprovalReq.id ? 'Activating Worker...' : 'Confirm & Activate Worker'}</span>

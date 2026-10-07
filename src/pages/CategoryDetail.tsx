@@ -1,136 +1,104 @@
-import React from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ChevronRight, ArrowRight, Sparkles, MessageSquare } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import BrandIconBox from '../components/BrandIconBox';
+import PageHeader from '../components/ui/PageHeader';
+import CtaBand from '../components/ui/CtaBand';
 import { serviceCategories } from '../data/servicesData';
+import { useCategoryImages } from '../hooks/useCategoryImages';
 
 export default function CategoryDetailPage() {
   const { categoryId } = useParams();
-  const category = serviceCategories.find(c => c.id === categoryId);
+  const { imagesFor, meta } = useCategoryImages();
+  const category = serviceCategories.find((c) => c.id === categoryId);
 
   if (!category) {
     return <Navigate to="/services" replace />;
   }
 
-  const Icon = category.icon;
+  const images = imagesFor(category.id);
+  const info = meta(category.id);
 
   return (
-    <div className="min-h-screen bg-cream flex flex-col justify-between">
-      <div>
-        <Header />
+    <div className="flex min-h-screen flex-col bg-cream">
+      <Header />
 
-        {/* Breadcrumbs Section */}
-        <div className="pt-32 pb-4 bg-cream border-b border-charcoal/5">
-          <div className="max-w-7xl mx-auto px-6 md:px-12 flex items-center gap-2 text-xs font-mono text-charcoal/40">
-            <Link to="/services" className="hover:text-ochre transition-colors duration-200">
-              Services
-            </Link>
-            <ChevronRight className="w-3.5 h-3.5 text-charcoal/20" />
-            <span className="text-ochre font-medium">{category.title}</span>
-          </div>
-        </div>
+      <PageHeader
+        eyebrow={`Service ${category.accent}`}
+        title={category.title}
+        description={category.description}
+        breadcrumbs={[{ label: 'Home', to: '/' }, { label: 'Services', to: '/services' }, { label: category.title }]}
+      >
+        {info && (info.startingPrice || info.timeline) && (
+          <dl className="flex flex-wrap gap-x-12 gap-y-4 text-sm">
+            {info.startingPrice && (
+              <div>
+                <dt className="text-charcoal/65">Starting from</dt>
+                <dd className="mt-1 text-lg font-semibold">{String(info.startingPrice).replace(/^From\s*/i, '')}</dd>
+              </div>
+            )}
+            {info.timeline && (
+              <div>
+                <dt className="text-charcoal/65">Typical timeline</dt>
+                <dd className="mt-1 text-lg font-semibold">{info.timeline}</dd>
+              </div>
+            )}
+          </dl>
+        )}
+      </PageHeader>
 
-        {/* Hero Section */}
-        <section className="section-rhythm relative overflow-hidden bg-cream border-b border-charcoal/5">
-          <div className="max-w-7xl mx-auto px-6 md:px-12 relative z-10">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="font-mono text-xs tracking-widest text-ochre font-extrabold uppercase">
-                Category {category.accent}
-              </span>
-              <div className="h-[1px] w-8 bg-ochre/20" />
-              <BrandIconBox icon={Icon} className="w-8 h-8" iconClassName="w-4 h-4" />
+      <main className="section flex-1">
+        <div className="container-x">
+          {images[0] && (
+            <div className="mb-14 aspect-[21/9] overflow-hidden rounded-xl bg-charcoal/5 md:mb-20">
+              <img
+                src={images[0]}
+                alt=""
+                width={1600}
+                height={686}
+                decoding="async"
+                referrerPolicy="no-referrer"
+                className="h-full w-full object-cover"
+              />
             </div>
+          )}
 
-            <motion.h1 
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif text-charcoal font-medium mb-6 leading-tight max-w-4xl"
-            >
-              {category.title}
-            </motion.h1>
-            <motion.p 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1 }}
-              className="text-sm sm:text-base md:text-lg text-charcoal/60 max-w-3xl leading-relaxed"
-            >
-              {category.description}
-            </motion.p>
-          </div>
-        </section>
-
-        {/* Sub-services Grid */}
-        <main className="section-rhythm max-w-7xl mx-auto px-6 md:px-12">
-          <h2 className="text-xs font-bold tracking-[0.2em] text-charcoal/30 uppercase mb-8 pb-4 border-b border-charcoal/5">
-            DETAILED SERVICE BREAKDOWN
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+          <h2 className="mb-2 text-3xl md:text-4xl">What this includes</h2>
+          <ul className="mt-8 divide-y divide-charcoal/10 border-y border-charcoal/10">
             {category.items.map((item, idx) => (
-              <motion.div
+              <motion.li
                 key={item.slug}
-                initial={{ opacity: 0, y: 25 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: idx * 0.1 }}
-                whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                className="bg-white border border-charcoal/5 rounded-3xl p-8 elevation-subtle hover:elevation-raised hover:border-ochre/20 transition-all duration-300 flex flex-col justify-between group"
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-40px' }}
+                transition={{ duration: 0.4, delay: idx * 0.05 }}
               >
-                <div>
-                  <h3 className="text-xl font-bold text-charcoal mb-4 group-hover:text-ochre transition-colors duration-300">
-                    {item.name}
-                  </h3>
-                  <p className="text-charcoal/50 text-sm leading-relaxed mb-8">
-                    {item.desc}
-                  </p>
-                </div>
-
                 <Link
                   to={`/services/${category.id}/${item.slug}`}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-charcoal group-hover:text-ochre transition-all duration-300 self-start"
+                  className="group grid gap-3 py-7 md:grid-cols-[3rem_1fr_1.4fr_auto] md:items-baseline md:gap-8"
                 >
-                  Explore Details
-                  <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+                  <span className="font-serif text-xl text-ochre" aria-hidden="true">
+                    {String(idx + 1).padStart(2, '0')}
+                  </span>
+                  <h3 className="text-2xl group-hover:text-ochre">{item.name}</h3>
+                  <p className="text-[15px] leading-relaxed text-charcoal/75">{item.desc}</p>
+                  <span className="hidden items-center gap-1.5 text-sm font-semibold text-charcoal group-hover:text-ochre md:inline-flex">
+                    Details
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </span>
                 </Link>
-              </motion.div>
+              </motion.li>
             ))}
-          </div>
-        </main>
+          </ul>
+        </div>
+      </main>
 
-        {/* Get a Quote CTA Band */}
-        <section className="py-16 bg-cream border-t border-charcoal/5">
-          <div className="max-w-5xl mx-auto px-6 md:px-12">
-            <div className="bg-charcoal text-white rounded-[2.5rem] p-8 md:p-12 relative overflow-hidden border border-white/5 shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
-              <div className="relative z-10 space-y-3 text-center md:text-left max-w-2xl">
-                <span className="text-[10px] font-bold tracking-[0.2em] text-ochre uppercase block">READY TO START?</span>
-                <h3 className="text-2xl md:text-3xl font-serif font-medium leading-tight text-white">
-                  Discuss your <span className="italic font-light text-ochre-light">{category.title}</span> project
-                </h3>
-                <p className="text-white/60 text-xs leading-relaxed">
-                  Connect with our design advisors today. We'll map out your structural planning and spatial options without any obligation.
-                </p>
-              </div>
-
-              <div className="relative z-10 flex-shrink-0 w-full md:w-auto">
-                <Link
-                  to="/contact"
-                  className="w-full md:w-auto bg-ochre hover:bg-ochre/90 text-white px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg shadow-ochre/20 text-sm"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  Get a Quote
-                </Link>
-              </div>
-
-              {/* Subtle visual lighting */}
-              <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-ochre/5 blur-2xl opacity-30" />
-              <div className="absolute -bottom-24 -right-24 w-48 h-48 rounded-full bg-ochre/5 blur-2xl opacity-30" />
-            </div>
-          </div>
-        </section>
-      </div>
+      <CtaBand
+        title={`Planning ${category.title.toLowerCase()}?`}
+        description="Tell us about your space and we will give you a clear scope, timeline and price. The first consultation is free."
+        whatsappText={`Hello Pamnim Interiors, I'd like to ask about ${category.title.toLowerCase()}.`}
+      />
       <Footer />
     </div>
   );

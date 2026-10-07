@@ -56,7 +56,7 @@ export default function ProjectCostEditor({
     <div className="flex flex-col gap-2 shrink-0">
       <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
         <div className="relative">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/40 font-bold text-sm select-none">$</span>
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/60 font-bold text-sm select-none">$</span>
           <input
             type="number"
             min="0"
@@ -83,7 +83,7 @@ export default function ProjectCostEditor({
             isSaving 
               ? "bg-charcoal/20 text-charcoal/60 cursor-not-allowed" 
               : hasChanged 
-                ? "bg-ochre text-white hover:bg-ochre-dark shadow-ochre/20" 
+                ? "bg-ochre text-white hover:bg-ochre-dark" 
                 : "bg-charcoal text-white hover:bg-charcoal/80"
           )}
         >

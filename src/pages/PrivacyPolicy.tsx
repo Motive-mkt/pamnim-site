@@ -16,7 +16,7 @@ export default function PrivacyPolicy() {
     <div className="min-h-screen bg-cream text-charcoal flex flex-col justify-between">
       <Header />
 
-      <main className="flex-1 py-16 sm:py-24">
+      <main className="flex-1 pt-28 pb-16 sm:pt-32 sm:pb-24">
         <div className="max-w-4xl mx-auto px-6 sm:px-8">
           
           <Link 
@@ -32,7 +32,7 @@ export default function PrivacyPolicy() {
                 <Shield className="w-6 h-6" />
               </div>
               <h1 className="text-3xl sm:text-4xl font-serif font-bold text-charcoal">Privacy Policy</h1>
-              <p className="text-xs text-charcoal/50 mt-2">
+              <p className="text-xs text-charcoal/65 mt-2">
                 Last updated: September 2026 · Pamnim Interior Designers (Nairobi, Kenya)
               </p>
             </div>

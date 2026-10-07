@@ -415,7 +415,7 @@ export default function SavedInvoicesList({
         <button
           type="button"
           onClick={onCreateNew}
-          className="px-5 py-3 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-ochre/20 transition-all cursor-pointer shrink-0"
+          className="px-5 py-3 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer shrink-0"
         >
           <Plus className="w-4 h-4" />
           <span>New Invoice</span>
@@ -426,7 +426,7 @@ export default function SavedInvoicesList({
       <div className="bg-white rounded-2xl p-4 border border-charcoal/10 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
         {/* Search */}
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-charcoal/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-charcoal/60 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={search}
@@ -437,7 +437,7 @@ export default function SavedInvoicesList({
           {search && (
             <button
               onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-charcoal/40 hover:text-charcoal"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-charcoal/60 hover:text-charcoal"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -495,13 +495,13 @@ export default function SavedInvoicesList({
 
       {/* Invoices List / Grid */}
       {loading ? (
-        <div className="py-20 text-center text-charcoal/50 text-xs font-medium bg-white rounded-3xl border border-charcoal/10">
+        <div className="py-20 text-center text-charcoal/65 text-xs font-medium bg-white rounded-3xl border border-charcoal/10">
           <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-ochre" />
           <span>Loading saved invoices archive...</span>
         </div>
       ) : filteredInvoices.length === 0 ? (
         <div className="p-12 text-center bg-white rounded-3xl border border-charcoal/10 space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-cream flex items-center justify-center mx-auto text-charcoal/40">
+          <div className="w-14 h-14 rounded-2xl bg-cream flex items-center justify-center mx-auto text-charcoal/60">
             <FileText className="w-6 h-6" />
           </div>
           <div className="max-w-md mx-auto">
@@ -515,7 +515,7 @@ export default function SavedInvoicesList({
           <button
             type="button"
             onClick={onCreateNew}
-            className="px-5 py-2.5 rounded-2xl bg-ochre text-white text-xs font-bold inline-flex items-center gap-2 cursor-pointer shadow-md shadow-ochre/20"
+            className="px-5 py-2.5 rounded-2xl bg-ochre text-white text-xs font-bold inline-flex items-center gap-2 cursor-pointer shadow-md"
           >
             <Plus className="w-4 h-4" />
             <span>Create Invoice</span>
@@ -544,7 +544,7 @@ export default function SavedInvoicesList({
 
                     {/* Auto-calculated Status Badge (No manual override) */}
                     <span className={cn(
-                      "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                      "px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border",
                       calculatedStatus === 'paid' && "bg-emerald-50 text-emerald-700 border-emerald-200",
                       calculatedStatus === 'partial' && "bg-blue-50 text-blue-700 border-blue-200",
                       calculatedStatus === 'sent' && "bg-amber-50 text-amber-800 border-amber-200"
@@ -553,14 +553,14 @@ export default function SavedInvoicesList({
                     </span>
 
                     {hasPayments && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-charcoal/50 bg-charcoal/5 px-2 py-0.5 rounded-full" title="Locked against terms modification">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-charcoal/65 bg-charcoal/5 px-2 py-0.5 rounded-full" title="Locked against terms modification">
                         <Lock className="w-3 h-3 text-amber-600" />
                         <span>Audit Locked</span>
                       </span>
                     )}
 
                     {inv.recipientType && (
-                      <span className="text-[10px] font-medium text-charcoal/50 uppercase">
+                      <span className="text-[11px] font-medium text-charcoal/65 uppercase">
                         • {inv.recipientType === 'lead' ? 'Manual Lead' : inv.recipientType === 'walk_in' ? 'Walk-in' : 'Registered Client'}
                       </span>
                     )}
@@ -576,7 +576,7 @@ export default function SavedInvoicesList({
                       <span className="text-ochre font-medium">Project: {inv.projectName}</span>
                     )}
                     {inv.dueDate && (
-                      <span className="text-charcoal/40">Due: {inv.dueDate}</span>
+                      <span className="text-charcoal/60">Due: {inv.dueDate}</span>
                     )}
                   </div>
                 </div>
@@ -584,25 +584,25 @@ export default function SavedInvoicesList({
                 {/* Center: Financials */}
                 <div className="grid grid-cols-3 gap-3 p-3 bg-cream/40 rounded-xl border border-charcoal/5 text-center min-w-[280px]">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-charcoal/50 block">Invoice Total</span>
+                    <span className="text-[11px] uppercase font-bold text-charcoal/65 block">Invoice Total</span>
                     <span className="text-xs sm:text-sm font-bold text-charcoal">
                       KES {formatMoney(total)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-charcoal/50 block">Amount Paid</span>
+                    <span className="text-[11px] uppercase font-bold text-charcoal/65 block">Amount Paid</span>
                     <span className={cn(
                       "text-xs sm:text-sm font-bold",
-                      paid > 0 ? "text-emerald-600" : "text-charcoal/50"
+                      paid > 0 ? "text-emerald-600" : "text-charcoal/65"
                     )}>
                       KES {formatMoney(paid)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-charcoal/50 block">Balance Due</span>
+                    <span className="text-[11px] uppercase font-bold text-charcoal/65 block">Balance Due</span>
                     <span className={cn(
                       "text-xs sm:text-sm font-bold",
-                      balance > 0 ? "text-amber-700" : "text-charcoal/40"
+                      balance > 0 ? "text-amber-700" : "text-charcoal/60"
                     )}>
                       KES {formatMoney(balance)}
                     </span>
@@ -689,7 +689,7 @@ export default function SavedInvoicesList({
                   <button
                     type="button"
                     onClick={() => setInvoiceToDelete(inv)}
-                    className="p-2 rounded-xl text-charcoal/40 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                    className="p-2 rounded-xl text-charcoal/60 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                     title="Delete Invoice"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -703,7 +703,7 @@ export default function SavedInvoicesList({
 
       {/* LOG PAYMENT MODAL (Reference Code is REQUIRED) */}
       {paymentInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 animate-fade-in">
           <div className="bg-white w-full max-w-md rounded-3xl border border-charcoal/15 shadow-2xl p-6 sm:p-8 space-y-5 animate-scale-up max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-charcoal/10 pb-4">
               <div>
@@ -720,7 +720,7 @@ export default function SavedInvoicesList({
               </div>
               <button
                 onClick={() => setPaymentInvoice(null)}
-                className="p-1.5 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream transition-colors"
+                className="p-1.5 rounded-xl text-charcoal/60 hover:text-charcoal hover:bg-cream transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -744,15 +744,15 @@ export default function SavedInvoicesList({
                 {/* Summary box */}
                 <div className="p-3 bg-cream/50 rounded-xl border border-charcoal/5 flex items-center justify-between text-xs">
                   <div>
-                    <span className="text-charcoal/50 block text-[10px] uppercase font-bold">Total Invoiced</span>
+                    <span className="text-charcoal/65 block text-[11px] uppercase font-bold">Total Invoiced</span>
                     <span className="font-bold text-charcoal">KES {formatMoney(Number(paymentInvoice.totalInvoiced) || 0)}</span>
                   </div>
                   <div>
-                    <span className="text-charcoal/50 block text-[10px] uppercase font-bold">Already Paid</span>
+                    <span className="text-charcoal/65 block text-[11px] uppercase font-bold">Already Paid</span>
                     <span className="font-bold text-emerald-600">KES {formatMoney(Number(paymentInvoice.amountPaid) || 0)}</span>
                   </div>
                   <div>
-                    <span className="text-charcoal/50 block text-[10px] uppercase font-bold">Remaining</span>
+                    <span className="text-charcoal/65 block text-[11px] uppercase font-bold">Remaining</span>
                     <span className="font-bold text-amber-700">KES {formatMoney(Number(paymentInvoice.balanceDue) || 0)}</span>
                   </div>
                 </div>
@@ -812,7 +812,7 @@ export default function SavedInvoicesList({
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-charcoal/70 mb-1 flex items-center justify-between">
                     <span>Reference / Transaction Code <span className="text-red-500">* (REQUIRED)</span></span>
-                    <span className="text-[10px] text-charcoal/40 font-normal">e.g. QHX89J2KL</span>
+                    <span className="text-[11px] text-charcoal/60 font-normal">e.g. QHX89J2KL</span>
                   </label>
                   <input
                     type="text"
@@ -822,7 +822,7 @@ export default function SavedInvoicesList({
                     placeholder="M-Pesa code, Bank slip #, Cheque #"
                     className="w-full px-3.5 py-2.5 bg-cream/40 border border-charcoal/15 rounded-xl text-xs sm:text-sm font-mono font-bold focus:outline-none focus:border-ochre focus:bg-white text-charcoal uppercase"
                   />
-                  <p className="text-[11px] text-charcoal/50 mt-1">
+                  <p className="text-[11px] text-charcoal/65 mt-1">
                     Unlike worker wages where reference is optional, client invoice payments strictly require a verification reference code.
                   </p>
                 </div>
@@ -852,7 +852,7 @@ export default function SavedInvoicesList({
                   <button
                     type="submit"
                     disabled={isSubmittingPayment}
-                    className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-emerald-700/20 transition-all cursor-pointer disabled:opacity-50"
+                    className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-2 shadow-md transition-all cursor-pointer disabled:opacity-50"
                   >
                     <Check className="w-4 h-4" />
                     <span>{isSubmittingPayment ? 'Recording...' : 'Record & Download Receipt'}</span>
@@ -866,7 +866,7 @@ export default function SavedInvoicesList({
 
       {/* RECEIPTS VIEWER MODAL */}
       {receiptsInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 animate-fade-in">
           <div className="bg-white w-full max-w-xl rounded-3xl border border-charcoal/15 shadow-2xl p-6 sm:p-8 space-y-5 animate-scale-up max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-charcoal/10 pb-4">
               <div>
@@ -883,22 +883,22 @@ export default function SavedInvoicesList({
               </div>
               <button
                 onClick={() => setReceiptsInvoice(null)}
-                className="p-1.5 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream transition-colors"
+                className="p-1.5 rounded-xl text-charcoal/60 hover:text-charcoal hover:bg-cream transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {loadingReceipts ? (
-              <div className="py-12 text-center text-charcoal/50 text-xs">
+              <div className="py-12 text-center text-charcoal/65 text-xs">
                 <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-ochre" />
                 <span>Loading receipts...</span>
               </div>
             ) : invoiceReceipts.length === 0 ? (
-              <div className="py-10 text-center text-charcoal/50 space-y-2">
-                <Receipt className="w-8 h-8 mx-auto text-charcoal/30" />
+              <div className="py-10 text-center text-charcoal/65 space-y-2">
+                <Receipt className="w-8 h-8 mx-auto text-charcoal/60" />
                 <p className="text-xs font-semibold">No payments recorded against this invoice yet.</p>
-                <p className="text-[11px] text-charcoal/40">Use the "Log Payment" button to record client payments.</p>
+                <p className="text-[11px] text-charcoal/60">Use the "Log Payment" button to record client payments.</p>
               </div>
             ) : (
               <div className="space-y-3 divide-y divide-charcoal/5">
@@ -907,7 +907,7 @@ export default function SavedInvoicesList({
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-charcoal font-mono">{rec.receiptNumber}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 font-bold">
+                        <span className="text-[11px] px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 font-bold">
                           {rec.paymentMethod}
                         </span>
                       </div>
@@ -915,7 +915,7 @@ export default function SavedInvoicesList({
                         Date: <strong>{rec.date}</strong> • Ref: <strong className="font-mono text-charcoal">{rec.referenceNumber || rec.reference || '—'}</strong>
                       </p>
                       {rec.notes && (
-                        <p className="text-[11px] text-charcoal/50 italic">{rec.notes}</p>
+                        <p className="text-[11px] text-charcoal/65 italic">{rec.notes}</p>
                       )}
                     </div>
 
@@ -925,7 +925,7 @@ export default function SavedInvoicesList({
                           KES {formatMoney(rec.amount)}
                         </span>
                         {rec.balanceRemaining !== undefined && (
-                          <span className="text-[10px] text-charcoal/40 block">
+                          <span className="text-[11px] text-charcoal/60 block">
                             Bal: KES {formatMoney(rec.balanceRemaining)}
                           </span>
                         )}
@@ -961,7 +961,7 @@ export default function SavedInvoicesList({
 
       {/* Delete Invoice Confirmation Modal */}
       {invoiceToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 animate-fade-in">
           <div className="bg-white w-full max-w-md rounded-3xl border border-red-200 shadow-2xl p-6 space-y-4 animate-scale-up">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center">

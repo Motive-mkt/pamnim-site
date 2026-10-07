@@ -199,7 +199,7 @@ export default function CatalogAutocomplete({
                 onOpenCatalogModal();
               }}
               title="Open full catalog browser"
-              className="text-[10px] font-bold text-ochre hover:text-ochre-dark px-1.5 py-0.5 rounded hover:bg-ochre/10 transition-colors flex items-center gap-0.5 cursor-pointer"
+              className="text-[11px] font-bold text-ochre hover:text-ochre-dark px-1.5 py-0.5 rounded hover:bg-ochre/10 transition-colors flex items-center gap-0.5 cursor-pointer"
             >
               <Layers className="w-3 h-3" />
               <span className="hidden sm:inline">Catalog</span>
@@ -209,7 +209,7 @@ export default function CatalogAutocomplete({
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
-            className="p-1 text-charcoal/40 hover:text-charcoal transition-colors cursor-pointer"
+            className="p-1 text-charcoal/60 hover:text-charcoal transition-colors cursor-pointer"
           >
             <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", isOpen && "rotate-180")} />
           </button>
@@ -230,19 +230,19 @@ export default function CatalogAutocomplete({
                 <button
                   type="button"
                   onClick={() => setShowInlineAdd(false)}
-                  className="p-1 text-charcoal/40 hover:text-charcoal cursor-pointer"
+                  className="p-1 text-charcoal/60 hover:text-charcoal cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
 
               {addError && (
-                <p className="text-[10px] text-red-600 font-semibold">{addError}</p>
+                <p className="text-[11px] text-red-600 font-semibold">{addError}</p>
               )}
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-charcoal/60 mb-1">
+                  <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">
                     Selling Price (KES) *
                   </label>
                   <input
@@ -259,7 +259,7 @@ export default function CatalogAutocomplete({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-charcoal/60 mb-1">
+                  <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">
                     Unit of Measure *
                   </label>
                   <select
@@ -275,7 +275,7 @@ export default function CatalogAutocomplete({
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold uppercase text-charcoal/60 mb-1">
+                <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">
                   Category (Optional)
                 </label>
                 <input
@@ -317,7 +317,7 @@ export default function CatalogAutocomplete({
                     <Plus className="w-4 h-4 shrink-0 text-ochre" />
                     <span>Add <strong className="text-charcoal underline">"{trimmedVal}"</strong> to catalog</span>
                   </div>
-                  <span className="text-[10px] bg-white px-2 py-0.5 rounded text-ochre font-bold shadow-2xs">
+                  <span className="text-[11px] bg-white px-2 py-0.5 rounded text-ochre font-bold shadow-2xs">
                     Quick Add
                   </span>
                 </div>
@@ -325,7 +325,7 @@ export default function CatalogAutocomplete({
 
               {filteredItems.length > 0 ? (
                 <div>
-                  <div className="px-3 py-1.5 bg-cream/50 text-[10px] uppercase font-bold tracking-wider text-charcoal/40 flex items-center justify-between">
+                  <div className="px-3 py-1.5 bg-cream/50 text-[11px] uppercase font-bold tracking-wider text-charcoal/60 flex items-center justify-between">
                     <span>Matching Catalog Items</span>
                     <span>{filteredItems.length} found</span>
                   </div>
@@ -348,13 +348,13 @@ export default function CatalogAutocomplete({
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-xs font-bold text-charcoal">{item.name}</span>
                             {item.category && (
-                              <span className="text-[10px] px-1.5 py-0.5 bg-charcoal/5 text-charcoal/60 rounded border border-charcoal/10 font-medium">
+                              <span className="text-[11px] px-1.5 py-0.5 bg-charcoal/5 text-charcoal/60 rounded border border-charcoal/10 font-medium">
                                 {item.category}
                               </span>
                             )}
                           </div>
                           {item.description && (
-                            <p className="text-[11px] text-charcoal/50 truncate max-w-sm">
+                            <p className="text-[11px] text-charcoal/65 truncate max-w-sm">
                               {item.description}
                             </p>
                           )}
@@ -365,7 +365,7 @@ export default function CatalogAutocomplete({
                             KES {formatMoney(item.sellingPrice)}
                           </div>
                           {item.unit && (
-                            <div className="text-[10px] text-charcoal/40 lowercase">
+                            <div className="text-[11px] text-charcoal/60 lowercase">
                               per {item.unit}
                             </div>
                           )}
@@ -375,9 +375,9 @@ export default function CatalogAutocomplete({
                   })}
                 </div>
               ) : (
-                <div className="p-4 text-center text-xs text-charcoal/50 space-y-1">
+                <div className="p-4 text-center text-xs text-charcoal/65 space-y-1">
                   <p className="font-semibold text-charcoal/70">No matching catalog items found</p>
-                  <p className="text-[11px] text-charcoal/40">
+                  <p className="text-[11px] text-charcoal/60">
                     Click "Add to catalog" above or continue typing freely.
                   </p>
                 </div>

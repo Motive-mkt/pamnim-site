@@ -1,86 +1,119 @@
-import React from 'react';
-import { motion } from 'motion/react';
+import { useEffect, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Check } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useCMS } from '../hooks/useCMS';
 import { optimizeHeroCloudinaryUrl } from '../services/cloudinaryService';
 import HeroContactForm from './HeroContactForm';
 
-const FALLBACK_HERO_IMAGE = "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=90&w=2560";
+const FALLBACK_HERO_IMAGE =
+  'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=90&w=2560';
+
+const HERO_POINTS = [
+  'Free first consultation, no commitment',
+  'Design, joinery and finishing under one team',
+  'Fixed-scope quotes before any work begins'
+];
+
+const SLIDE_INTERVAL_MS = 7000;
 
 export default function Hero() {
   const { content, loading } = useCMS();
+  const reduceMotion = useReducedMotion();
   const hero = content.hero;
 
-  const heroImage = (hero.heroSlideshow && hero.heroSlideshow.length > 0)
-    ? hero.heroSlideshow[0]
-    : ((hero as any).heroImage || FALLBACK_HERO_IMAGE);
+  const slides: string[] =
+    hero.heroSlideshow && hero.heroSlideshow.length > 0
+      ? hero.heroSlideshow
+      : [((hero as any).heroImage as string) || FALLBACK_HERO_IMAGE];
+
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  // Slow cross-fade between the slides the owner picked; static when motion is reduced
+  useEffect(() => {
+    if (slides.length < 2 || reduceMotion) return;
+    const id = window.setInterval(() => setActiveIndex((i) => (i + 1) % slides.length), SLIDE_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [slides.length, reduceMotion]);
+
+  const safeIndex = activeIndex % slides.length;
+  const highlight = hero.highlightWord || '';
+  const titleParts = highlight && hero.title.includes(highlight) ? hero.title.split(highlight) : [hero.title];
 
   return (
-    <section className="relative min-h-screen flex items-center pt-36 sm:pt-40 md:pt-44 lg:pt-36 xl:pt-40 pb-20 lg:pb-24 overflow-hidden">
-      {/* Background Image */}
-      <div className="absolute inset-0 z-0 bg-charcoal overflow-hidden">
+    <section className="dark-surface relative isolate overflow-hidden bg-charcoal pt-[72px]">
+      {/* Background photography */}
+      <div className="absolute inset-0 -z-10" aria-hidden="true">
         {!loading && (
-          <motion.img
-            key={heroImage}
-            src={optimizeHeroCloudinaryUrl(heroImage)}
-            alt="Modern luxury interior by Pamnim Interiors"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1.2, ease: 'easeOut' }}
-            className="absolute inset-0 w-full h-full object-cover object-center"
-            referrerPolicy="no-referrer"
-          />
+          <AnimatePresence initial={false}>
+            <motion.img
+              key={slides[safeIndex]}
+              src={optimizeHeroCloudinaryUrl(slides[safeIndex])}
+              alt=""
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: reduceMotion ? 0 : 1.4, ease: 'easeInOut' }}
+              className="absolute inset-0 h-full w-full object-cover object-center"
+              referrerPolicy="no-referrer"
+            />
+          </AnimatePresence>
         )}
-        <div className="absolute inset-0 bg-black/50 z-10 pointer-events-none" />
+        {/* Directional scrim keeps the text readable while the right side of the photo stays visible */}
+        <div className="absolute inset-0 bg-gradient-to-r from-charcoal/90 via-charcoal/70 to-charcoal/35" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-charcoal/60 to-transparent" />
       </div>
 
-      <div className="relative z-20 max-w-7xl mx-auto px-6 md:px-12 grid lg:grid-cols-2 gap-12 items-center w-full">
-        {/* Main Content */}
+      <div className="container-x grid items-center gap-12 py-14 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:py-24 min-h-[calc(100svh-72px)]">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-white pt-2 sm:pt-4 lg:pt-6"
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="text-white"
         >
-          <div id="badge" className="inline-flex items-center gap-2 bg-ochre/20 backdrop-blur-md border border-white/20 rounded-full px-4 py-1.5 mb-6 mt-1 sm:mt-2 shadow-sm">
-            <span className="text-xs font-bold tracking-widest uppercase">RATED 4.6 BY CLIENTS ACROSS KENYA</span>
-          </div>
+          <p className="mb-5 text-xs font-semibold uppercase tracking-[0.16em] text-ochre-light">
+            Interior design in Nairobi, Kenya
+          </p>
 
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] mb-6">
-            {hero.title.split(hero.highlightWord || 'home.').map((part, i, arr) => (
+          <h1 className="max-w-[16ch] text-[2.5rem] leading-[1.06] text-white sm:text-6xl lg:text-[4.25rem]">
+            {titleParts.map((part, i) => (
               <span key={i}>
                 {part}
-                {i < arr.length - 1 && <span className="text-ochre">{hero.highlightWord || 'home.'}</span>}
+                {i < titleParts.length - 1 && <em className="font-medium italic text-ochre-light">{highlight}</em>}
               </span>
             ))}
           </h1>
 
-          <p className="text-base sm:text-lg md:text-xl text-white/90 mb-8 max-w-lg leading-relaxed">
-            {hero.subheadline}
-          </p>
+          <p className="mt-6 max-w-xl text-base leading-relaxed text-white/85 sm:text-lg">{hero.subheadline}</p>
 
-          <ul className="space-y-4 mb-10">
-            {[
-              'Free first consultation with no commitment',
-              'Bespoke design for your budget and space',
-              'On-time delivery, fully managed project'
-            ].map((item) => (
-              <li key={item} className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-ochre flex items-center justify-center flex-shrink-0">
-                  <Check className="w-3.5 h-3.5 text-white" />
-                </div>
-                <span className="font-medium text-sm md:text-base">{item}</span>
+          <ul className="mt-8 space-y-3">
+            {HERO_POINTS.map((item) => (
+              <li key={item} className="flex items-start gap-3 text-[15px] text-white/90">
+                <Check className="mt-0.5 h-[18px] w-[18px] shrink-0 text-ochre-light" aria-hidden="true" />
+                <span>{item}</span>
               </li>
             ))}
           </ul>
+
+          <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4">
+            <a href="#consultation" className="btn btn-primary btn-lg lg:hidden">
+              Get a free consultation
+            </a>
+            <Link
+              to="/portfolio"
+              className="inline-flex items-center gap-2 text-[15px] font-semibold text-white underline decoration-white/40 underline-offset-[6px] hover:decoration-ochre-light"
+            >
+              See recent projects
+            </Link>
+          </div>
         </motion.div>
 
-        {/* Lead Gen Form */}
         <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="w-full max-w-lg mx-auto lg:ml-auto"
+          id="consultation"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.12, ease: 'easeOut' }}
+          className="mx-auto w-full max-w-lg scroll-mt-24 lg:ml-auto lg:mr-0"
         >
           <HeroContactForm />
         </motion.div>

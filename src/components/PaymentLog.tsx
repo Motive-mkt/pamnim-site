@@ -182,7 +182,7 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
         {/* Total Project Cost */}
         <div className="bg-white rounded-3xl p-6 border border-charcoal/10 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-charcoal/50">Total Project Cost</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-charcoal/65">Total Project Cost</span>
             <div className="w-8 h-8 rounded-xl bg-charcoal/5 text-charcoal flex items-center justify-center">
               <DollarSign className="w-4 h-4" />
             </div>
@@ -205,7 +205,7 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
         {/* Total Amount Paid */}
         <div className="bg-white rounded-3xl p-6 border border-charcoal/10 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-charcoal/50">Total Received</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-charcoal/65">Total Received</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <CheckCircle2 className="w-4 h-4" />
             </div>
@@ -214,7 +214,7 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
             <span className="text-2xl sm:text-3xl font-black text-emerald-600">
               ${totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
-            <p className="text-[11px] text-charcoal/50 mt-1 font-medium">
+            <p className="text-[11px] text-charcoal/65 mt-1 font-medium">
               {payments.length} {payments.length === 1 ? 'payment' : 'payments'} recorded
             </p>
           </div>
@@ -223,7 +223,7 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
         {/* Balance Due */}
         <div className="bg-white rounded-3xl p-6 border border-charcoal/10 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-charcoal/50">
+            <span className="text-xs font-bold uppercase tracking-wider text-charcoal/65">
               {balance < 0 ? 'Overpayment' : 'Remaining Balance'}
             </span>
             <div className={cn(
@@ -278,7 +278,7 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
                   setShowAddForm(true);
                 }
               }}
-              className="px-5 py-2.5 rounded-2xl bg-ochre text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-ochre/20 hover:bg-ochre-dark transition-all cursor-pointer shrink-0 self-start sm:self-auto"
+              className="px-5 py-2.5 rounded-2xl bg-ochre text-white text-xs font-bold flex items-center gap-2 shadow-md hover:bg-ochre-dark transition-all cursor-pointer shrink-0 self-start sm:self-auto"
             >
               {showAddForm ? (
                 <>
@@ -310,7 +310,7 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
                   </>
                 )}
               </h4>
-              <span className="text-[10px] uppercase font-bold text-charcoal/40 tracking-wider">
+              <span className="text-[11px] uppercase font-bold text-charcoal/60 tracking-wider">
                 {editingPayment ? 'Modify Record' : 'Staff Entry'}
               </span>
             </div>
@@ -329,7 +329,7 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
                   Amount ($) *
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/40 font-bold text-sm select-none">$</span>
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/60 font-bold text-sm select-none">$</span>
                   <input
                     type="number"
                     step="any"
@@ -414,7 +414,7 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-6 py-2 rounded-xl bg-ochre text-white font-bold text-xs shadow-md shadow-ochre/20 hover:bg-ochre-dark transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                className="px-6 py-2 rounded-xl bg-ochre text-white font-bold text-xs shadow-md hover:bg-ochre-dark transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
               >
                 {isSubmitting ? 'Saving...' : editingPayment ? 'Update Payment' : 'Save Payment'}
               </button>
@@ -425,16 +425,16 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
         {/* Payments List */}
         <div className="space-y-3">
           {loading ? (
-            <div className="p-8 text-center text-charcoal/40 animate-pulse bg-cream/30 rounded-2xl border border-charcoal/5">
+            <div className="p-8 text-center text-charcoal/60 animate-pulse bg-cream/30 rounded-2xl border border-charcoal/5">
               Loading payment history...
             </div>
           ) : payments.length === 0 ? (
-            <div className="p-12 text-center bg-cream/20 rounded-3xl border border-dashed border-charcoal/15 text-charcoal/50 space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-charcoal/5 text-charcoal/30 flex items-center justify-center mx-auto mb-3">
+            <div className="p-12 text-center bg-cream/20 rounded-3xl border border-dashed border-charcoal/15 text-charcoal/65 space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-charcoal/5 text-charcoal/60 flex items-center justify-center mx-auto mb-3">
                 <CreditCard className="w-6 h-6" />
               </div>
               <p className="text-base font-bold text-charcoal/70">No payments recorded for this project yet</p>
-              <p className="text-xs text-charcoal/40 max-w-sm mx-auto">
+              <p className="text-xs text-charcoal/60 max-w-sm mx-auto">
                 {isStaff 
                   ? 'Record deposit receipts or milestone payments using the button above.' 
                   : 'Payment receipts will appear here as soon as our finance team logs them.'}
@@ -457,12 +457,12 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
                         <span className="text-base font-black text-charcoal">
                           ${Number(p.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
-                        <span className={cn("text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wider", badge.bg, badge.text, badge.border)}>
+                        <span className={cn("text-[11px] font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wider", badge.bg, badge.text, badge.border)}>
                           {badge.label}
                         </span>
                         {p.reference && (
-                          <span className="text-xs text-charcoal/50 bg-cream/70 px-2 py-0.5 rounded-md font-mono flex items-center gap-1">
-                            <Hash className="w-3 h-3 text-charcoal/40" /> {p.reference}
+                          <span className="text-xs text-charcoal/65 bg-cream/70 px-2 py-0.5 rounded-md font-mono flex items-center gap-1">
+                            <Hash className="w-3 h-3 text-charcoal/60" /> {p.reference}
                           </span>
                         )}
                       </div>
@@ -473,7 +473,7 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
                         </p>
                       )}
 
-                      <div className="flex items-center gap-3 text-[11px] text-charcoal/40 pt-0.5">
+                      <div className="flex items-center gap-3 text-[11px] text-charcoal/60 pt-0.5">
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" /> {formattedDate}
                         </span>
@@ -493,7 +493,7 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
                           <button
                             type="button"
                             onClick={() => handleStartEditPayment(p)}
-                            className="p-1.5 rounded-lg text-charcoal/40 hover:text-ochre hover:bg-cream transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg text-charcoal/60 hover:text-ochre hover:bg-cream transition-colors cursor-pointer"
                             title="Edit payment"
                           >
                             <Pencil className="w-3.5 h-3.5" />
@@ -501,7 +501,7 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
                           <button
                             type="button"
                             onClick={() => setPaymentToDelete(p)}
-                            className="p-1.5 rounded-lg text-charcoal/40 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg text-charcoal/60 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                             title="Delete payment"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -519,7 +519,7 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
 
       {/* Delete Payment Confirmation Modal */}
       {paymentToDelete && (
-        <div className="fixed inset-0 z-50 bg-charcoal/40 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-charcoal/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-charcoal/10 space-y-4 animate-fade-in">
             <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
               <Trash2 className="w-6 h-6" />
@@ -543,7 +543,7 @@ export default function PaymentLog({ projectId, project, isStaff, onEditCostClic
                 type="button"
                 disabled={isDeletingPayment}
                 onClick={handleConfirmDeletePayment}
-                className="px-5 py-2.5 rounded-xl bg-red-600 text-white font-bold text-xs shadow-md shadow-red-600/20 hover:bg-red-700 transition-all disabled:opacity-50"
+                className="px-5 py-2.5 rounded-xl bg-red-600 text-white font-bold text-xs shadow-md hover:bg-red-700 transition-all disabled:opacity-50"
               >
                 {isDeletingPayment ? 'Deleting...' : 'Confirm Delete'}
               </button>

@@ -4,10 +4,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { CatalogItem, DEFAULT_CATALOG_CATEGORIES, PRESET_CATALOG_ITEMS } from '../types/catalog';
-import { 
-  Plus, Edit2, Trash2, X, Search, Sparkles, Check, DollarSign, Tag, Layers, 
-  HelpCircle, TrendingUp, AlertCircle, RefreshCw
-} from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Search, Check, DollarSign, Tag, Layers, HelpCircle, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
 import { formatMoney } from '../utils/pdfGenerator';
 
 interface CatalogManagerModalProps {
@@ -208,7 +205,7 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 sm:p-6 overflow-y-auto">
       <div className="bg-white w-full max-w-4xl rounded-3xl border border-charcoal/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
         <div className="p-6 border-b border-charcoal/10 flex items-center justify-between bg-cream/30 shrink-0">
@@ -225,7 +222,7 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-charcoal/40 hover:text-charcoal hover:bg-charcoal/5 rounded-full transition-all cursor-pointer"
+            className="p-2 text-charcoal/60 hover:text-charcoal hover:bg-charcoal/5 rounded-full transition-all cursor-pointer"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />
@@ -244,7 +241,7 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
-                  className="text-xs text-charcoal/50 hover:text-charcoal"
+                  className="text-xs text-charcoal/65 hover:text-charcoal"
                 >
                   Cancel
                 </button>
@@ -318,7 +315,7 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
                 <div>
                   <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">
                     Purchase / Cost Price (KES per unit)
-                    <span className="text-charcoal/40 font-normal lowercase ml-1">(internal margin only)</span>
+                    <span className="text-charcoal/60 font-normal lowercase ml-1">(internal margin only)</span>
                   </label>
                   <input
                     type="number"
@@ -355,12 +352,12 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
                         <span className="font-mono font-bold text-emerald-600">
                           +KES {formatMoney(Number(formData.sellingPrice) - Number(formData.purchasePrice))}
                         </span>
-                        <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-bold text-[10px]">
+                        <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-bold text-[11px]">
                           {(((Number(formData.sellingPrice) - Number(formData.purchasePrice)) / Number(formData.sellingPrice)) * 100).toFixed(1)}% margin
                         </span>
                       </>
                     ) : (
-                      <span className="text-charcoal/40 italic">Set purchase cost to calculate margin</span>
+                      <span className="text-charcoal/60 italic">Set purchase cost to calculate margin</span>
                     )}
                   </div>
                 </div>
@@ -377,7 +374,7 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold transition-all shadow-md shadow-ochre/20 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+                  className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold transition-all shadow-md disabled:opacity-50 cursor-pointer flex items-center gap-2"
                 >
                   {isSaving ? 'Saving...' : editingId ? 'Update Catalog Item' : 'Add to Catalog'}
                 </button>
@@ -388,7 +385,7 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <div className="relative flex-1">
-                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/40" />
+                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/60" />
                   <input
                     type="text"
                     placeholder="Search services or materials..."
@@ -413,7 +410,7 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
                   <button
                     type="button"
                     onClick={handleOpenAdd}
-                    className="flex items-center gap-1.5 bg-ochre hover:bg-ochre-dark text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm shadow-ochre/20 shrink-0 cursor-pointer"
+                    className="flex items-center gap-1.5 bg-ochre hover:bg-ochre-dark text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm shrink-0 cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
                     <span>New Item</span>
@@ -423,7 +420,7 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
 
               {/* Items List */}
               {loading ? (
-                <div className="p-12 text-center text-charcoal/40 animate-pulse text-xs">
+                <div className="p-12 text-center text-charcoal/60 animate-pulse text-xs">
                   Loading catalog items...
                 </div>
               ) : filteredItems.length === 0 ? (
@@ -431,7 +428,7 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
                   <Tag className="w-8 h-8 text-ochre/40 mx-auto" />
                   <div>
                     <h4 className="font-bold text-sm text-charcoal">No Catalog Items Found</h4>
-                    <p className="text-xs text-charcoal/50 mt-1 max-w-md mx-auto">
+                    <p className="text-xs text-charcoal/65 mt-1 max-w-md mx-auto">
                       {searchTerm ? 'No items match your search term.' : 'Add your first service or material item to reuse across all quotes and invoices.'}
                     </p>
                   </div>
@@ -442,7 +439,7 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
                       disabled={isSeeding}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-charcoal text-white text-xs font-bold rounded-xl hover:bg-ochre transition-all cursor-pointer"
                     >
-                      <Sparkles className="w-3.5 h-3.5 text-ochre" />
+                      <Layers className="w-3.5 h-3.5 text-ochre" />
                       <span>{isSeeding ? 'Loading Presets...' : 'Populate Standard Pamnim Presets'}</span>
                     </button>
                   )}
@@ -461,10 +458,10 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
                         <div className="space-y-1 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-xs text-charcoal">{item.name}</span>
-                            <span className="text-[10px] font-bold uppercase tracking-wider bg-ochre/10 text-ochre px-2.5 py-0.5 rounded-full">
+                            <span className="text-[11px] font-bold uppercase tracking-wider bg-ochre/10 text-ochre px-2.5 py-0.5 rounded-full">
                               {item.category}
                             </span>
-                            <span className="text-[10px] text-charcoal/50 bg-charcoal/5 px-2 py-0.5 rounded-full">
+                            <span className="text-[11px] text-charcoal/65 bg-charcoal/5 px-2 py-0.5 rounded-full">
                               per {item.unit || 'unit'}
                             </span>
                           </div>
@@ -480,7 +477,7 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
                               KES {formatMoney(item.sellingPrice)}
                             </div>
                             {item.purchasePrice > 0 && (
-                              <div className="text-[10px] text-emerald-600 font-medium">
+                              <div className="text-[11px] text-emerald-600 font-medium">
                                 Cost: KES {formatMoney(item.purchasePrice)} ({marginPct}% margin)
                               </div>
                             )}
@@ -502,7 +499,7 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
                             <button
                               type="button"
                               onClick={() => handleOpenEdit(item)}
-                              className="p-1.5 text-charcoal/40 hover:text-charcoal hover:bg-charcoal/5 rounded-lg transition-all cursor-pointer"
+                              className="p-1.5 text-charcoal/60 hover:text-charcoal hover:bg-charcoal/5 rounded-lg transition-all cursor-pointer"
                               title="Edit item"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -510,7 +507,7 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
                             <button
                               type="button"
                               onClick={() => handleDeleteItem(item.id, item.name)}
-                              className="p-1.5 text-charcoal/40 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                              className="p-1.5 text-charcoal/60 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
                               title="Delete item"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -527,7 +524,7 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 border-t border-charcoal/10 bg-cream/30 flex justify-between items-center text-xs text-charcoal/50">
+        <div className="p-4 border-t border-charcoal/10 bg-cream/30 flex justify-between items-center text-xs text-charcoal/65">
           <span>{items.length} items in catalog</span>
           <button
             onClick={onClose}

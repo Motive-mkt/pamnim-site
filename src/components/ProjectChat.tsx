@@ -139,7 +139,7 @@ export default function ProjectChat({
             <h3 className="font-bold text-charcoal text-base">
               {isStaff ? `Chat with ${clientName}` : 'Pamnim Interiors Support Thread'}
             </h3>
-            <p className="text-xs text-charcoal/50">Direct ongoing conversation</p>
+            <p className="text-xs text-charcoal/65">Direct ongoing conversation</p>
           </div>
         </div>
       </div>
@@ -147,11 +147,11 @@ export default function ProjectChat({
       {/* Messages Scroll Area */}
       <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-gray-50/50">
         {loading ? (
-          <div className="text-center py-12 text-charcoal/40 animate-pulse text-sm">
+          <div className="text-center py-12 text-charcoal/60 animate-pulse text-sm">
             Loading messages...
           </div>
         ) : messages.length === 0 ? (
-          <div className="text-center py-12 text-charcoal/40 text-sm">
+          <div className="text-center py-12 text-charcoal/60 text-sm">
             No messages in thread yet. Start the conversation below!
           </div>
         ) : (
@@ -165,10 +165,10 @@ export default function ProjectChat({
                 className={cn("flex flex-col max-w-[80%]", isMe ? "ml-auto items-end" : "mr-auto items-start")}
               >
                 {/* Sender Name & Badge */}
-                <div className="flex items-center gap-2 mb-1 text-[11px] text-charcoal/50 px-1">
+                <div className="flex items-center gap-2 mb-1 text-[11px] text-charcoal/65 px-1">
                   <span className="font-semibold">{msg.senderName}</span>
                   {isStaffSender && (
-                    <span className="bg-ochre/10 text-ochre text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                    <span className="bg-ochre/10 text-ochre text-[11px] font-bold px-1.5 py-0.5 rounded-full">
                       Team
                     </span>
                   )}
@@ -233,7 +233,7 @@ export default function ProjectChat({
           <button
             type="submit"
             disabled={!text.trim()}
-            className="w-12 h-12 rounded-2xl bg-ochre text-white flex items-center justify-center shadow-md shadow-ochre/20 hover:bg-ochre-dark transition-all disabled:opacity-40 shrink-0"
+            className="w-12 h-12 rounded-2xl bg-ochre text-white flex items-center justify-center shadow-md hover:bg-ochre-dark transition-all disabled:opacity-40 shrink-0"
           >
             <Send className="w-5 h-5" />
           </button>

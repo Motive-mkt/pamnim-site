@@ -5,10 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { 
   TOURS_CONFIG, RoleTourConfig, TourStep 
 } from './tourConfig';
-import { 
-  Sparkles, CheckCircle2, ArrowRight, ArrowLeft, X, 
-  HelpCircle, Compass, Layers, Check, Play, ShieldCheck 
-} from 'lucide-react';
+import { CheckCircle2, ArrowRight, ArrowLeft, X, HelpCircle, Compass, Layers, Check, Play, ShieldCheck, BookOpen } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface OnboardingWalkthroughProps {
@@ -116,24 +113,24 @@ export default function OnboardingWalkthrough({
   const progressPercent = Math.round(((currentStepIndex + 1) / tourConfig.steps.length) * 100);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 animate-fade-in">
       <div 
         className={cn(
-          "w-full max-w-xl bg-white rounded-3xl sm:rounded-[2.5rem] border border-charcoal/10 shadow-2xl overflow-hidden transition-all duration-300 relative flex flex-col max-h-[90vh]"
+          "w-full max-w-xl bg-white rounded-3xl sm:rounded-3xl border border-charcoal/10 shadow-2xl overflow-hidden transition-all duration-300 relative flex flex-col max-h-[90vh]"
         )}
       >
         {/* Top Header with Progress Bar */}
         <div className="p-6 sm:p-7 border-b border-charcoal/10 bg-cream/40 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-ochre/15 text-ochre flex items-center justify-center font-bold">
-              <Sparkles className="w-5 h-5" />
+              <BookOpen className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-ochre">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-ochre">
                   {currentStep.badge || tourConfig.roleLabel}
                 </span>
-                <span className="text-[10px] text-charcoal/40 font-mono">
+                <span className="text-[11px] text-charcoal/60 font-mono">
                   • Step {currentStepIndex + 1} of {tourConfig.steps.length}
                 </span>
               </div>
@@ -146,7 +143,7 @@ export default function OnboardingWalkthrough({
           {/* Visible Skip button on every step */}
           <button
             onClick={handleSkipTour}
-            className="text-xs font-bold text-charcoal/50 hover:text-charcoal px-3 py-1.5 rounded-xl hover:bg-charcoal/5 transition-colors cursor-pointer shrink-0"
+            className="text-xs font-bold text-charcoal/65 hover:text-charcoal px-3 py-1.5 rounded-xl hover:bg-charcoal/5 transition-colors cursor-pointer shrink-0"
           >
             Skip Tour
           </button>
@@ -213,7 +210,7 @@ export default function OnboardingWalkthrough({
           {currentStep.type === 'interactive_demo' && currentStep.demoData && (
             <div className="p-5 sm:p-6 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-4">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 bg-amber-200/60 px-2.5 py-1 rounded-full">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900 bg-amber-200/60 px-2.5 py-1 rounded-full">
                   Sample Sandbox Data
                 </span>
                 <span className="text-[11px] text-amber-800/70 font-medium">Safe to test</span>
@@ -228,7 +225,7 @@ export default function OnboardingWalkthrough({
               <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
                 {Object.entries(currentStep.demoData.sampleDetails).map(([key, val]) => (
                   <div key={key} className="bg-white/90 p-2.5 rounded-xl border border-amber-100">
-                    <span className="text-[10px] text-charcoal/40 font-bold block uppercase">{key}</span>
+                    <span className="text-[11px] text-charcoal/60 font-bold block uppercase">{key}</span>
                     <span className="font-semibold text-charcoal">{val}</span>
                   </div>
                 ))}
@@ -291,7 +288,7 @@ export default function OnboardingWalkthrough({
             <button
               type="button"
               onClick={handleNext}
-              className="px-6 py-2.5 rounded-xl bg-ochre text-white hover:bg-ochre-dark text-xs font-bold transition-all flex items-center gap-2 shadow-md shadow-ochre/20 cursor-pointer"
+              className="px-6 py-2.5 rounded-xl bg-ochre text-white hover:bg-ochre-dark text-xs font-bold transition-all flex items-center gap-2 shadow-md cursor-pointer"
             >
               <span>{isLastStep ? 'Get Started' : 'Next Step'}</span>
               <ArrowRight className="w-3.5 h-3.5" />

@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  X, Plus, Trash2, CheckCircle2, CreditCard, Building2, Smartphone, 
-  Banknote, FileSignature, Check, AlertCircle, Bookmark, Sparkles 
-} from 'lucide-react';
+import { X, Plus, Trash2, CheckCircle2, CreditCard, Building2, Smartphone, Banknote, FileSignature, Check, AlertCircle, Bookmark } from 'lucide-react';
 import { 
   SavedPaymentDetail, PaymentMethodType, savePaymentDetailEntry, deletePaymentDetailEntry 
 } from '../services/paymentDetailsService';
@@ -108,8 +105,8 @@ export default function SavedPaymentDetailsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-charcoal/50 backdrop-blur-sm overflow-y-auto animate-fade-in">
-      <div className="bg-white rounded-[2.5rem] w-full max-w-2xl p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto flex flex-col space-y-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-charcoal/50 overflow-y-auto animate-fade-in">
+      <div className="bg-white rounded-3xl w-full max-w-2xl p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto flex flex-col space-y-6">
         
         {/* Header */}
         <div className="flex items-start justify-between border-b border-charcoal/10 pb-4">
@@ -119,7 +116,7 @@ export default function SavedPaymentDetailsModal({
             </div>
             <div>
               <h3 className="text-xl font-bold text-charcoal">Reusable Payment Details</h3>
-              <p className="text-xs text-charcoal/50">
+              <p className="text-xs text-charcoal/65">
                 Preserve payment methods (Bank, M-Pesa, Cash, Cheque) to auto-fill future invoices in one click.
               </p>
             </div>
@@ -128,7 +125,7 @@ export default function SavedPaymentDetailsModal({
           <button 
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream transition-colors cursor-pointer"
+            className="p-1.5 rounded-xl text-charcoal/60 hover:text-charcoal hover:bg-cream transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -154,13 +151,13 @@ export default function SavedPaymentDetailsModal({
           <form onSubmit={handleSavePreservedEntry} className="p-5 bg-cream/40 rounded-3xl border border-charcoal/10 space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-charcoal flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-ochre" />
+                <Bookmark className="w-4 h-4 text-ochre" />
                 <span>Preserve as New Reusable Entry</span>
               </span>
               <button 
                 type="button" 
                 onClick={() => setShowAddNew(false)}
-                className="text-xs text-charcoal/50 hover:text-charcoal font-semibold cursor-pointer"
+                className="text-xs text-charcoal/65 hover:text-charcoal font-semibold cursor-pointer"
               >
                 Back to saved entries
               </button>
@@ -168,7 +165,7 @@ export default function SavedPaymentDetailsModal({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
                   Payment Method
                 </label>
                 <div className="grid grid-cols-4 gap-1 p-1 bg-white rounded-xl border border-charcoal/10 text-xs font-bold">
@@ -191,7 +188,7 @@ export default function SavedPaymentDetailsModal({
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
                   Entry Title / Label *
                 </label>
                 <input
@@ -206,7 +203,7 @@ export default function SavedPaymentDetailsModal({
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
                 Payment Details / Instructions Text *
               </label>
               <textarea
@@ -230,7 +227,7 @@ export default function SavedPaymentDetailsModal({
               <button
                 type="submit"
                 disabled={isSaving}
-                className="px-5 py-2 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md shadow-ochre/20 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                className="px-5 py-2 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
               >
                 <Bookmark className="w-3.5 h-3.5" />
                 <span>{isSaving ? 'Preserving...' : 'Save Reusable Entry'}</span>
@@ -264,7 +261,7 @@ export default function SavedPaymentDetailsModal({
                 setNewDetails(currentInvoiceNotes || '');
                 setShowAddNew(true);
               }}
-              className="px-4 py-2 bg-ochre hover:bg-ochre-dark text-white text-xs font-bold rounded-2xl flex items-center gap-1.5 transition-all shadow-sm shadow-ochre/20 cursor-pointer"
+              className="px-4 py-2 bg-ochre hover:bg-ochre-dark text-white text-xs font-bold rounded-2xl flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Preserve Current Details</span>
@@ -276,9 +273,9 @@ export default function SavedPaymentDetailsModal({
         <div className="space-y-3 overflow-y-auto max-h-[360px] pr-1">
           {filteredEntries.length === 0 ? (
             <div className="p-8 text-center border-2 border-dashed border-charcoal/10 rounded-3xl space-y-2">
-              <CreditCard className="w-8 h-8 text-charcoal/30 mx-auto" />
+              <CreditCard className="w-8 h-8 text-charcoal/60 mx-auto" />
               <p className="text-xs font-bold text-charcoal/70">No saved payment entries found.</p>
-              <p className="text-[11px] text-charcoal/50">
+              <p className="text-[11px] text-charcoal/65">
                 Click <strong>"Preserve Current Details"</strong> above to save your first reusable payment instruction.
               </p>
             </div>
@@ -291,7 +288,7 @@ export default function SavedPaymentDetailsModal({
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className={cn(
-                      "px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1",
+                      "px-2.5 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider border flex items-center gap-1",
                       getMethodBadgeClass(entry.method)
                     )}>
                       {getMethodIcon(entry.method)}
@@ -317,7 +314,7 @@ export default function SavedPaymentDetailsModal({
                     <button
                       type="button"
                       onClick={() => handleDeleteEntry(entry.id, entry.title)}
-                      className="p-1.5 text-charcoal/30 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                      className="p-1.5 text-charcoal/60 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                       title="Remove this saved entry"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -334,7 +331,7 @@ export default function SavedPaymentDetailsModal({
         </div>
 
         {/* Footer */}
-        <div className="pt-3 border-t border-charcoal/10 flex items-center justify-between text-xs text-charcoal/50">
+        <div className="pt-3 border-t border-charcoal/10 flex items-center justify-between text-xs text-charcoal/65">
           <span>Click <strong>"Use on Invoice"</strong> on any entry to auto-fill it immediately.</span>
           <button
             type="button"

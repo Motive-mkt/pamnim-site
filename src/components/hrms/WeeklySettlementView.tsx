@@ -398,7 +398,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <div className="px-3 text-center">
-                <span className="block text-[10px] font-bold uppercase tracking-widest text-charcoal/40">{weekId}</span>
+                <span className="block text-[11px] font-bold uppercase tracking-widest text-charcoal/60">{weekId}</span>
                 <span className="text-xs font-bold text-charcoal">{weekRangeLabel}</span>
               </div>
               <button
@@ -447,19 +447,19 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
         {/* Tally Metrics */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
           <div className="bg-cream/40 rounded-2xl p-4 border border-charcoal/10">
-            <span className="text-[10px] font-bold text-charcoal/40 uppercase tracking-widest block">Total Accrued</span>
+            <span className="text-[11px] font-bold text-charcoal/60 uppercase tracking-widest block">Total Accrued</span>
             <span className="text-base sm:text-lg font-bold text-charcoal">{formatMoney(weekTotals.accrued)}</span>
           </div>
           <div className="bg-emerald-50/70 rounded-2xl p-4 border border-emerald-200/60">
-            <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-widest block">Approved Extras</span>
+            <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-widest block">Approved Extras</span>
             <span className="text-base sm:text-lg font-bold text-emerald-900">+{formatMoney(weekTotals.extras)}</span>
           </div>
           <div className="bg-amber-50/70 rounded-2xl p-4 border border-amber-200/60">
-            <span className="text-[10px] font-bold text-amber-800 uppercase tracking-widest block">Advances Deducted</span>
+            <span className="text-[11px] font-bold text-amber-800 uppercase tracking-widest block">Advances Deducted</span>
             <span className="text-base sm:text-lg font-bold text-amber-900">-{formatMoney(weekTotals.advances)}</span>
           </div>
           <div className="bg-ochre/10 rounded-2xl p-4 border border-ochre/20">
-            <span className="text-[10px] font-bold text-ochre uppercase tracking-widest block">Net Balance Due</span>
+            <span className="text-[11px] font-bold text-ochre uppercase tracking-widest block">Net Balance Due</span>
             <span className="text-base sm:text-lg font-bold text-charcoal">{formatMoney(weekTotals.netDue)}</span>
           </div>
         </div>
@@ -467,7 +467,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
         {/* Search & Category Filter Toolbar */}
         <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
           <div className="relative flex-1 w-full">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal/40" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal/60" />
             <input
               type="text"
               value={searchTerm}
@@ -493,7 +493,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
               <button
                 type="button"
                 onClick={() => setShowSettleAllModal(true)}
-                className="px-4 py-2.5 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm shadow-ochre/20 whitespace-nowrap cursor-pointer"
+                className="px-4 py-2.5 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
                 title={`Batch settle ${pendingSettlementInFilter.length} workers with outstanding balances`}
               >
                 <Check className="w-3.5 h-3.5" />
@@ -508,7 +508,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
       <div className="space-y-3">
         {filteredLedgers.length === 0 ? (
           <div className="p-10 text-center bg-white rounded-3xl border border-charcoal/10">
-            <HardHat className="w-8 h-8 text-charcoal/30 mx-auto mb-2" />
+            <HardHat className="w-8 h-8 text-charcoal/60 mx-auto mb-2" />
             <p className="text-sm font-bold text-charcoal">No workers found</p>
           </div>
         ) : (
@@ -522,17 +522,17 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
                 <div className="space-y-1 min-w-[200px]">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-base text-charcoal">{l.worker.name}</span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cream/60 border border-charcoal/10 text-charcoal/70">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-cream/60 border border-charcoal/10 text-charcoal/70">
                       {l.worker.skill}
                     </span>
                     {l.isFullySettled && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3" />
                         <span>Paid & Settled</span>
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-charcoal/50">
+                  <div className="flex items-center gap-3 text-xs text-charcoal/65">
                     <span>Phone: {l.worker.phone}</span>
                     <span>•</span>
                     <span>Rate: {formatMoney(l.worker.dailyRate)}/day</span>
@@ -542,19 +542,19 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
                 {/* Calculation Breakdown */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-cream/20 p-3 rounded-2xl border border-charcoal/5">
                   <div>
-                    <span className="text-charcoal/50 block text-[10px] uppercase font-bold">Days / Accrued</span>
+                    <span className="text-charcoal/65 block text-[11px] uppercase font-bold">Days / Accrued</span>
                     <span className="font-bold text-charcoal">{l.daysCount}d ({formatMoney(l.accruedWage)})</span>
                   </div>
                   <div>
-                    <span className="text-emerald-800 block text-[10px] uppercase font-bold">Extras</span>
+                    <span className="text-emerald-800 block text-[11px] uppercase font-bold">Extras</span>
                     <span className="font-bold text-emerald-700">+{formatMoney(l.totalExtras)}</span>
                   </div>
                   <div>
-                    <span className="text-amber-800 block text-[10px] uppercase font-bold">Advances</span>
+                    <span className="text-amber-800 block text-[11px] uppercase font-bold">Advances</span>
                     <span className="font-bold text-amber-700">-{formatMoney(l.totalAdvances)}</span>
                   </div>
                   <div>
-                    <span className="text-charcoal/50 block text-[10px] uppercase font-bold">Settled</span>
+                    <span className="text-charcoal/65 block text-[11px] uppercase font-bold">Settled</span>
                     <span className="font-bold text-charcoal/70">{formatMoney(l.totalSettled)}</span>
                   </div>
                 </div>
@@ -562,7 +562,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
                 {/* Net Due & Settle Action */}
                 <div className="flex items-center justify-between lg:justify-end gap-4 pt-2 lg:pt-0 border-t lg:border-t-0 border-charcoal/5">
                   <div className="text-left lg:text-right">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40 block">Net Balance Due</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-charcoal/60 block">Net Balance Due</span>
                     <span className={cn(
                       "text-base font-bold",
                       l.netDue > 0 ? "text-ochre" : "text-emerald-700"
@@ -584,8 +584,8 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
                     className={cn(
                       "px-5 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0",
                       l.netDue > 0 
-                        ? "bg-ochre hover:bg-ochre-dark text-white shadow-ochre/20" 
-                        : "bg-charcoal/10 text-charcoal/40 cursor-not-allowed"
+                        ? "bg-ochre hover:bg-ochre-dark text-white" 
+                        : "bg-charcoal/10 text-charcoal/60 cursor-not-allowed"
                     )}
                   >
                     <Check className="w-3.5 h-3.5" />
@@ -600,7 +600,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
 
       {/* Give Advance Modal */}
       {showAdvanceModal && (
-        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4">
           <div className="bg-white max-w-md w-full rounded-3xl p-6 sm:p-8 shadow-2xl border border-charcoal/10 space-y-5 animate-fade-in">
             <div className="flex items-start justify-between gap-4 border-b border-charcoal/10 pb-4">
               <div className="flex items-center gap-3">
@@ -609,13 +609,13 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-charcoal">Record Wage Advance</h3>
-                  <p className="text-xs text-charcoal/50">Deducts immediately from current week's net settlement.</p>
+                  <p className="text-xs text-charcoal/65">Deducts immediately from current week's net settlement.</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAdvanceModal(false)}
-                className="p-2 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-charcoal/60 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -623,7 +623,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
 
             <form onSubmit={handleSaveAdvance} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Select Site Worker <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -639,7 +639,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Advance Amount (KES) <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -655,7 +655,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Date Given <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -668,7 +668,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Reason / Notes (Optional)
                 </label>
                 <input
@@ -691,7 +691,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
                 <button
                   type="submit"
                   disabled={submittingAdvance}
-                  className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md shadow-ochre/20 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                 >
                   <Check className="w-4 h-4" />
                   <span>{submittingAdvance ? 'Saving Advance...' : 'Confirm Advance'}</span>
@@ -704,7 +704,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
 
       {/* Settle Week Modal */}
       {settleWorker && (
-        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4">
           <div className="bg-white max-w-md w-full rounded-3xl p-6 sm:p-8 shadow-2xl border border-charcoal/10 space-y-5 animate-fade-in">
             <div className="flex items-start justify-between gap-4 border-b border-charcoal/10 pb-4">
               <div className="flex items-center gap-3">
@@ -713,13 +713,13 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-charcoal">Settle Weekly Wage</h3>
-                  <p className="text-xs text-charcoal/50">{settleWorker.worker.name} • {weekId}</p>
+                  <p className="text-xs text-charcoal/65">{settleWorker.worker.name} • {weekId}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSettleWorker(null)}
-                className="p-2 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-charcoal/60 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -751,7 +751,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
 
             <form onSubmit={handleConfirmSettlement} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Payment Method
                 </label>
                 <select
@@ -766,7 +766,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   M-Pesa / Receipt Reference (Optional)
                 </label>
                 <input
@@ -789,7 +789,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
                 <button
                   type="submit"
                   disabled={submittingSettle}
-                  className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md shadow-ochre/20 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                 >
                   <Check className="w-4 h-4" />
                   <span>{submittingSettle ? 'Recording Payout...' : 'Confirm & Mark Paid'}</span>
@@ -802,7 +802,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
 
       {/* Settle All (Category) Modal */}
       {showSettleAllModal && (
-        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4">
           <div className="bg-white max-w-lg w-full rounded-3xl p-6 sm:p-8 shadow-2xl border border-charcoal/10 space-y-5 animate-fade-in">
             <div className="flex items-start justify-between gap-4 border-b border-charcoal/10 pb-4">
               <div className="flex items-center gap-3">
@@ -811,7 +811,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-charcoal">Batch Settle Week</h3>
-                  <p className="text-xs text-charcoal/50">
+                  <p className="text-xs text-charcoal/65">
                     {selectedTradeFilter === 'all' ? 'All Trades' : selectedTradeFilter} • {pendingSettlementInFilter.length} workers • {weekId}
                   </p>
                 </div>
@@ -819,7 +819,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
               <button
                 type="button"
                 onClick={() => setShowSettleAllModal(false)}
-                className="p-2 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-charcoal/60 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -827,7 +827,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
 
             {/* List of workers to be settled */}
             <div className="space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/50">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/65">
                 Workers to Settle ({pendingSettlementInFilter.length})
               </span>
               <div className="max-h-48 overflow-y-auto space-y-1.5 p-2 bg-cream/30 rounded-2xl border border-charcoal/10 divide-y divide-charcoal/5 text-xs">
@@ -835,7 +835,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
                   <div key={l.worker.id} className="pt-1.5 first:pt-0 flex items-center justify-between">
                     <div>
                       <span className="font-bold text-charcoal">{l.worker.name}</span>
-                      <span className="text-charcoal/40 ml-1.5">({l.worker.skill})</span>
+                      <span className="text-charcoal/60 ml-1.5">({l.worker.skill})</span>
                     </div>
                     <span className="font-mono font-bold text-ochre">KES {formatMoney(l.netDue)}</span>
                   </div>
@@ -851,7 +851,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
 
             <form onSubmit={handleConfirmSettleAll} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Payment Method
                 </label>
                 <select
@@ -866,7 +866,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Batch Receipt / M-Pesa Code (Optional)
                 </label>
                 <input
@@ -889,7 +889,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
                 <button
                   type="submit"
                   disabled={submittingSettleAll}
-                  className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md shadow-ochre/20 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                 >
                   <Check className="w-4 h-4" />
                   <span>{submittingSettleAll ? 'Processing Batch...' : `Settle All (${pendingSettlementInFilter.length})`}</span>

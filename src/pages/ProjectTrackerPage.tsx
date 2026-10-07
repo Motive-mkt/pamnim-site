@@ -109,7 +109,7 @@ export default function ProjectTrackerPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-cream/30 pt-28 pb-16 flex items-center justify-center">
+      <div className="app-ui min-h-screen bg-cream pt-28 pb-16 flex items-center justify-center">
         <div className="p-8 text-center space-y-3">
           <div className="w-10 h-10 border-3 border-ochre border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm font-bold text-charcoal/60">Loading project tracker...</p>
@@ -120,7 +120,7 @@ export default function ProjectTrackerPage() {
 
   if (error || !project) {
     return (
-      <div className="min-h-screen bg-cream/30 pt-28 pb-16 px-4">
+      <div className="app-ui min-h-screen bg-cream pt-28 pb-16 px-4">
         <div className="max-w-xl mx-auto bg-white rounded-3xl p-8 border border-charcoal/10 shadow-sm text-center space-y-4">
           <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto">
             <ShieldAlert className="w-6 h-6" />
@@ -142,7 +142,7 @@ export default function ProjectTrackerPage() {
   const isClient = (profile?.uid && project.clientId === profile.uid) || (user?.uid && project.clientId === user.uid);
   if (!isStaff && !isClient) {
     return (
-      <div className="min-h-screen bg-cream/30 pt-28 pb-16 px-4">
+      <div className="app-ui min-h-screen bg-cream pt-28 pb-16 px-4">
         <div className="max-w-xl mx-auto bg-white rounded-3xl p-8 border border-charcoal/10 shadow-sm text-center space-y-4">
           <div className="w-12 h-12 rounded-2xl bg-amber-50 text-ochre flex items-center justify-center mx-auto">
             <ShieldAlert className="w-6 h-6" />
@@ -164,7 +164,7 @@ export default function ProjectTrackerPage() {
   const balance = totalCost - totalPaid;
 
   return (
-    <div className="min-h-screen bg-cream/30 pt-24 pb-20 px-4 sm:px-6 lg:px-8">
+    <div className="app-ui min-h-screen bg-cream pt-24 pb-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Navigation & Header */}
@@ -196,11 +196,11 @@ export default function ProjectTrackerPage() {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div className="space-y-2">
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  <span className="text-[10px] font-bold uppercase tracking-wider bg-ochre/10 text-ochre px-3 py-1 rounded-full border border-ochre/20">
+                  <span className="text-[11px] font-bold uppercase tracking-wider bg-ochre/10 text-ochre px-3 py-1 rounded-full border border-ochre/20">
                     Stage: {project.currentStageName || 'Started'}
                   </span>
                   {project.categoryTitle && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider bg-charcoal/5 text-charcoal/60 px-3 py-1 rounded-full">
+                    <span className="text-[11px] font-bold uppercase tracking-wider bg-charcoal/5 text-charcoal/60 px-3 py-1 rounded-full">
                       {project.categoryTitle}
                     </span>
                   )}
@@ -210,7 +210,7 @@ export default function ProjectTrackerPage() {
                   {project.name}
                 </h1>
 
-                <div className="flex items-center gap-4 text-xs text-charcoal/50 flex-wrap">
+                <div className="flex items-center gap-4 text-xs text-charcoal/65 flex-wrap">
                   <span className="flex items-center gap-1.5 font-medium">
                     <User className="w-3.5 h-3.5 text-ochre" /> Client: <strong className="text-charcoal">{project.clientName || 'Assigned Client'}</strong>
                   </span>
@@ -226,10 +226,10 @@ export default function ProjectTrackerPage() {
               {isStaff && (
                 <div className="bg-cream/40 p-4 rounded-2xl border border-charcoal/10 space-y-2 shrink-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/60">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/60">
                       Agreed Contract Cost
                     </span>
-                    <span className="text-[10px] text-charcoal/40 font-medium">USD ($)</span>
+                    <span className="text-[11px] text-charcoal/60 font-medium">USD ($)</span>
                   </div>
                   <ProjectCostEditor
                     project={project}
@@ -251,7 +251,7 @@ export default function ProjectTrackerPage() {
               "flex items-center gap-2 px-4 sm:px-6 py-3 font-bold text-xs sm:text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap",
               activeTab === 'progress'
                 ? "border-ochre text-ochre"
-                : "border-transparent text-charcoal/50 hover:text-charcoal hover:border-charcoal/20"
+                : "border-transparent text-charcoal/65 hover:text-charcoal hover:border-charcoal/20"
             )}
           >
             <Activity className="w-4 h-4" />
@@ -264,7 +264,7 @@ export default function ProjectTrackerPage() {
               "flex items-center gap-2 px-4 sm:px-6 py-3 font-bold text-xs sm:text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap",
               activeTab === 'payments'
                 ? "border-ochre text-ochre"
-                : "border-transparent text-charcoal/50 hover:text-charcoal hover:border-charcoal/20"
+                : "border-transparent text-charcoal/65 hover:text-charcoal hover:border-charcoal/20"
             )}
           >
             <CreditCard className="w-4 h-4" />
@@ -277,7 +277,7 @@ export default function ProjectTrackerPage() {
               "flex items-center gap-2 px-4 sm:px-6 py-3 font-bold text-xs sm:text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap",
               activeTab === 'chat'
                 ? "border-ochre text-ochre"
-                : "border-transparent text-charcoal/50 hover:text-charcoal hover:border-charcoal/20"
+                : "border-transparent text-charcoal/65 hover:text-charcoal hover:border-charcoal/20"
             )}
           >
             <MessageSquare className="w-4 h-4" />
@@ -324,7 +324,7 @@ export default function ProjectTrackerPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
                 <div className="p-4 bg-cream/40 rounded-2xl border border-charcoal/10">
-                  <span className="text-[11px] uppercase font-bold text-charcoal/50 block">Contract Total</span>
+                  <span className="text-[11px] uppercase font-bold text-charcoal/65 block">Contract Total</span>
                   <span className="text-xl font-black text-charcoal mt-1 block">
                     ${totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
@@ -338,7 +338,7 @@ export default function ProjectTrackerPage() {
                 </div>
 
                 <div className="p-4 bg-cream/40 rounded-2xl border border-charcoal/10">
-                  <span className="text-[11px] uppercase font-bold text-charcoal/50 block">
+                  <span className="text-[11px] uppercase font-bold text-charcoal/65 block">
                     {balance < 0 ? 'Overpaid' : 'Balance Remaining'}
                   </span>
                   <span className={cn(

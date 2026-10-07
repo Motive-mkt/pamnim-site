@@ -159,7 +159,7 @@ export default function StartProjectModal({ isOpen, onClose, clients, onProjectS
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white w-full max-w-2xl rounded-3xl p-6 sm:p-8 shadow-2xl relative border border-charcoal/10 my-8">
         <button 
           onClick={onClose}
@@ -230,7 +230,7 @@ export default function StartProjectModal({ isOpen, onClose, clients, onProjectS
             </div>
 
             {selectedItems.length === 0 ? (
-              <div className="p-4 rounded-2xl bg-cream/50 border border-dashed border-charcoal/20 text-xs text-charcoal/50 text-center">
+              <div className="p-4 rounded-2xl bg-cream/50 border border-dashed border-charcoal/20 text-xs text-charcoal/65 text-center">
                 No categories or services selected yet. Pick any combination below!
               </div>
             ) : (
@@ -240,14 +240,14 @@ export default function StartProjectModal({ isOpen, onClose, clients, onProjectS
                     key={item.id}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-ochre/30 text-xs font-bold text-charcoal shadow-sm"
                   >
-                    <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-ochre/10 text-ochre">
+                    <span className="text-[11px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-ochre/10 text-ochre">
                       {item.type === 'category' ? 'Category' : 'Service'}
                     </span>
                     <span>{item.title}</span>
                     <button
                       type="button"
                       onClick={() => removeItem(item.id)}
-                      className="ml-1 text-charcoal/40 hover:text-red-600 p-0.5"
+                      className="ml-1 text-charcoal/60 hover:text-red-600 p-0.5"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -274,7 +274,7 @@ export default function StartProjectModal({ isOpen, onClose, clients, onProjectS
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-charcoal/10 mb-3">
                       <div>
                         <h4 className="font-bold text-sm text-charcoal">{cat.title}</h4>
-                        <p className="text-xs text-charcoal/50 line-clamp-1">{cat.description}</p>
+                        <p className="text-xs text-charcoal/65 line-clamp-1">{cat.description}</p>
                       </div>
 
                       <button
@@ -302,7 +302,7 @@ export default function StartProjectModal({ isOpen, onClose, clients, onProjectS
 
                     {/* Specific Sub-Services List */}
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 mb-2 block">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/60 mb-2 block">
                         Or select specific services in this category:
                       </span>
                       <div className="grid sm:grid-cols-2 gap-2">
@@ -328,7 +328,7 @@ export default function StartProjectModal({ isOpen, onClose, clients, onProjectS
                               </div>
                               <div>
                                 <span className="text-xs font-bold block">{item.name}</span>
-                                <span className="text-[10px] text-charcoal/50 line-clamp-1">{item.desc}</span>
+                                <span className="text-[11px] text-charcoal/65 line-clamp-1">{item.desc}</span>
                               </div>
                             </button>
                           );
@@ -347,11 +347,11 @@ export default function StartProjectModal({ isOpen, onClose, clients, onProjectS
               <label className="block text-xs font-bold text-charcoal/70 uppercase tracking-widest">
                 4. Amount already received (Partial Payment - Optional)
               </label>
-              <span className="text-[10px] uppercase font-bold text-ochre bg-ochre/10 px-2 py-0.5 rounded-full">
+              <span className="text-[11px] uppercase font-bold text-ochre bg-ochre/10 px-2 py-0.5 rounded-full">
                 Deposit
               </span>
             </div>
-            <p className="text-xs text-charcoal/50">
+            <p className="text-xs text-charcoal/65">
               If the client has already made a commitment deposit or milestone payment, record it here to initialize the project payment ledger.
             </p>
 
@@ -361,7 +361,7 @@ export default function StartProjectModal({ isOpen, onClose, clients, onProjectS
                   Amount ($)
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/40 font-bold text-xs select-none">$</span>
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/60 font-bold text-xs select-none">$</span>
                   <input
                     type="number"
                     min="0"
@@ -431,7 +431,7 @@ export default function StartProjectModal({ isOpen, onClose, clients, onProjectS
             <button
               type="submit"
               disabled={loading || !selectedClientId || selectedItems.length === 0}
-              className="px-8 py-3 rounded-2xl bg-ochre text-white font-bold text-sm shadow-lg shadow-ochre/20 hover:bg-ochre-dark transition-all disabled:opacity-50"
+              className="px-8 py-3 rounded-2xl bg-ochre text-white font-bold text-sm shadow-lg hover:bg-ochre-dark transition-all disabled:opacity-50"
             >
               {loading ? 'Starting Project...' : `Start Project (${selectedItems.length} Scopes)`}
             </button>

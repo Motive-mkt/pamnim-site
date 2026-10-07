@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Link } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import {
   getCloudinaryGalleryPreview,
@@ -68,8 +69,8 @@ export default function Portfolio() {
       collection(db, 'gallery'),
       (snap) => {
         const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any);
-        
-        // Sort newest first
+
+        // Newest first
         items.sort((a, b) => {
           const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -89,71 +90,68 @@ export default function Portfolio() {
     return () => unsubscribe();
   }, []);
 
+  // No photos yet: leave the section out rather than showing an empty frame
+  if (!loading && gallery.length === 0) return null;
+
   return (
-    <section className="py-24 bg-cream" id="portfolio">
-      <div className="max-w-7xl mx-auto px-6 md:px-12">
-        <div id="portfolio-header" className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+    <section className="section bg-cream" id="portfolio">
+      <div className="container-x">
+        <div id="portfolio-header" className="mb-10 flex flex-col justify-between gap-6 md:mb-14 md:flex-row md:items-end">
           <div className="max-w-2xl">
-            <span className="text-xs font-bold tracking-[0.2em] text-ochre uppercase mb-4 block">GALLERY</span>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">Recent projects & spaces.</h2>
-            <p className="text-lg text-charcoal/60">
-              A glimpse into the homes and spaces we've transformed for clients across the region.
-            </p>
+            <p className="eyebrow mb-4">Recent work</p>
+            <h2>Homes we have finished.</h2>
           </div>
+          <Link to="/portfolio" className="btn-link self-start md:self-auto">
+            View the full portfolio
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[300px]">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:auto-rows-[300px] md:gap-5">
           {loading ? (
             [1, 2, 3].map(i => (
-              <div key={i} className="bg-charcoal/5 animate-pulse rounded-3xl" />
+              <div
+                key={i}
+                className={cn(
+                  "animate-pulse rounded-xl bg-charcoal/5 aspect-[4/3] md:aspect-auto",
+                  i === 1 && "md:col-span-2 md:row-span-2"
+                )}
+              />
             ))
-          ) : gallery.length > 0 ? (
+          ) : (
             gallery.map((item, index) => {
               const isVideo = item.type === 'video' || (item.image && (item.image.includes('.mp4') || item.image.includes('/video/upload/')));
               return (
                 <motion.div
                   key={item.id}
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={{ opacity: 0, y: 16 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                  viewport={{ once: true, margin: '-60px' }}
+                  transition={{ duration: 0.5, delay: index * 0.08 }}
                   className={cn(
-                    "relative overflow-hidden rounded-3xl group cursor-pointer",
+                    "group relative aspect-[4/3] overflow-hidden rounded-xl bg-charcoal/5 md:aspect-auto",
                     index === 0 ? "md:col-span-2 md:row-span-2" : "md:col-span-1 md:row-span-1"
                   )}
                 >
                   {isVideo ? (
                     <GalleryVideoItem
                       item={item}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                     />
                   ) : (
                     <img
                       src={getCloudinaryGalleryPreview(item.image)}
                       alt=""
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      loading={index === 0 ? 'eager' : 'lazy'}
+                      decoding="async"
+                      className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                       referrerPolicy="no-referrer"
                     />
                   )}
                 </motion.div>
               );
             })
-          ) : (
-            <div className="col-span-full py-20 text-center border-2 border-dashed border-charcoal/10 rounded-3xl">
-              <p className="text-charcoal/30 font-bold">No gallery items added yet.</p>
-            </div>
           )}
-        </div>
-
-        {/* Sophisticated low-profile Action CTA as requested */}
-        <div className="mt-16 text-center select-none" id="gallery-cta-container">
-          <Link 
-            to="/portfolio" 
-            className="inline-flex items-center gap-2 group border-b border-charcoal/20 hover:border-charcoal pb-1.5 transition-all text-xs font-bold uppercase tracking-[0.2em] text-charcoal"
-          >
-            Explore Full Portfolio
-            <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
-          </Link>
         </div>
       </div>
     </section>

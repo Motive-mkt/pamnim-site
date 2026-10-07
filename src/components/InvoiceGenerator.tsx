@@ -5,12 +5,7 @@ import {
 import { db } from '../lib/firebase';
 import { useAuth } from '../hooks/useAuth';
 import { useCMS } from '../hooks/useCMS';
-import { 
-  Plus, Trash2, Download, FileText, Sparkles, Building2, User, Phone, Mail, 
-  DollarSign, Calendar, CheckCircle2, Layers, AlertCircle, RefreshCw, Briefcase,
-  CreditCard, Check, ArrowRight, Save, History, X, Share2, Lock, HelpCircle,
-  Bookmark, ListFilter, BookmarkCheck
-} from 'lucide-react';
+import { Plus, Trash2, Download, FileText, Building2, User, Phone, Mail, DollarSign, Calendar, CheckCircle2, Layers, AlertCircle, RefreshCw, Briefcase, CreditCard, Check, ArrowRight, Save, History, X, Share2, Lock, HelpCircle, Bookmark, ListFilter, BookmarkCheck } from 'lucide-react';
 import { generateDocumentPDF, shareDocumentPDF, formatMoney, PDFLineItem } from '../utils/pdfGenerator';
 import { cn } from '../lib/utils';
 import CatalogManagerModal from './CatalogManagerModal';
@@ -730,7 +725,7 @@ export default function InvoiceGenerator() {
             className={cn(
               "px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer",
               activeView === 'generator'
-                ? "bg-ochre text-white shadow-md shadow-ochre/20"
+                ? "bg-ochre text-white shadow-md"
                 : "bg-white text-charcoal/70 hover:bg-cream border border-charcoal/10"
             )}
           >
@@ -744,7 +739,7 @@ export default function InvoiceGenerator() {
             className={cn(
               "px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer",
               activeView === 'archive'
-                ? "bg-ochre text-white shadow-md shadow-ochre/20"
+                ? "bg-ochre text-white shadow-md"
                 : "bg-white text-charcoal/70 hover:bg-cream border border-charcoal/10"
             )}
           >
@@ -892,7 +887,7 @@ export default function InvoiceGenerator() {
                   <User className="w-4 h-4 text-ochre" />
                   <span>Invoice Recipient</span>
                 </h4>
-                <p className="text-xs text-charcoal/50">
+                <p className="text-xs text-charcoal/65">
                   Select a registered client account, a manual lead, or enter walk-in details.
                 </p>
               </div>
@@ -1076,7 +1071,7 @@ export default function InvoiceGenerator() {
                       </option>
                     ))}
                   </select>
-                  <p className="text-[11px] text-charcoal/50">
+                  <p className="text-[11px] text-charcoal/65">
                     Payments logged on this invoice will automatically synchronize with this project's cashflow tracker.
                   </p>
                 </div>
@@ -1094,7 +1089,7 @@ export default function InvoiceGenerator() {
                     {builderMode === 'freeform' ? 'Simple Freeform Total' : 'Itemized Materials & Services'}
                   </span>
                 </h4>
-                <p className="text-xs text-charcoal/50">
+                <p className="text-xs text-charcoal/65">
                   {builderMode === 'freeform'
                     ? 'Manually enter the overall service total/balance.'
                     : 'Type-ahead search pulls saved products and services with units of measure.'}
@@ -1146,7 +1141,7 @@ export default function InvoiceGenerator() {
                     placeholder="e.g. 450000"
                     className="w-full px-3.5 py-3 bg-white border border-charcoal/15 rounded-xl text-base sm:text-lg font-bold text-ochre focus:outline-none focus:border-ochre disabled:opacity-60"
                   />
-                  <p className="text-[11px] text-charcoal/50 mt-1">
+                  <p className="text-[11px] text-charcoal/65 mt-1">
                     Owner manually sets the initial total. Payment status will be auto-calculated against logged payments.
                   </p>
                 </div>
@@ -1161,7 +1156,7 @@ export default function InvoiceGenerator() {
                       className="p-4 bg-cream/20 rounded-2xl border border-charcoal/10 space-y-3 hover:border-charcoal/20 transition-all"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-charcoal/50">
+                        <span className="text-xs font-bold text-charcoal/65">
                           Line Item #{index + 1}
                         </span>
 
@@ -1169,7 +1164,7 @@ export default function InvoiceGenerator() {
                           <button
                             type="button"
                             onClick={() => handleRemoveItem(item.id)}
-                            className="p-1 text-charcoal/30 hover:text-red-600 transition-colors"
+                            className="p-1 text-charcoal/60 hover:text-red-600 transition-colors"
                             title="Remove Line Item"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -1179,7 +1174,7 @@ export default function InvoiceGenerator() {
 
                       {/* Type-ahead Autocomplete for Material / Service */}
                       <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
                           Material / Service Name (Type-Ahead Search)
                         </label>
                         <CatalogAutocomplete
@@ -1202,7 +1197,7 @@ export default function InvoiceGenerator() {
                       {/* Quantity, Unit, Unit Price, Line Total */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
                         <div>
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
                             Unit
                           </label>
                           <input
@@ -1216,7 +1211,7 @@ export default function InvoiceGenerator() {
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
                             Quantity
                           </label>
                           <input
@@ -1231,7 +1226,7 @@ export default function InvoiceGenerator() {
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
                             Unit Price (KES)
                           </label>
                           <input
@@ -1247,7 +1242,7 @@ export default function InvoiceGenerator() {
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
                             Line Total (KES)
                           </label>
                           <div className="px-3 py-2 bg-cream/60 border border-charcoal/10 rounded-xl text-xs font-bold text-ochre flex items-center">
@@ -1280,7 +1275,7 @@ export default function InvoiceGenerator() {
                   <label className="text-[11px] font-bold uppercase tracking-wider text-charcoal/70">
                     Discount (Optional)
                   </label>
-                  <div className="flex items-center text-[10px] font-bold border border-charcoal/15 rounded-lg overflow-hidden">
+                  <div className="flex items-center text-[11px] font-bold border border-charcoal/15 rounded-lg overflow-hidden">
                     <button
                       type="button"
                       disabled={isLockedInvoice}
@@ -1323,7 +1318,7 @@ export default function InvoiceGenerator() {
                   <label className="text-[11px] font-bold uppercase tracking-wider text-charcoal/70">
                     VAT / Tax Rate (Optional)
                   </label>
-                  <span className="text-[10px] font-bold text-charcoal/40">e.g. 16% Kenya VAT</span>
+                  <span className="text-[11px] font-bold text-charcoal/60">e.g. 16% Kenya VAT</span>
                 </div>
                 <input
                   type="number"
@@ -1397,7 +1392,7 @@ export default function InvoiceGenerator() {
                   <CreditCard className="w-4 h-4 text-ochre" />
                   <span>Payment Instructions & Bank/M-Pesa Details</span>
                 </h4>
-                <p className="text-xs text-charcoal/50">
+                <p className="text-xs text-charcoal/65">
                   Select a saved preset or type new instructions and click "Preserve Payment Details" to save for future invoices.
                 </p>
               </div>
@@ -1436,10 +1431,10 @@ export default function InvoiceGenerator() {
             {savedPaymentEntries.length > 0 && (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-[11px] text-charcoal/60">
-                  <span className="font-bold uppercase tracking-wider text-[10px]">
+                  <span className="font-bold uppercase tracking-wider text-[11px]">
                     Quick Auto-Fill from Saved Presets:
                   </span>
-                  <span className="text-[10px] text-charcoal/40">Click any preset to fill instructions</span>
+                  <span className="text-[11px] text-charcoal/60">Click any preset to fill instructions</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {savedPaymentEntries.map((entry) => (
@@ -1457,7 +1452,7 @@ export default function InvoiceGenerator() {
                         entry.method === 'cash' ? 'bg-amber-500' : 'bg-purple-500'
                       )} />
                       <span className="font-bold text-[11px]">{entry.title}</span>
-                      <span className="text-[10px] text-charcoal/40 uppercase">({entry.method})</span>
+                      <span className="text-[11px] text-charcoal/60 uppercase">({entry.method})</span>
                     </button>
                   ))}
                 </div>
@@ -1477,7 +1472,7 @@ export default function InvoiceGenerator() {
                       type="button"
                       onClick={() => setPaymentMethodSelection(m)}
                       className={cn(
-                        "px-2 py-0.5 rounded-lg text-[10px] font-bold capitalize transition-all cursor-pointer",
+                        "px-2 py-0.5 rounded-lg text-[11px] font-bold capitalize transition-all cursor-pointer",
                         paymentMethodSelection === m
                           ? "bg-white text-charcoal shadow-xs"
                           : "text-charcoal/60 hover:text-charcoal"
@@ -1496,7 +1491,7 @@ export default function InvoiceGenerator() {
                 placeholder="Enter bank account details, M-Pesa paybill, or payment terms..."
                 className="w-full p-3.5 bg-cream/30 border border-charcoal/15 rounded-2xl text-xs font-mono text-charcoal focus:outline-none focus:border-ochre leading-relaxed"
               />
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-charcoal/50 gap-1">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-charcoal/65 gap-1">
                 <span>Customize text freely. Click <strong>"Preserve Payment Details"</strong> to save this exact text for future invoices.</span>
                 {notes.trim() && (
                   <button
@@ -1543,7 +1538,7 @@ export default function InvoiceGenerator() {
                 type="button"
                 onClick={() => handleGenerate()}
                 disabled={isGenerating || isSharing || !clientName.trim() || totalInvoicedAmount <= 0}
-                className="w-full sm:w-auto px-7 py-3 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2.5 shadow-lg shadow-ochre/25 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                className="w-full sm:w-auto px-7 py-3 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2.5 shadow-lg transition-all cursor-pointer disabled:opacity-50 shrink-0"
               >
                 {creationStep === 'saving' ? (
                   <>
@@ -1552,7 +1547,7 @@ export default function InvoiceGenerator() {
                   </>
                 ) : creationStep === 'generating' ? (
                   <>
-                    <Download className="w-4 h-4 animate-bounce" />
+                    <Download className="w-4 h-4" />
                     <span>Generating PDF...</span>
                   </>
                 ) : (
@@ -1569,13 +1564,13 @@ export default function InvoiceGenerator() {
 
       {/* QUICK NEW LEAD CREATION MODAL */}
       {showNewLeadModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 animate-fade-in">
           <div className="bg-white w-full max-w-md rounded-3xl border border-charcoal/15 shadow-2xl p-6 sm:p-8 space-y-4 animate-scale-up">
             <div className="flex items-center justify-between border-b border-charcoal/10 pb-3">
               <h3 className="text-base font-bold text-charcoal">Add Manual Customer / Lead</h3>
               <button
                 onClick={() => setShowNewLeadModal(false)}
-                className="p-1 rounded-xl text-charcoal/40 hover:text-charcoal"
+                className="p-1 rounded-xl text-charcoal/60 hover:text-charcoal"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1646,7 +1641,7 @@ export default function InvoiceGenerator() {
                 <button
                   type="submit"
                   disabled={isSavingLead}
-                  className="px-5 py-2 rounded-xl bg-ochre text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-ochre/20"
+                  className="px-5 py-2 rounded-xl bg-ochre text-white text-xs font-bold flex items-center gap-1.5 shadow-md"
                 >
                   <Check className="w-3.5 h-3.5" />
                   <span>{isSavingLead ? 'Saving...' : 'Add Lead'}</span>

@@ -1,4 +1,4 @@
-import { Compass, Layers, Grid, Sparkles, LucideIcon } from 'lucide-react';
+import { Compass, Layers, Grid, Lightbulb, LucideIcon } from 'lucide-react';
 
 export interface ServiceItem {
   name: string;
@@ -20,29 +20,29 @@ export interface ServiceCategory {
 export const serviceCategories: ServiceCategory[] = [
   {
     id: "interior-architecture",
-    title: "Interior Architecture & Space Planning",
-    description: "Architectural integrity meets elegant spatial design. We optimize layouts for flawless daily flow, design sculptural gypsum ceiling works, and craft highly efficient culinary kitchens.",
+    title: "Space planning and layouts",
+    description: "How a home works matters as much as how it looks. We plan layouts for easy daily movement, design gypsum ceilings and feature walls, and lay out kitchens that are comfortable to cook in.",
     icon: Compass,
     accent: "01",
     items: [
       {
         name: "Space Planning",
         slug: "space-planning",
-        desc: "Intelligent layout plans maximizing usable square footage with premium functional flow, custom furniture positioning, and architectural flow guides.",
+        desc: "Room-by-room layouts that make the most of your floor area, with furniture positioned for comfortable movement and clear sight lines.",
         heroImage: "",
         images: ["", "", ""]
       },
       {
         name: "Kitchen Planning",
         slug: "kitchen-planning",
-        desc: "Expert zoning, appliance integration, custom work triangle optimization, and ergonomic casework layout designed for elite homes.",
+        desc: "Kitchen layouts built around how you cook: work zones, appliance placement, storage and counter space planned together.",
         heroImage: "",
         images: ["", "", ""]
       },
       {
         name: "Gypsum & Ceiling Works",
         slug: "gypsum-ceiling-works",
-        desc: "Sculpted dry-wall ceilings, shadowline details, dropped acoustic plaster ceiling architectures, and integrated cove lighting pockets.",
+        desc: "Gypsum ceilings with shadow-line details, dropped sections and concealed pockets for cove lighting.",
         heroImage: "",
         images: ["", "", ""]
       }
@@ -50,29 +50,29 @@ export const serviceCategories: ServiceCategory[] = [
   },
   {
     id: "bespoke-finishes",
-    title: "Bespoke Finishes & Craftsmanship",
-    description: "The fine surface and structural details that establish character and distinction. Custom architectural wainscoting, perfect joinery, and meticulously applied professional finishes.",
+    title: "Finishes and custom carpentry",
+    description: "Paneling, joinery and paintwork made to measure and finished cleanly. These are the details people notice every day.",
     icon: Layers,
     accent: "02",
     items: [
       {
         name: "Wainscoting & Wall Paneling",
         slug: "wainscoting-wall-paneling",
-        desc: "Elegant shaker paneling, classical raised-molding wainscots, modern fluted timber panel accents, and bespoke drywall detailing.",
+        desc: "Shaker and raised-molding wainscoting, fluted timber panels and detailed drywall feature walls.",
         heroImage: "",
         images: ["", "", ""]
       },
       {
         name: "Cabinet Fittings & Joinery",
         slug: "cabinet-fittings-joinery",
-        desc: "State-of-the-art kitchen cabinets, bespoke entry consoles, luxury walk-in wardrobes, and heavy wood custom bookcases with soft-close mechanisms.",
+        desc: "Kitchen cabinets, entry consoles, walk-in wardrobes and bookcases, built to measure with soft-close fittings.",
         heroImage: "",
         images: ["", "", ""]
       },
       {
         name: "Professional Painting",
         slug: "professional-painting",
-        desc: "Pristine dustless surface preparation, seamless plaster skim coatings, premium eco-friendly matte finishes, and designer feature accent walls.",
+        desc: "Dust-controlled surface preparation, smooth plaster skim coats, low-odour matte finishes and feature walls.",
         heroImage: "",
         images: ["", "", ""]
       }
@@ -80,29 +80,29 @@ export const serviceCategories: ServiceCategory[] = [
   },
   {
     id: "premium-flooring",
-    title: "Premium Flooring Solutions",
-    description: "Premium foundations that support refined living. We fit pristine ceramic and porcelain tiling, sound-damped SPC/LVT boards, and seamless architectural epoxy coatings.",
+    title: "Flooring",
+    description: "A good floor is a good foundation for the rest of the room. We fit ceramic and porcelain tile, SPC and vinyl boards, and epoxy coatings.",
     icon: Grid,
     accent: "03",
     items: [
       {
         name: "Ceramic & Porcelain",
         slug: "ceramic-porcelain",
-        desc: "Laser-aligned tile arrangements, custom-cut formats, elegant polished or honed tile surfaces, and masterfully applied uniform epoxy grout.",
+        desc: "Precisely aligned tile layouts, custom-cut formats in polished or honed finishes, and even, clean grout lines.",
         heroImage: "",
         images: ["", "", ""]
       },
       {
         name: "SPC & LVT Flooring",
         slug: "spc-lvt-flooring",
-        desc: "Stone Plastic Composite and Luxury Vinyl Tile boards offering 100% water resistance, premium sound dampening underlays, and hyper-realistic wood designs.",
+        desc: "Stone plastic composite and luxury vinyl boards that are fully water resistant, quiet underfoot and available in realistic wood finishes.",
         heroImage: "",
         images: ["", "", ""]
       },
       {
         name: "Epoxy Coating",
         slug: "epoxy-coating",
-        desc: "Ultra-sleek glossy residential garage coatings, seamless self-leveling industrial floors, and premium flake systems built for maximum wear resistance.",
+        desc: "Glossy garage floors, seamless self-levelling floors and flake systems made for heavy wear.",
         heroImage: "",
         images: ["", "", ""]
       }
@@ -110,29 +110,29 @@ export const serviceCategories: ServiceCategory[] = [
   },
   {
     id: "lighting-textures-styling",
-    title: "Lighting, Textures & Styling",
-    description: "The sensory layering of light, fabric, and ambiance. Curated architectural lighting distributions, luxury drapery and blind systems, and immersive 3D simulations of your future home.",
-    icon: Sparkles,
+    title: "Lighting, curtains and styling",
+    description: "Light, fabric and finishing touches set the mood of a room. We plan lighting, make curtains and blinds, and show you the result in 3D before work starts.",
+    icon: Lightbulb,
     accent: "04",
     items: [
       {
         name: "Architectural Lighting",
         slug: "architectural-lighting",
-        desc: "Carefully positioned glare-free recessed cans, ambient LED strip placements, focus-accent spot tracks, and statement designer pendants.",
+        desc: "Recessed lights placed to avoid glare, LED strips, accent spots and statement pendants, planned as one scheme.",
         heroImage: "",
         images: ["", "", ""]
       },
       {
         name: "Curtain Works & Blinds",
         slug: "curtain-works-blinds",
-        desc: "Custom double-track sheer and motorized blackout drapery, textured Roman blinds, and premium architectural roller sunscreen fabrics.",
+        desc: "Double-track sheer and blackout curtains, motorised options, Roman blinds and roller sunscreen fabrics.",
         heroImage: "",
         images: ["", "", ""]
       },
       {
         name: "Consultation & 3D Visualization",
         slug: "consultation-3d-visualization",
-        desc: "Full-color photorealistic interior walkthroughs, finish selection guides, customized digital mood boards, and live design workshops.",
+        desc: "Realistic 3D views of your finished rooms, finish selection guides, mood boards and design workshops with our team.",
         heroImage: "",
         images: ["", "", ""]
       }

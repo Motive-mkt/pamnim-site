@@ -11,11 +11,7 @@ import { formatMoney } from '../../utils/pdfGenerator';
 import { 
   getKenyanPublicHolidays, getAllHolidays, getWeekId, getWeekDates, formatWeekRange, getDayMultiplier 
 } from '../../utils/hrmsUtils';
-import { 
-  HardHat, Calendar, DollarSign, Clock, CheckCircle2, AlertCircle, 
-  Plus, LogOut, Phone, CreditCard, ChevronRight, Check, X, 
-  ArrowDownLeft, Sparkles, RefreshCw, FileText, Compass, Briefcase, Trash2, Edit3, User, PlusCircle, Shield
-} from 'lucide-react';
+import { HardHat, Calendar, DollarSign, Clock, CheckCircle2, AlertCircle, Plus, LogOut, Phone, CreditCard, ChevronRight, Check, X, ArrowDownLeft, RefreshCw, FileText, Compass, Briefcase, Trash2, Edit3, User, PlusCircle, Shield } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import OnboardingWalkthrough from '../../components/onboarding/OnboardingWalkthrough';
 
@@ -320,7 +316,7 @@ export default function WorkerDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-cream/40 text-charcoal flex flex-col pb-16">
+    <div className="app-ui min-h-screen bg-cream text-charcoal flex flex-col pb-16">
       {/* Mobile-First Header */}
       <header className="bg-charcoal text-white px-4 py-4 sm:px-8 border-b border-charcoal/20 sticky top-0 z-30 shadow-md">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
@@ -333,11 +329,11 @@ export default function WorkerDashboard() {
                 <h1 className="font-bold text-base sm:text-lg text-white truncate max-w-[180px] sm:max-w-xs">
                   {profile?.name || 'Site Worker'}
                 </h1>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-ochre border border-white/15">
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-white/10 text-ochre border border-white/15">
                   Worker Portal
                 </span>
               </div>
-              <p className="text-xs text-white/50">{profile?.phone || 'M-Pesa Connected'}</p>
+              <p className="text-xs text-white/60">{profile?.phone || 'M-Pesa Connected'}</p>
             </div>
           </div>
 
@@ -386,7 +382,7 @@ export default function WorkerDashboard() {
                 className={cn(
                   "px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer border",
                   isActive 
-                    ? "bg-ochre text-white border-ochre shadow-md shadow-ochre/20" 
+                    ? "bg-ochre text-white border-ochre shadow-md" 
                     : "bg-white text-charcoal/70 border-charcoal/10 hover:bg-cream/60"
                 )}
               >
@@ -412,7 +408,7 @@ export default function WorkerDashboard() {
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-charcoal/10 shadow-xs space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <span className="text-[10px] font-bold text-ochre uppercase tracking-widest block">
+                  <span className="text-[11px] font-bold text-ochre uppercase tracking-widest block">
                     Current Week ({currentWeekId})
                   </span>
                   <h2 className="text-xl sm:text-2xl font-bold text-charcoal">Weekly Accrued Pay</h2>
@@ -422,7 +418,7 @@ export default function WorkerDashboard() {
                 </div>
 
                 <div className="bg-cream/40 p-3.5 rounded-2xl border border-charcoal/10 text-left sm:text-right shrink-0">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40 block">Estimated Net Balance</span>
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-charcoal/60 block">Estimated Net Balance</span>
                   <span className="text-2xl font-bold text-emerald-700 block">
                     {formatMoney(currentWeekMetrics.netEstimatedPay)}
                   </span>
@@ -432,19 +428,19 @@ export default function WorkerDashboard() {
               {/* Breakdown Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
                 <div className="p-4 rounded-2xl bg-cream/30 border border-charcoal/10">
-                  <span className="text-[10px] uppercase font-bold text-charcoal/50 block">Days Worked</span>
+                  <span className="text-[11px] uppercase font-bold text-charcoal/65 block">Days Worked</span>
                   <span className="text-lg font-bold text-charcoal">{currentWeekMetrics.daysWorked} days</span>
                 </div>
                 <div className="p-4 rounded-2xl bg-cream/30 border border-charcoal/10">
-                  <span className="text-[10px] uppercase font-bold text-charcoal/50 block">Base Accrual</span>
+                  <span className="text-[11px] uppercase font-bold text-charcoal/65 block">Base Accrual</span>
                   <span className="text-lg font-bold text-charcoal">{formatMoney(currentWeekMetrics.accruedEarnings)}</span>
                 </div>
                 <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/60">
-                  <span className="text-[10px] uppercase font-bold text-emerald-800 block">Approved Extras</span>
+                  <span className="text-[11px] uppercase font-bold text-emerald-800 block">Approved Extras</span>
                   <span className="text-lg font-bold text-emerald-900">+{formatMoney(currentWeekMetrics.approvedExtrasTotal)}</span>
                 </div>
                 <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/60">
-                  <span className="text-[10px] uppercase font-bold text-amber-800 block">Advances Taken</span>
+                  <span className="text-[11px] uppercase font-bold text-amber-800 block">Advances Taken</span>
                   <span className="text-lg font-bold text-amber-900">-{formatMoney(currentWeekMetrics.advancesTotal)}</span>
                 </div>
               </div>
@@ -463,7 +459,7 @@ export default function WorkerDashboard() {
                 <button
                   type="button"
                   onClick={() => setShowExtraModal(true)}
-                  className="px-5 py-2.5 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold transition-all shadow-md shadow-ochre/20 flex items-center gap-2 cursor-pointer"
+                  className="px-5 py-2.5 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer"
                 >
                   <DollarSign className="w-4 h-4" />
                   <span>Request Extra Pay / Overtime</span>
@@ -489,14 +485,14 @@ export default function WorkerDashboard() {
                     >
                       <div className="flex items-center gap-3">
                         <span className="font-bold text-charcoal/70 w-8">{dayName}</span>
-                        <span className="text-charcoal/50">{date}</span>
+                        <span className="text-charcoal/65">{date}</span>
                       </div>
 
                       <div>
                         {record ? (
                           <div className="flex items-center gap-2">
                             <span className={cn(
-                              "px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase",
+                              "px-2.5 py-0.5 rounded-full font-bold text-[11px] uppercase",
                               record.status === 'present_full' || record.status === 'present' ? "bg-emerald-100 text-emerald-800" :
                               record.status === 'present_half' ? "bg-amber-100 text-amber-800" :
                               record.status === 'approved_leave' ? "bg-blue-100 text-blue-800" :
@@ -513,7 +509,7 @@ export default function WorkerDashboard() {
                             </span>
                           </div>
                         ) : (
-                          <span className="text-charcoal/40 italic">Not logged yet</span>
+                          <span className="text-charcoal/60 italic">Not logged yet</span>
                         )}
                       </div>
                     </div>
@@ -542,7 +538,7 @@ export default function WorkerDashboard() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 block">Daily Wage</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/60 block">Daily Wage</span>
                   <span className="font-mono font-bold text-base text-charcoal">
                     KES {formatMoney(workerRecord?.dailyRate || 0)}
                   </span>
@@ -551,7 +547,7 @@ export default function WorkerDashboard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
                 <div className="p-3.5 bg-cream/40 rounded-2xl border border-charcoal/10">
-                  <span className="text-[10px] uppercase font-bold text-charcoal/50 block">Phone / WhatsApp</span>
+                  <span className="text-[11px] uppercase font-bold text-charcoal/65 block">Phone / WhatsApp</span>
                   <span className="font-bold text-xs text-charcoal flex items-center gap-1.5 mt-0.5">
                     <Phone className="w-3.5 h-3.5 text-ochre" />
                     {profile?.phone || workerRecord?.phone || 'Not set'}
@@ -559,14 +555,14 @@ export default function WorkerDashboard() {
                 </div>
 
                 <div className="p-3.5 bg-cream/40 rounded-2xl border border-charcoal/10">
-                  <span className="text-[10px] uppercase font-bold text-charcoal/50 block">National ID</span>
+                  <span className="text-[11px] uppercase font-bold text-charcoal/65 block">National ID</span>
                   <span className="font-mono font-bold text-xs text-charcoal block mt-0.5">
                     {workerRecord?.idNumber || (profile as any)?.idNumber || 'On file'}
                   </span>
                 </div>
 
                 <div className="p-3.5 bg-cream/40 rounded-2xl border border-charcoal/10">
-                  <span className="text-[10px] uppercase font-bold text-charcoal/50 block">Assigned Project / Site</span>
+                  <span className="text-[11px] uppercase font-bold text-charcoal/65 block">Assigned Project / Site</span>
                   <span className="font-bold text-xs text-ochre flex items-center gap-1.5 mt-0.5">
                     <Briefcase className="w-3.5 h-3.5 shrink-0" />
                     <span className="truncate">{workerRecord?.assignedProjectName || 'Workshop / In-House'}</span>
@@ -591,7 +587,7 @@ export default function WorkerDashboard() {
                 <button
                   type="button"
                   onClick={() => setShowPayoutModal(true)}
-                  className="px-4 py-2.5 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold transition-all shadow-md shadow-ochre/20 flex items-center gap-1.5 cursor-pointer self-start sm:self-auto shrink-0"
+                  className="px-4 py-2.5 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer self-start sm:self-auto shrink-0"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Add Payout Profile</span>
@@ -608,7 +604,7 @@ export default function WorkerDashboard() {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-xs text-charcoal">Own M-Pesa (Primary)</span>
-                        <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                           Primary
                         </span>
                       </div>
@@ -625,7 +621,7 @@ export default function WorkerDashboard() {
                 {(!workerRecord?.payoutProfiles || workerRecord.payoutProfiles.length === 0) ? (
                   <div className="p-6 bg-cream/20 rounded-2xl border border-dashed border-charcoal/20 text-center space-y-1">
                     <p className="text-xs font-semibold text-charcoal/60">No alternate payout profiles saved.</p>
-                    <p className="text-[11px] text-charcoal/40">
+                    <p className="text-[11px] text-charcoal/60">
                       Do you receive wages to a family member's M-Pesa or bank? Click "Add Payout Profile" above to save it.
                     </p>
                   </div>
@@ -639,7 +635,7 @@ export default function WorkerDashboard() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-xs text-charcoal truncate">{prof.label}</span>
-                            <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cream text-charcoal/70">
+                            <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cream text-charcoal/70">
                               {prof.type === 'bank' ? 'Bank Transfer' : 'M-Pesa'}
                             </span>
                           </div>
@@ -654,7 +650,7 @@ export default function WorkerDashboard() {
                       <button
                         type="button"
                         onClick={() => handleDeletePayoutProfile(prof.id)}
-                        className="p-2 text-charcoal/40 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer shrink-0"
+                        className="p-2 text-charcoal/60 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer shrink-0"
                         title="Delete this payout profile"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -679,7 +675,7 @@ export default function WorkerDashboard() {
 
             <div className="space-y-3 pt-2">
               {attendanceRecords.length === 0 ? (
-                <div className="p-8 text-center text-xs text-charcoal/50 bg-cream/20 rounded-2xl">
+                <div className="p-8 text-center text-xs text-charcoal/65 bg-cream/20 rounded-2xl">
                   No attendance records recorded yet. Your site supervisor will log your attendance during daily pay runs.
                 </div>
               ) : (
@@ -687,12 +683,12 @@ export default function WorkerDashboard() {
                   <div key={rec.id || rec.date} className="p-3.5 bg-cream/20 rounded-2xl border border-charcoal/10 flex items-center justify-between text-xs">
                     <div>
                       <span className="font-bold text-charcoal block">{rec.date}</span>
-                      <span className="text-[11px] text-charcoal/50">{rec.notes || 'Daily logged attendance'}</span>
+                      <span className="text-[11px] text-charcoal/65">{rec.notes || 'Daily logged attendance'}</span>
                     </div>
 
                     <div className="text-right">
                       <span className={cn(
-                        "px-2.5 py-0.5 rounded-full font-bold text-[10px] inline-block mb-1",
+                        "px-2.5 py-0.5 rounded-full font-bold text-[11px] inline-block mb-1",
                         rec.status === 'present_full' || rec.status === 'present' ? "bg-emerald-100 text-emerald-800" :
                         rec.status === 'present_half' ? "bg-amber-100 text-amber-800" :
                         rec.status === 'approved_leave' ? "bg-blue-100 text-blue-800" :
@@ -731,7 +727,7 @@ export default function WorkerDashboard() {
                 <button
                   type="button"
                   onClick={() => setShowExtraModal(true)}
-                  className="px-4 py-2 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold transition-all shadow-md shadow-ochre/20 flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-2 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Request Extra Pay</span>
@@ -743,7 +739,7 @@ export default function WorkerDashboard() {
             <div className="bg-white rounded-3xl p-6 border border-charcoal/10 shadow-xs space-y-4">
               <h4 className="font-bold text-sm text-charcoal">Leave Requests</h4>
               {leaveRequests.length === 0 ? (
-                <p className="text-xs text-charcoal/50 italic">No leave requests made yet.</p>
+                <p className="text-xs text-charcoal/65 italic">No leave requests made yet.</p>
               ) : (
                 <div className="space-y-3">
                   {leaveRequests.map(r => (
@@ -753,7 +749,7 @@ export default function WorkerDashboard() {
                           {r.dates ? `${r.dates[0]} to ${r.dates[r.dates.length - 1]}` : r.createdAt}
                         </span>
                         <span className={cn(
-                          "px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase",
+                          "px-2.5 py-0.5 rounded-full font-bold text-[11px] uppercase",
                           r.status === 'approved' ? "bg-emerald-100 text-emerald-800" :
                           r.status === 'declined' ? "bg-rose-100 text-rose-800" :
                           "bg-amber-100 text-amber-800"
@@ -763,7 +759,7 @@ export default function WorkerDashboard() {
                       </div>
                       <p className="text-charcoal/70">"{r.reason}"</p>
                       {r.reviewNotes && (
-                        <p className="text-charcoal/50 italic text-[11px]">Management note: {r.reviewNotes}</p>
+                        <p className="text-charcoal/65 italic text-[11px]">Management note: {r.reviewNotes}</p>
                       )}
                     </div>
                   ))}
@@ -775,7 +771,7 @@ export default function WorkerDashboard() {
             <div className="bg-white rounded-3xl p-6 border border-charcoal/10 shadow-xs space-y-4">
               <h4 className="font-bold text-sm text-charcoal">Extra Payment / Overtime Requests</h4>
               {extraRequests.length === 0 ? (
-                <p className="text-xs text-charcoal/50 italic">No extra payment requests made yet.</p>
+                <p className="text-xs text-charcoal/65 italic">No extra payment requests made yet.</p>
               ) : (
                 <div className="space-y-3">
                   {extraRequests.map(r => (
@@ -783,7 +779,7 @@ export default function WorkerDashboard() {
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-charcoal text-sm">{formatMoney(r.amount)}</span>
                         <span className={cn(
-                          "px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase",
+                          "px-2.5 py-0.5 rounded-full font-bold text-[11px] uppercase",
                           r.status === 'approved' ? "bg-emerald-100 text-emerald-800" :
                           r.status === 'declined' ? "bg-rose-100 text-rose-800" :
                           "bg-amber-100 text-amber-800"
@@ -793,7 +789,7 @@ export default function WorkerDashboard() {
                       </div>
                       <p className="text-charcoal/70">"{r.reason}"</p>
                       {r.reviewNotes && (
-                        <p className="text-charcoal/50 italic text-[11px]">Management note: {r.reviewNotes}</p>
+                        <p className="text-charcoal/65 italic text-[11px]">Management note: {r.reviewNotes}</p>
                       )}
                     </div>
                   ))}
@@ -815,7 +811,7 @@ export default function WorkerDashboard() {
 
             <div className="space-y-3 pt-2">
               {payments.length === 0 ? (
-                <div className="p-8 text-center text-xs text-charcoal/50 bg-cream/20 rounded-2xl">
+                <div className="p-8 text-center text-xs text-charcoal/65 bg-cream/20 rounded-2xl">
                   No payment records found yet.
                 </div>
               ) : (
@@ -825,13 +821,13 @@ export default function WorkerDashboard() {
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-sm text-charcoal">{formatMoney(pay.amount)}</span>
                         <span className={cn(
-                          "px-2 py-0.5 rounded-full text-[10px] font-bold",
+                          "px-2 py-0.5 rounded-full text-[11px] font-bold",
                           pay.type === 'settlement' ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
                         )}>
                           {pay.type === 'settlement' ? 'Weekly Settlement' : 'Advance Payout'}
                         </span>
                       </div>
-                      <div className="text-[11px] text-charcoal/50 mt-1 space-x-2">
+                      <div className="text-[11px] text-charcoal/65 mt-1 space-x-2">
                         <span>Paid on: {pay.date}</span>
                         {pay.referenceCode && (
                           <span className="font-mono text-ochre font-bold">M-Pesa Ref: {pay.referenceCode}</span>
@@ -852,7 +848,7 @@ export default function WorkerDashboard() {
 
       {/* Leave Request Modal */}
       {showLeaveModal && (
-        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4">
           <div className="bg-white max-w-md w-full rounded-3xl p-6 sm:p-8 shadow-2xl border border-charcoal/10 space-y-5 animate-fade-in">
             <div className="flex items-start justify-between gap-4 border-b border-charcoal/10 pb-4">
               <div className="flex items-center gap-3">
@@ -861,13 +857,13 @@ export default function WorkerDashboard() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-charcoal">Submit Leave Request</h3>
-                  <p className="text-xs text-charcoal/50">Request time off from the site supervisor.</p>
+                  <p className="text-xs text-charcoal/65">Request time off from the site supervisor.</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowLeaveModal(false)}
-                className="p-2 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-charcoal/60 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -876,7 +872,7 @@ export default function WorkerDashboard() {
             <form onSubmit={handleCreateLeaveRequest} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                     Start Date <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -888,7 +884,7 @@ export default function WorkerDashboard() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                     End Date <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -902,7 +898,7 @@ export default function WorkerDashboard() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Leave Type
                 </label>
                 <select
@@ -917,7 +913,7 @@ export default function WorkerDashboard() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Reason <span className="text-red-500">*</span>
                 </label>
                 <textarea
@@ -941,7 +937,7 @@ export default function WorkerDashboard() {
                 <button
                   type="submit"
                   disabled={submittingLeave}
-                  className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md shadow-ochre/20 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                 >
                   <Check className="w-4 h-4" />
                   <span>{submittingLeave ? 'Submitting...' : 'Send Request'}</span>
@@ -954,7 +950,7 @@ export default function WorkerDashboard() {
 
       {/* Extra Payment Request Modal */}
       {showExtraModal && (
-        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4">
           <div className="bg-white max-w-md w-full rounded-3xl p-6 sm:p-8 shadow-2xl border border-charcoal/10 space-y-5 animate-fade-in">
             <div className="flex items-start justify-between gap-4 border-b border-charcoal/10 pb-4">
               <div className="flex items-center gap-3">
@@ -963,13 +959,13 @@ export default function WorkerDashboard() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-charcoal">Request Extra Pay / Overtime</h3>
-                  <p className="text-xs text-charcoal/50">Transport, overtime hours, or material reimbursement.</p>
+                  <p className="text-xs text-charcoal/65">Transport, overtime hours, or material reimbursement.</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowExtraModal(false)}
-                className="p-2 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-charcoal/60 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -977,7 +973,7 @@ export default function WorkerDashboard() {
 
             <form onSubmit={handleCreateExtraRequest} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Amount Requested (KES) <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -993,7 +989,7 @@ export default function WorkerDashboard() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Project / Task
                 </label>
                 <input
@@ -1006,7 +1002,7 @@ export default function WorkerDashboard() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Reason / Description <span className="text-red-500">*</span>
                 </label>
                 <textarea
@@ -1030,7 +1026,7 @@ export default function WorkerDashboard() {
                 <button
                   type="submit"
                   disabled={submittingExtra}
-                  className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md shadow-ochre/20 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                 >
                   <Check className="w-4 h-4" />
                   <span>{submittingExtra ? 'Submitting...' : 'Submit Extra Pay Request'}</span>
@@ -1043,7 +1039,7 @@ export default function WorkerDashboard() {
 
       {/* Modal: Add Saved Payout Profile */}
       {showPayoutModal && (
-        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white max-w-md w-full rounded-3xl p-6 sm:p-8 shadow-2xl border border-charcoal/10 space-y-5 animate-fade-in my-8">
             <div className="flex items-start justify-between gap-4 border-b border-charcoal/10 pb-4">
               <div className="flex items-center gap-3">
@@ -1052,13 +1048,13 @@ export default function WorkerDashboard() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-charcoal">Add Saved Payout Profile</h3>
-                  <p className="text-xs text-charcoal/50">Save an alternate M-Pesa line or bank account.</p>
+                  <p className="text-xs text-charcoal/65">Save an alternate M-Pesa line or bank account.</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowPayoutModal(false)}
-                className="p-2 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-charcoal/60 hover:text-charcoal hover:bg-cream/60 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1066,7 +1062,7 @@ export default function WorkerDashboard() {
 
             <form onSubmit={handleSavePayoutProfile} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Profile Label <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -1080,7 +1076,7 @@ export default function WorkerDashboard() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Name on Account <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -1094,7 +1090,7 @@ export default function WorkerDashboard() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Phone or Account Number <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -1108,7 +1104,7 @@ export default function WorkerDashboard() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Payout Type
                 </label>
                 <select
@@ -1134,7 +1130,7 @@ export default function WorkerDashboard() {
                 <button
                   type="submit"
                   disabled={savingPayout}
-                  className="px-6 py-2.5 bg-ochre hover:bg-ochre-dark text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-ochre/20 disabled:opacity-50 cursor-pointer"
+                  className="px-6 py-2.5 bg-ochre hover:bg-ochre-dark text-white rounded-xl text-xs font-bold transition-all shadow-md disabled:opacity-50 cursor-pointer"
                 >
                   {savingPayout ? 'Saving...' : 'Save Payout Profile'}
                 </button>

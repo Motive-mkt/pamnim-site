@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, limit, onSnapshot, getDocs } from 'firebase/firestore';
-import { 
-  Activity, CheckCircle2, Clock, ArrowRight, Search, Layers, 
-  ExternalLink, Sparkles, User, Users, Camera, AlertCircle, 
-  Filter, Play, Image as ImageIcon, ChevronRight, Plus, Briefcase
-} from 'lucide-react';
+import { Activity, CheckCircle2, Clock, ArrowRight, Search, Layers, ExternalLink, User, Users, Camera, AlertCircle, Filter, Play, Image as ImageIcon, ChevronRight, Plus, Briefcase } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export interface ProjectActivityFeedProps {
@@ -190,7 +186,7 @@ export default function ProjectActivityFeed({
         {onStartNewProject && (
           <button
             onClick={onStartNewProject}
-            className="flex items-center gap-2 bg-ochre text-white px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold hover:bg-ochre-dark transition-all shadow-md shadow-ochre/20 shrink-0 cursor-pointer self-start lg:self-center"
+            className="flex items-center gap-2 bg-ochre text-white px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold hover:bg-ochre-dark transition-all shadow-md shrink-0 cursor-pointer self-start lg:self-center"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>Start New Project</span>
@@ -206,7 +202,7 @@ export default function ProjectActivityFeed({
             <span className="text-ochre font-bold">25%</span>
           </div>
           <div className="text-2xl font-black text-charcoal">{stageStats.started}</div>
-          <p className="text-[11px] text-charcoal/40 mt-0.5">Initial layout & prep</p>
+          <p className="text-[11px] text-charcoal/60 mt-0.5">Initial layout & prep</p>
         </div>
 
         <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
@@ -246,19 +242,19 @@ export default function ProjectActivityFeed({
               <Camera className="w-4 h-4 text-ochre" />
               Recent Site Uploads & Actions
             </h3>
-            <span className="text-[11px] font-bold text-charcoal/40 uppercase tracking-wider">Live Log</span>
+            <span className="text-[11px] font-bold text-charcoal/60 uppercase tracking-wider">Live Log</span>
           </div>
 
           {loadingUpdates ? (
-            <div className="py-12 text-center text-charcoal/40 space-y-2">
+            <div className="py-12 text-center text-charcoal/60 space-y-2">
               <div className="w-6 h-6 border-2 border-ochre border-t-transparent rounded-full animate-spin mx-auto" />
               <p className="text-xs">Loading live site updates...</p>
             </div>
           ) : recentUpdates.length === 0 ? (
-            <div className="py-10 px-4 text-center text-charcoal/50 bg-white/60 rounded-2xl border border-dashed border-charcoal/10 space-y-2">
-              <Sparkles className="w-8 h-8 text-charcoal/20 mx-auto" />
+            <div className="py-10 px-4 text-center text-charcoal/65 bg-white/60 rounded-2xl border border-dashed border-charcoal/10 space-y-2">
+              <Camera className="w-8 h-8 text-charcoal/20 mx-auto" />
               <p className="text-xs font-semibold">No recent site uploads recorded yet.</p>
-              <p className="text-[11px] text-charcoal/40">
+              <p className="text-[11px] text-charcoal/60">
                 Staff photos, milestone notes, and video walkthroughs logged inside the Project Tracker will appear here in real time.
               </p>
             </div>
@@ -298,16 +294,16 @@ export default function ProjectActivityFeed({
                       <h4 className="text-xs font-bold text-charcoal truncate group-hover:text-ochre transition-colors">
                         {update.projectName}
                       </h4>
-                      <span className="text-[10px] text-charcoal/40 shrink-0 font-medium">
+                      <span className="text-[11px] text-charcoal/60 shrink-0 font-medium">
                         {formatTimeAgo(update.createdAt)}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-1.5 mb-1">
-                      <span className="inline-block px-2 py-0.5 rounded-full bg-ochre/10 text-ochre text-[10px] font-bold">
+                      <span className="inline-block px-2 py-0.5 rounded-full bg-ochre/10 text-ochre text-[11px] font-bold">
                         {update.stageName}
                       </span>
-                      <span className="text-[10px] text-charcoal/40 truncate">
+                      <span className="text-[11px] text-charcoal/60 truncate">
                         by {update.uploadedBy}
                       </span>
                     </div>
@@ -365,7 +361,7 @@ export default function ProjectActivityFeed({
 
             {/* Quick Search */}
             <div className="relative w-full sm:w-60">
-              <Search className="w-3.5 h-3.5 text-charcoal/40 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-charcoal/60 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Filter by project/client..."
@@ -378,7 +374,7 @@ export default function ProjectActivityFeed({
 
           {/* Projects List */}
           {filteredProjects.length === 0 ? (
-            <div className="p-8 text-center text-charcoal/40 bg-cream/20 rounded-2xl border border-dashed border-charcoal/10 space-y-3">
+            <div className="p-8 text-center text-charcoal/60 bg-cream/20 rounded-2xl border border-dashed border-charcoal/10 space-y-3">
               <Briefcase className="w-8 h-8 mx-auto text-charcoal/20" />
               <p className="text-sm font-bold">No projects match this view</p>
               {onStartNewProject && (
@@ -415,7 +411,7 @@ export default function ProjectActivityFeed({
                             {proj.name}
                           </h4>
                           {isComplete && (
-                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-md uppercase tracking-wider">
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-black rounded-md uppercase tracking-wider">
                               Done
                             </span>
                           )}
@@ -429,7 +425,7 @@ export default function ProjectActivityFeed({
                       <div className="flex items-center gap-3">
                         {typeof proj.totalCost === 'number' && (
                           <div className="text-right">
-                            <span className="text-[10px] uppercase font-bold text-charcoal/40 block">Value</span>
+                            <span className="text-[11px] uppercase font-bold text-charcoal/60 block">Value</span>
                             <span className="text-xs font-bold text-charcoal">
                               ${proj.totalCost.toLocaleString()}
                             </span>
@@ -452,7 +448,7 @@ export default function ProjectActivityFeed({
                         <span className="text-charcoal/60">
                           Stage: <strong className="text-ochre">{proj.currentStageName || 'Started'}</strong>
                         </span>
-                        <span className="text-charcoal/50 font-bold">{progressPct}%</span>
+                        <span className="text-charcoal/65 font-bold">{progressPct}%</span>
                       </div>
 
                       {/* Bar */}
@@ -470,13 +466,13 @@ export default function ProjectActivityFeed({
                     {/* Footer Row: Assigned Team & Action shortcuts */}
                     <div className="flex items-center justify-between text-xs pt-1 border-t border-charcoal/5">
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-charcoal/40">Team:</span>
+                        <span className="text-[11px] text-charcoal/60">Team:</span>
                         {projStaff.length > 0 ? (
                           <div className="flex items-center -space-x-1.5">
                             {projStaff.map((s, idx) => (
                               <div
                                 key={s.id || idx}
-                                className="w-6 h-6 rounded-full bg-ochre text-white text-[9px] font-bold flex items-center justify-center border-2 border-white shadow-xs"
+                                className="w-6 h-6 rounded-full bg-ochre text-white text-[11px] font-bold flex items-center justify-center border-2 border-white shadow-xs"
                                 title={s.name}
                               >
                                 {s.name ? s.name.charAt(0).toUpperCase() : 'S'}
@@ -484,12 +480,12 @@ export default function ProjectActivityFeed({
                             ))}
                           </div>
                         ) : (
-                          <span className="text-[11px] text-charcoal/40 italic">Unassigned</span>
+                          <span className="text-[11px] text-charcoal/60 italic">Unassigned</span>
                         )}
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-charcoal/40">
+                        <span className="text-[11px] text-charcoal/60">
                           Updated {formatTimeAgo(proj.updatedAt || proj.createdAt)}
                         </span>
                         {onSelectProjectInTab && (

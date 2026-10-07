@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import LeadQualifyingForm from '../components/LeadQualifyingForm';
+import PageHeader from '../components/ui/PageHeader';
+import Modal from '../components/ui/Modal';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../hooks/useAuth';
-import { Play, Image as ImageIcon, Film, Trash2, AlertTriangle, X, CheckCircle2, Sparkles, Plus } from 'lucide-react';
+import { Play, Image as ImageIcon, Film, Trash2, AlertTriangle, X, CheckCircle2, Plus } from 'lucide-react';
 import { optimizeCloudinaryUrl, getCloudinaryVideoPoster } from '../services/cloudinaryService';
 import PortfolioUploadModal from '../components/PortfolioUploadModal';
 
@@ -165,61 +167,51 @@ export default function PortfolioPage() {
   const filteredProjects = projects.filter(p => p.type === activeTab);
 
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="flex min-h-screen flex-col bg-cream">
       <Header />
-      
-      <main className="pt-32 pb-24">
-        {/* Editorial Header */}
-        <div id="portfolio-title-section" className="max-w-7xl mx-auto px-6 md:px-12 text-center mb-12">
-          <span className="text-xs font-bold tracking-[0.2em] text-ochre uppercase mb-4 block">PORTFOLIO</span>
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-sans font-bold mb-6">Our Design Canvas.</h1>
-          <p className="text-lg md:text-xl text-charcoal/60 max-w-2xl mx-auto">
-            A curated luxury catalog showcasing elegant space transformations, custom millwork, and cinematic walkthroughs.
-          </p>
-        </div>
 
-        {/* Minimalist Tab System */}
-        <div id="portfolio-tabs" className="max-w-7xl mx-auto px-6 md:px-12 flex flex-wrap items-center justify-center gap-3 mb-16 select-none">
-          <div className="bg-charcoal/5 p-1 rounded-full flex gap-1">
-            <button
-              onClick={() => setActiveTab('image')}
-              className={`flex items-center gap-2 px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all cursor-pointer ${
-                activeTab === 'image' 
-                  ? "bg-charcoal text-white shadow-md shadow-charcoal/10" 
-                  : "text-charcoal/50 hover:text-charcoal"
-              }`}
-            >
-              <ImageIcon className="w-4 h-4" />
-              Photography
-            </button>
-            <button
-              onClick={() => setActiveTab('video')}
-              className={`flex items-center gap-2 px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all cursor-pointer ${
-                activeTab === 'video' 
-                  ? "bg-charcoal text-white shadow-md shadow-charcoal/10" 
-                  : "text-charcoal/50 hover:text-charcoal"
-              }`}
-            >
-              <Film className="w-4 h-4" />
-              Cinematic Walks
-            </button>
+      <PageHeader
+        eyebrow="Portfolio"
+        title="Our work."
+        description="Photography and walkthrough films from homes we have designed and finished."
+        breadcrumbs={[{ label: 'Home', to: '/' }, { label: 'Portfolio' }]}
+      />
+
+      <main className="flex-1 pb-32 pt-10 md:pt-14">
+        {/* Tabs */}
+        <div id="portfolio-tabs" className="container-x mb-10 flex flex-wrap items-center justify-between gap-4 select-none">
+          <div role="tablist" aria-label="Portfolio media" className="inline-flex gap-1 rounded-lg bg-charcoal/[0.06] p-1">
+            {([
+              { id: 'image', label: 'Photography', icon: ImageIcon },
+              { id: 'video', label: 'Walkthrough films', icon: Film }
+            ] as const).map((tab) => (
+              <button
+                key={tab.id}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex min-h-10 items-center gap-2 rounded-md px-5 text-sm font-semibold transition-colors ${
+                  activeTab === tab.id ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal/65 hover:text-charcoal'
+                }`}
+              >
+                <tab.icon className="h-4 w-4" aria-hidden="true" />
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          {/* Staff / Owner Upload Button */}
+          {/* Staff / Owner upload */}
           {isStaff && (
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="flex items-center gap-2 bg-ochre hover:bg-ochre-dark text-white px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all shadow-md shadow-ochre/20 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              Upload Media
+            <button onClick={() => setShowUploadModal(true)} className="btn btn-primary btn-sm">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Upload media
             </button>
           )}
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 md:px-12">
+        <div className="container-x">
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
               {[1, 2, 3].map(i => (
                 <div key={i} className="aspect-[4/5] bg-charcoal/5 animate-pulse rounded-3xl" />
               ))}
@@ -235,19 +227,19 @@ export default function PortfolioPage() {
               >
                 {activeTab === 'image' ? (
                   /* photography - Beautiful Luxury Grid Layout */
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
                     {filteredProjects.map((project, index) => (
                       <motion.div
                         key={project.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        className="group relative aspect-[4/5] overflow-hidden rounded-3xl cursor-pointer bg-white border border-charcoal/5 elevation-subtle hover:elevation-raised transition-all"
+                        className="group relative aspect-[4/5] overflow-hidden rounded-xl bg-white border border-charcoal/10"
                       >
                         <img 
                           src={optimizeCloudinaryUrl(project.image, 'image')} 
                           alt=""
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                          className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                           referrerPolicy="no-referrer"
                         />
                         {/* Staff / Owner Quick Delete Button */}
@@ -268,7 +260,7 @@ export default function PortfolioPage() {
                   </div>
                 ) : (
                   /* video - Widescreen Walkthroughs */
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
                     {filteredProjects.map((project, index) => (
                       <motion.div
                         key={project.id}
@@ -334,8 +326,8 @@ export default function PortfolioPage() {
               </motion.div>
             </AnimatePresence>
           ) : (
-            <div className="text-center py-32 bg-white rounded-[3rem] border border-charcoal/5">
-              <h2 className="text-2xl font-bold text-charcoal/30">
+            <div className="text-center py-32 bg-white rounded-3xl border border-charcoal/5">
+              <h2 className="text-2xl font-bold text-charcoal/60">
                 No {activeTab === 'image' ? 'photography' : 'cinematic videos'} available yet.
               </h2>
             </div>
@@ -343,35 +335,31 @@ export default function PortfolioPage() {
         </div>
       </main>
 
-      {/* Sticky Bottom-Center CTA: "Be our next portfolio? Tell us about your project" */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[92vw] sm:max-w-md w-full px-4 pointer-events-auto">
+      {/* Sticky call to action */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-5 z-40 flex justify-center px-4">
         <button
           type="button"
           onClick={() => setShowLeadModal(true)}
-          className="w-full py-3.5 px-6 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs sm:text-sm font-bold shadow-2xl shadow-ochre/35 border border-white/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer backdrop-blur-md"
+          className="btn btn-dark btn-lg pointer-events-auto max-w-full shadow-xl"
         >
           <span className="truncate">Be our next portfolio? Tell us about your project</span>
         </button>
       </div>
 
-      {/* Modal containing shared LeadQualifyingForm */}
-      {showLeadModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6 bg-charcoal/60 backdrop-blur-xs animate-fade-in overflow-y-auto">
-          <div className="relative w-full max-w-2xl bg-white rounded-3xl elevation-modal overflow-hidden animate-scale-up my-auto max-h-[90vh] overflow-y-auto">
-            <LeadQualifyingForm
-              variant="modal"
-              source="portfolio_modal"
-              onClose={() => setShowLeadModal(false)}
-              title="Be our next featured project"
-              subtitle="Tell us about your home and design dreams. We'll craft a bespoke spatial transformation."
-            />
-          </div>
-        </div>
-      )}
+      {/* Project enquiry dialog */}
+      <Modal open={showLeadModal} onClose={() => setShowLeadModal(false)} labelledBy="portfolio-lead-title" size="lg">
+        <LeadQualifyingForm
+          variant="modal"
+          source="portfolio_modal"
+          onClose={() => setShowLeadModal(false)}
+          title="Be our next featured project"
+          subtitle="Tell us about your home and what you have in mind. We will come back with a clear plan."
+        />
+      </Modal>
 
       {/* Delete Confirmation Modal for Staff/Owner */}
       {deletingItem && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs animate-fade-in">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-charcoal/60 animate-fade-in">
           <div className="bg-white w-full max-w-md rounded-3xl border border-red-200 elevation-modal overflow-hidden p-6 space-y-4 animate-scale-up">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -386,7 +374,7 @@ export default function PortfolioPage() {
               <button
                 onClick={() => setDeletingItem(null)}
                 disabled={isDeleting}
-                className="p-1.5 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream transition-colors"
+                className="p-1.5 rounded-xl text-charcoal/60 hover:text-charcoal hover:bg-cream transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -409,7 +397,7 @@ export default function PortfolioPage() {
                 type="button"
                 onClick={handleDeleteItem}
                 disabled={isDeleting}
-                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-red-600/20 transition-colors cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md transition-colors cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>{isDeleting ? 'Deleting...' : 'Delete Item'}</span>

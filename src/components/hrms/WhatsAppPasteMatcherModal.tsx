@@ -255,7 +255,7 @@ export default function WhatsAppPasteMatcherModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-charcoal/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 bg-charcoal/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-charcoal/10 animate-fade-in my-8 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-charcoal/10">
@@ -265,14 +265,14 @@ export default function WhatsAppPasteMatcherModal({
             </div>
             <div>
               <h3 className="text-xl font-bold text-charcoal">WhatsApp Paste Matcher</h3>
-              <p className="text-xs text-charcoal/50">
+              <p className="text-xs text-charcoal/65">
                 Paste M-Pesa SMS or WhatsApp messages. We match names & numbers across all saved payout profiles.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-xl text-charcoal/40 hover:text-charcoal cursor-pointer"
+            className="p-1 rounded-xl text-charcoal/60 hover:text-charcoal cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -315,7 +315,7 @@ export default function WhatsAppPasteMatcherModal({
               type="button"
               onClick={handleParseMessage}
               disabled={!pastedText.trim()}
-              className="px-5 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold flex items-center gap-1.5 shadow-sm shadow-ochre/20 cursor-pointer disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
             >
               <Check className="w-3.5 h-3.5" />
               <span>Match Against Worker Profiles</span>
@@ -329,7 +329,7 @@ export default function WhatsAppPasteMatcherModal({
             <p className="text-xs font-semibold text-charcoal/70">
               No payment details were found in this message.
             </p>
-            <p className="text-[11px] text-charcoal/40">
+            <p className="text-[11px] text-charcoal/60">
               Check that the pasted text includes an M-Pesa confirmation snippet or a phone number / name belonging to a registered worker profile.
             </p>
           </div>
@@ -342,7 +342,7 @@ export default function WhatsAppPasteMatcherModal({
               <span className="text-xs font-bold text-charcoal">
                 Review Matched Worker Payouts ({matchedItems.length})
               </span>
-              <span className="text-[11px] text-charcoal/50">
+              <span className="text-[11px] text-charcoal/65">
                 Check profile labels and confirm to log
               </span>
             </div>
@@ -367,7 +367,7 @@ export default function WhatsAppPasteMatcherModal({
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="font-bold text-sm text-charcoal">{item.worker.name}</h4>
-                          <span className="text-[10px] px-2 py-0.5 rounded-md bg-ochre/10 text-ochre font-bold uppercase">
+                          <span className="text-[11px] px-2 py-0.5 rounded-md bg-ochre/10 text-ochre font-bold uppercase">
                             {item.worker.skill}
                           </span>
                         </div>
@@ -384,7 +384,7 @@ export default function WhatsAppPasteMatcherModal({
                     </div>
 
                     <div className="text-right">
-                      <span className="text-[10px] uppercase font-bold text-charcoal/40 block">Amount (KES)</span>
+                      <span className="text-[11px] uppercase font-bold text-charcoal/60 block">Amount (KES)</span>
                       <input
                         type="number"
                         min="0"
@@ -398,7 +398,7 @@ export default function WhatsAppPasteMatcherModal({
                   {/* Reference & Project controls */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-charcoal/5 text-xs">
                     <div>
-                      <label className="block text-[10px] font-bold uppercase text-charcoal/50 mb-0.5">Reference Code</label>
+                      <label className="block text-[11px] font-bold uppercase text-charcoal/65 mb-0.5">Reference Code</label>
                       <input
                         type="text"
                         value={item.referenceCode}
@@ -409,7 +409,7 @@ export default function WhatsAppPasteMatcherModal({
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold uppercase text-charcoal/50 mb-0.5">Date</label>
+                      <label className="block text-[11px] font-bold uppercase text-charcoal/65 mb-0.5">Date</label>
                       <input
                         type="date"
                         value={item.date}
@@ -419,7 +419,7 @@ export default function WhatsAppPasteMatcherModal({
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold uppercase text-charcoal/50 mb-0.5">Project</label>
+                      <label className="block text-[11px] font-bold uppercase text-charcoal/65 mb-0.5">Project</label>
                       <select
                         value={item.projectId}
                         onChange={(e) => handleUpdateCandidate(item.id, 'projectId', e.target.value)}
@@ -453,7 +453,7 @@ export default function WhatsAppPasteMatcherModal({
                   type="button"
                   disabled={submitting || matchedItems.filter(c => c.selected).length === 0}
                   onClick={handleConfirmPayouts}
-                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <Check className="w-3.5 h-3.5" />
                   <span>{submitting ? 'Logging...' : 'Confirm & Log Payouts'}</span>
