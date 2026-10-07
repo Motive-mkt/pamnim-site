@@ -3,10 +3,7 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  Lock, User, Phone, CheckCircle2, ArrowLeft, HardHat, 
-  CreditCard, Sparkles, ArrowRight, ShieldCheck 
-} from 'lucide-react';
+import { Lock, User, Phone, CheckCircle2, ArrowLeft, HardHat, CreditCard, ArrowRight, ShieldCheck } from 'lucide-react';
 
 interface SignupPageProps {
   mode?: 'general' | 'worker';
@@ -165,7 +162,7 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
   };
 
   return (
-    <div className="min-h-screen bg-cream flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden">
+    <div className="app-ui min-h-screen bg-cream flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden">
       {/* Background Ambience */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-ochre/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-charcoal/5 rounded-full blur-3xl pointer-events-none" />
@@ -178,7 +175,7 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
           <ArrowLeft className="w-4 h-4" /> Back to Pamnim Interiors
         </Link>
 
-        <div className="bg-white rounded-[2.5rem] p-6 sm:p-10 shadow-xl border border-charcoal/10">
+        <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-xl border border-charcoal/10">
           {/* ======================================================== */}
           {/* PART 3: CLIENT SELF-SIGNUP REMOVED                       */}
           {/* Owner creates client accounts; clients use sign-in link  */}
@@ -200,7 +197,7 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
               <div className="space-y-4 pt-2">
                 {/* Option 1: Prospective clients wanting to start a project */}
                 <div className="p-4 bg-cream/40 rounded-2xl border border-charcoal/10 space-y-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-ochre block">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-ochre block">
                     Starting a New Project?
                   </span>
                   <p className="text-xs text-charcoal/70 leading-relaxed">
@@ -218,7 +215,7 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
                 {/* Option 2: Client received invitation link or ID */}
                 <div className="p-4 bg-white rounded-2xl border border-charcoal/15 space-y-3 shadow-2xs">
                   <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-ochre" />
+                    <ShieldCheck className="w-4 h-4 text-ochre" />
                     <span className="text-xs font-bold text-charcoal">
                       Have an Invitation Link from your Designer?
                     </span>
@@ -255,7 +252,7 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
                     <ArrowRight className="w-4 h-4" />
                   </Link>
 
-                  <p className="text-xs text-charcoal/50 pt-2 border-t border-charcoal/10">
+                  <p className="text-xs text-charcoal/65 pt-2 border-t border-charcoal/10">
                     Are you a craftsman, technician, or fundi?{' '}
                     <Link to="/signup?role=worker" className="font-bold text-ochre hover:underline inline-flex items-center gap-1">
                       <HardHat className="w-3.5 h-3.5 inline text-ochre" />
@@ -294,11 +291,11 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
                   <div className="pt-4 space-y-2">
                     <Link
                       to="/login"
-                      className="inline-block px-8 py-3 bg-ochre text-white font-bold text-sm rounded-2xl shadow-lg shadow-ochre/20 hover:bg-ochre-dark transition-all"
+                      className="inline-block px-8 py-3 bg-ochre text-white font-bold text-sm rounded-2xl shadow-lg hover:bg-ochre-dark transition-all"
                     >
                       Back to Login
                     </Link>
-                    <p className="text-xs text-charcoal/50">
+                    <p className="text-xs text-charcoal/65">
                       You will receive notification once your profile is activated.
                     </p>
                   </div>
@@ -325,22 +322,22 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
 
                   {/* Summary of credentials */}
                   <div className="p-4 bg-cream/40 rounded-2xl border border-charcoal/10 space-y-2 text-xs">
-                    <div className="font-bold text-charcoal uppercase tracking-wider text-[10px]">Pre-filled Registration Details</div>
+                    <div className="font-bold text-charcoal uppercase tracking-wider text-[11px]">Pre-filled Registration Details</div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <span className="text-charcoal/50 block">Name:</span>
+                        <span className="text-charcoal/65 block">Name:</span>
                         <span className="font-bold text-charcoal">{name}</span>
                       </div>
                       <div>
-                        <span className="text-charcoal/50 block">Phone (M-Pesa):</span>
+                        <span className="text-charcoal/65 block">Phone (M-Pesa):</span>
                         <span className="font-bold text-charcoal">{mpesaPhone}</span>
                       </div>
                       <div>
-                        <span className="text-charcoal/50 block">National ID:</span>
+                        <span className="text-charcoal/65 block">National ID:</span>
                         <span className="font-bold text-charcoal">{idNumber}</span>
                       </div>
                       <div>
-                        <span className="text-charcoal/50 block">Email:</span>
+                        <span className="text-charcoal/65 block">Email:</span>
                         <span className="font-bold text-charcoal truncate block">{email}</span>
                       </div>
                     </div>
@@ -405,7 +402,7 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
                   {payoutMethod === 'Bank Transfer' && (
                     <div className="space-y-3 p-4 bg-cream/30 rounded-2xl border border-charcoal/10 animate-fade-in">
                       <div>
-                        <label className="block text-[10px] font-bold text-charcoal/60 uppercase tracking-wider mb-1">
+                        <label className="block text-[11px] font-bold text-charcoal/60 uppercase tracking-wider mb-1">
                           Bank Name <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -418,7 +415,7 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-charcoal/60 uppercase tracking-wider mb-1">
+                        <label className="block text-[11px] font-bold text-charcoal/60 uppercase tracking-wider mb-1">
                           Account Name <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -431,7 +428,7 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-charcoal/60 uppercase tracking-wider mb-1">
+                        <label className="block text-[11px] font-bold text-charcoal/60 uppercase tracking-wider mb-1">
                           Account Number <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -485,13 +482,13 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="w-2/3 py-3.5 rounded-2xl bg-ochre text-white font-bold text-sm shadow-xl shadow-ochre/20 hover:bg-ochre-dark transition-all disabled:opacity-50 cursor-pointer"
+                      className="w-2/3 py-3.5 rounded-2xl bg-ochre text-white font-bold text-sm shadow-xl hover:bg-ochre-dark transition-all disabled:opacity-50 cursor-pointer"
                     >
                       {loading ? 'Submitting...' : 'Submit Profile Request'}
                     </button>
                   </div>
 
-                  <p className="text-[11px] text-center text-charcoal/50 pt-1">
+                  <p className="text-[11px] text-center text-charcoal/65 pt-1">
                     Submitting creates your pending profile. You cannot log in yet until owner approval.
                   </p>
                 </form>
@@ -514,7 +511,7 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
                       Full Name
                     </label>
                     <div className="relative">
-                      <User className="w-5 h-5 text-charcoal/40 absolute left-4 top-1/2 -translate-y-1/2" />
+                      <User className="w-5 h-5 text-charcoal/60 absolute left-4 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
                         required
@@ -532,7 +529,7 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
                       M-Pesa Registered Name <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                      <User className="w-5 h-5 text-charcoal/40 absolute left-4 top-1/2 -translate-y-1/2" />
+                      <User className="w-5 h-5 text-charcoal/60 absolute left-4 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
                         required
@@ -568,7 +565,7 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
                       National ID Number <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                      <CreditCard className="w-5 h-5 text-charcoal/40 absolute left-4 top-1/2 -translate-y-1/2" />
+                      <CreditCard className="w-5 h-5 text-charcoal/60 absolute left-4 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
                         required
@@ -603,7 +600,7 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
                       Create Password <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                      <Lock className="w-5 h-5 text-charcoal/40 absolute left-4 top-1/2 -translate-y-1/2" />
+                      <Lock className="w-5 h-5 text-charcoal/60 absolute left-4 top-1/2 -translate-y-1/2" />
                       <input
                         type="password"
                         required
@@ -618,7 +615,7 @@ export default function SignupPage({ mode }: SignupPageProps = {}) {
 
                   <button
                     type="submit"
-                    className="w-full py-4 rounded-2xl bg-ochre text-white font-bold text-sm shadow-xl shadow-ochre/20 hover:bg-ochre-dark transition-all mt-4 cursor-pointer"
+                    className="w-full py-4 rounded-2xl bg-ochre text-white font-bold text-sm shadow-xl hover:bg-ochre-dark transition-all mt-4 cursor-pointer"
                   >
                     Continue: Complete Your Profile
                   </button>

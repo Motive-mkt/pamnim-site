@@ -4,14 +4,7 @@ import AdminLayout, { NavItemConfig } from '../../components/AdminLayout';
 import { collection, query, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, getDoc, orderBy, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
-import { 
-  Plus, Users, Briefcase, Edit2, Trash2, CheckCircle2, Clock, Globe, UserPlus, Mail,
-  Home, Palette, LayoutGrid, PaintBucket, RefreshCcw, MessageSquare, HelpCircle, Film, Sparkles,
-  Image as ImageIcon, Copy, Check, ArrowUp, ArrowDown, Upload, X, Sparkle, DollarSign, Save, AlertCircle, AlertTriangle,
-  FileText, FileSignature, ArrowRight, LayoutDashboard, Receipt, HardHat, Zap, Layers,
-  UserCheck, Search, Calendar as CalendarIcon, ChevronDown, Filter,
-  Star, MessageSquareHeart, ExternalLink, Share2, MapPin
-} from 'lucide-react';
+import { Plus, Users, Briefcase, Edit2, Trash2, CheckCircle2, Clock, Globe, UserPlus, Mail, Home, Palette, LayoutGrid, PaintBucket, RefreshCcw, MessageSquare, HelpCircle, Film, Image as ImageIcon, Copy, Check, ArrowUp, ArrowDown, Upload, X, DollarSign, Save, AlertCircle, AlertTriangle, FileText, FileSignature, ArrowRight, LayoutDashboard, Receipt, HardHat, Zap, Layers, UserCheck, Search, Calendar as CalendarIcon, ChevronDown, Filter, Star, MessageSquareHeart, ExternalLink, Share2, MapPin, TrendingUp, BookOpen } from 'lucide-react';
 import { useCMS } from '../../hooks/useCMS';
 import { refineDraftCopy } from '../../services/geminiService';
 import { getCloudinaryVideoPoster } from '../../services/cloudinaryService';
@@ -1214,20 +1207,20 @@ export default function OwnerDashboard() {
 
   const ownerNavItems: NavItemConfig[] = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'quick-actions', label: 'Quick Actions', icon: Zap },
-    { id: 'projects', label: 'Projects & Tracker', icon: Briefcase },
-    { id: 'invoices', label: 'Invoices & Billing', icon: FileText },
-    { id: 'quotes', label: 'Formal Quotations', icon: FileSignature },
-    { id: 'catalog', label: 'Add Item & Catalog', icon: Layers },
-    { id: 'transactions', label: 'Transactions & Receipts', icon: Receipt },
-    { id: 'hrms', label: 'Site HRMS & Workers', icon: HardHat },
-    { id: 'chat', label: 'Client Messages', icon: MessageSquare },
-    { id: 'staff', label: 'Team & Approvals', icon: Users },
-    { id: 'services', label: 'Core Services', icon: LayoutGrid },
-    { id: 'detailed-services', label: 'Sub-Services CMS', icon: Sparkles },
-    { id: 'inquiries', label: 'Contact Inquiries', icon: Mail, badge: inquiries.filter(i => i.status === 'new').length || undefined },
-    { id: 'media', label: 'Media Library', icon: Globe },
-    { id: 'content', label: 'Homepage Editor', icon: Palette },
+    { id: 'quick-actions', label: 'Quick actions', icon: Zap },
+    { id: 'projects', label: 'Projects and tracker', icon: Briefcase },
+    { id: 'invoices', label: 'Invoices and billing', icon: FileText },
+    { id: 'quotes', label: 'Quotations', icon: FileSignature },
+    { id: 'catalog', label: 'Items and catalog', icon: Layers },
+    { id: 'transactions', label: 'Transactions and receipts', icon: Receipt },
+    { id: 'hrms', label: 'Site workers (HRMS)', icon: HardHat },
+    { id: 'chat', label: 'Client messages', icon: MessageSquare },
+    { id: 'staff', label: 'Team and approvals', icon: Users },
+    { id: 'services', label: 'Services', icon: LayoutGrid },
+    { id: 'detailed-services', label: 'Service pages', icon: BookOpen },
+    { id: 'inquiries', label: 'Contact inquiries', icon: Mail, badge: inquiries.filter(i => i.status === 'new').length || undefined },
+    { id: 'media', label: 'Media library', icon: Globe },
+    { id: 'content', label: 'Homepage editor', icon: Palette },
   ];
 
   return (
@@ -1256,7 +1249,6 @@ export default function OwnerDashboard() {
             <div className="bg-ochre text-white p-6 sm:p-8 rounded-3xl shadow-lg flex flex-col justify-between gap-6">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <Sparkles className="w-4 h-4 text-white/80" />
                   <span className="text-xs font-bold uppercase tracking-widest text-white/90">Portal Onboarding</span>
                 </div>
                 <h3 className="text-2xl font-bold">Copy Client & Employee Sign-Up Link</h3>
@@ -1370,7 +1362,7 @@ export default function OwnerDashboard() {
               </div>
               <button 
                 onClick={() => setShowStartProjectModal(true)}
-                className="flex items-center gap-2 bg-ochre text-white px-6 py-3 rounded-2xl font-bold hover:bg-ochre-dark transition-all shadow-lg shadow-ochre/20"
+                className="flex items-center gap-2 bg-ochre text-white px-6 py-3 rounded-2xl font-bold hover:bg-ochre-dark transition-all shadow-lg"
               >
                 <Plus className="w-5 h-5" />
                 Start New Project
@@ -1378,7 +1370,7 @@ export default function OwnerDashboard() {
             </div>
 
             {projects.length === 0 ? (
-              <div className="p-8 sm:p-12 text-center text-charcoal/40 bg-cream/30 rounded-3xl border border-dashed border-charcoal/15">
+              <div className="p-8 sm:p-12 text-center text-charcoal/60 bg-cream/30 rounded-3xl border border-dashed border-charcoal/15">
                 No active projects found. Click "Start New Project" above to create one.
               </div>
             ) : (
@@ -1387,7 +1379,7 @@ export default function OwnerDashboard() {
                 <div className="hidden md:block overflow-x-auto border border-charcoal/10 rounded-2xl">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-cream/50 border-b border-charcoal/10 text-xs font-bold uppercase text-charcoal/50">
+                      <tr className="bg-cream/50 border-b border-charcoal/10 text-xs font-bold uppercase text-charcoal/65">
                         <th className="p-4">Project Name</th>
                         <th className="p-4">Client Name</th>
                         <th className="p-4">Assigned Staff</th>
@@ -1408,12 +1400,12 @@ export default function OwnerDashboard() {
                               <div className="flex items-center -space-x-2">
                                 {projStaff.length > 0 ? (
                                   projStaff.map((s, idx) => (
-                                    <div key={s.id || idx} className="w-7 h-7 rounded-full bg-ochre text-white text-[10px] font-bold flex items-center justify-center border-2 border-white" title={s.name}>
+                                    <div key={s.id || idx} className="w-7 h-7 rounded-full bg-ochre text-white text-[11px] font-bold flex items-center justify-center border-2 border-white" title={s.name}>
                                       {s.name ? s.name.charAt(0).toUpperCase() : 'S'}
                                     </div>
                                   ))
                                 ) : (
-                                  <span className="text-xs text-charcoal/40 italic">Unassigned</span>
+                                  <span className="text-xs text-charcoal/60 italic">Unassigned</span>
                                 )}
                               </div>
                             </td>
@@ -1421,7 +1413,7 @@ export default function OwnerDashboard() {
                               {typeof proj.totalCost === 'number' ? `$${proj.totalCost.toLocaleString()}` : '$0'}
                             </td>
                             <td className="p-4">
-                              <span className="bg-ochre/10 text-ochre text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
+                              <span className="bg-ochre/10 text-ochre text-[11px] font-bold px-2.5 py-1 rounded-full uppercase">
                                 {proj.currentStageName || 'Started'}
                               </span>
                             </td>
@@ -1452,7 +1444,7 @@ export default function OwnerDashboard() {
 
                 {/* Mobile Stacked Card Layout (below md) */}
                 <div className="block md:hidden space-y-4">
-                  <h3 className="text-xs font-bold text-charcoal/40 uppercase tracking-widest px-1">Projects List</h3>
+                  <h3 className="text-xs font-bold text-charcoal/60 uppercase tracking-widest px-1">Projects List</h3>
                   {projects.map((proj) => {
                     const projStaff = staff.filter(s => proj.employeeIds?.includes(s.uid || s.id) || proj.assignedStaffUids?.includes(s.uid || s.id));
                     return (
@@ -1466,23 +1458,23 @@ export default function OwnerDashboard() {
                             <p className="text-xs text-charcoal/60 mt-0.5">Client: <span className="font-semibold text-charcoal">{proj.clientName || 'N/A'}</span></p>
                             <p className="text-xs text-charcoal/60 mt-0.5">Total Cost: <span className="font-bold text-charcoal">{typeof proj.totalCost === 'number' ? `$${proj.totalCost.toLocaleString()}` : '$0'}</span></p>
                           </div>
-                          <span className="bg-ochre/10 text-ochre text-[10px] font-black px-2.5 py-1 rounded-full uppercase shrink-0">
+                          <span className="bg-ochre/10 text-ochre text-[11px] font-black px-2.5 py-1 rounded-full uppercase shrink-0">
                             {proj.currentStageName || 'Started'}
                           </span>
                         </div>
 
                         <div className="flex items-center justify-between pt-2 border-t border-charcoal/5">
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase font-bold text-charcoal/40">Staff:</span>
+                            <span className="text-[11px] uppercase font-bold text-charcoal/60">Staff:</span>
                             <div className="flex items-center -space-x-1.5">
                               {projStaff.length > 0 ? (
                                 projStaff.map((s, idx) => (
-                                  <div key={s.id || idx} className="w-6 h-6 rounded-full bg-ochre text-white text-[9px] font-bold flex items-center justify-center border-2 border-white" title={s.name}>
+                                  <div key={s.id || idx} className="w-6 h-6 rounded-full bg-ochre text-white text-[11px] font-bold flex items-center justify-center border-2 border-white" title={s.name}>
                                     {s.name ? s.name.charAt(0).toUpperCase() : 'S'}
                                   </div>
                                 ))
                               ) : (
-                                <span className="text-xs text-charcoal/40 italic">None</span>
+                                <span className="text-xs text-charcoal/60 italic">None</span>
                               )}
                             </div>
                           </div>
@@ -1543,7 +1535,7 @@ export default function OwnerDashboard() {
 
                 {/* Search Bar */}
                 <div className="relative">
-                  <Search className="w-4 h-4 text-charcoal/40 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Search className="w-4 h-4 text-charcoal/60 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
                     value={chatSearch}
@@ -1555,7 +1547,7 @@ export default function OwnerDashboard() {
                     <button
                       type="button"
                       onClick={() => setChatSearch('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-charcoal/40 hover:text-charcoal cursor-pointer"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-charcoal/60 hover:text-charcoal cursor-pointer"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -1566,7 +1558,7 @@ export default function OwnerDashboard() {
               {/* Scrollable Conversation List */}
               <div className="flex-1 overflow-y-auto divide-y divide-charcoal/5">
                 {filteredConversations.length === 0 ? (
-                  <div className="p-8 text-center text-charcoal/40 text-xs">
+                  <div className="p-8 text-center text-charcoal/60 text-xs">
                     {chatSearch ? 'No clients match your search.' : 'No active clients yet.'}
                   </div>
                 ) : (
@@ -1599,19 +1591,19 @@ export default function OwnerDashboard() {
                             <h4 className={cn("text-xs font-bold truncate", isSelected ? "text-ochre" : "text-charcoal")}>
                               {client.name}
                             </h4>
-                            <span className="text-[10px] text-charcoal/40 shrink-0 font-medium">
+                            <span className="text-[11px] text-charcoal/60 shrink-0 font-medium">
                               {formatChatTime(client.lastUpdated)}
                             </span>
                           </div>
 
                           <p className="text-[11px] text-charcoal/60 truncate leading-snug">
                             {client.lastMessage ? client.lastMessage : (
-                              <span className="italic text-charcoal/40">No messages yet</span>
+                              <span className="italic text-charcoal/60">No messages yet</span>
                             )}
                           </p>
 
                           {client.phone && (
-                            <span className="text-[9px] text-charcoal/40 block mt-0.5">
+                            <span className="text-[11px] text-charcoal/60 block mt-0.5">
                               {client.phone}
                             </span>
                           )}
@@ -1629,7 +1621,7 @@ export default function OwnerDashboard() {
                 const activeChatUser = selectedChatClient || clients[0];
                 if (!activeChatUser) {
                   return (
-                    <div className="h-full flex items-center justify-center p-12 text-center text-charcoal/40 text-sm">
+                    <div className="h-full flex items-center justify-center p-12 text-center text-charcoal/60 text-sm">
                       Select a conversation on the left to start messaging.
                     </div>
                   );
@@ -1663,7 +1655,7 @@ export default function OwnerDashboard() {
                 setServiceForm({ title: '', description: '', iconName: 'Home' });
                 setShowServiceModal(true);
               }}
-              className="flex items-center gap-2 bg-ochre text-white px-6 py-2.5 rounded-xl font-bold hover:bg-ochre/90 transition-all shadow-lg shadow-ochre/20"
+              className="flex items-center gap-2 bg-ochre text-white px-6 py-2.5 rounded-xl font-bold hover:bg-ochre/90 transition-all shadow-lg"
             >
               <Plus className="w-5 h-5" />
               Add Service
@@ -1681,7 +1673,7 @@ export default function OwnerDashboard() {
                     </div>
                     <h3 className="font-bold text-lg mb-2">{service.title}</h3>
                     <p className="text-sm text-charcoal/60 leading-relaxed min-h-[4.5rem]">{service.description}</p>
-                    <span className="inline-block text-[10px] uppercase tracking-widest font-bold text-charcoal/30 bg-cream px-2.5 py-1 rounded-lg mt-4">
+                    <span className="inline-block text-[11px] uppercase tracking-widest font-bold text-charcoal/60 bg-cream px-2.5 py-1 rounded-lg mt-4">
                       ICON: {service.iconName}
                     </span>
                   </div>
@@ -1720,7 +1712,7 @@ export default function OwnerDashboard() {
             })}
             {cmsServices.length === 0 && (
               <div className="col-span-full py-20 text-center border-2 border-dashed border-charcoal/10 rounded-3xl">
-                <p className="text-charcoal/30 font-bold uppercase text-xs tracking-widest">No services found</p>
+                <p className="text-charcoal/60 font-bold uppercase text-xs tracking-widest">No services found</p>
                 <p className="text-sm text-charcoal/60 mt-2">Add your first custom service using the button above.</p>
               </div>
             )}
@@ -1745,21 +1737,21 @@ export default function OwnerDashboard() {
                 return (
                   <div key={`${category.id}_${item.slug}`} className="p-6 rounded-2xl bg-cream/30 border border-charcoal/5 flex flex-col justify-between hover:border-ochre/30 transition-all group">
                     <div>
-                      <span className="inline-block text-[9px] font-mono uppercase tracking-widest font-bold text-ochre bg-ochre/10 px-2.5 py-1 rounded-md mb-3">
+                      <span className="inline-block text-[11px] font-mono uppercase tracking-widest font-bold text-ochre bg-ochre/10 px-2.5 py-1 rounded-md mb-3">
                         {category.title}
                       </span>
                       <h3 className="font-bold text-lg mb-2">{item.name}</h3>
-                      <p className="text-xs text-charcoal/50 line-clamp-3 mb-6 min-h-[3rem]">{dbItem?.desc || item.desc}</p>
+                      <p className="text-xs text-charcoal/65 line-clamp-3 mb-6 min-h-[3rem]">{dbItem?.desc || item.desc}</p>
                       
                       <div className="space-y-2 mb-6">
                         <div className="flex justify-between items-center text-xs">
-                          <span className="text-charcoal/40 font-bold uppercase tracking-wider">Hero Image</span>
+                          <span className="text-charcoal/60 font-bold uppercase tracking-wider">Hero Image</span>
                           <span className={hasHero ? "text-green-600 font-bold" : "text-amber-600 font-bold"}>
                             {hasHero ? "Uploaded" : "No Image"}
                           </span>
                         </div>
                         <div className="flex justify-between items-center text-xs">
-                          <span className="text-charcoal/40 font-bold uppercase tracking-wider">Gallery Images</span>
+                          <span className="text-charcoal/60 font-bold uppercase tracking-wider">Gallery Images</span>
                           <span className="font-bold text-charcoal/70">
                             {galleryCount} / 3 Uploaded
                           </span>
@@ -1818,13 +1810,13 @@ export default function OwnerDashboard() {
                 <div className="flex gap-4 mt-4">
                   <button 
                     onClick={() => setMediaType('gallery')}
-                    className={cn("px-4 py-1.5 rounded-lg text-sm font-bold transition-all", mediaType === 'gallery' ? "bg-ochre text-white" : "bg-cream text-charcoal/40")}
+                    className={cn("px-4 py-1.5 rounded-lg text-sm font-bold transition-all", mediaType === 'gallery' ? "bg-ochre text-white" : "bg-cream text-charcoal/60")}
                   >
                     Home Gallery
                   </button>
                   <button 
                     onClick={() => setMediaType('portfolio_assets')}
-                    className={cn("px-4 py-1.5 rounded-lg text-sm font-bold transition-all", mediaType === 'portfolio_assets' ? "bg-ochre text-white" : "bg-cream text-charcoal/40")}
+                    className={cn("px-4 py-1.5 rounded-lg text-sm font-bold transition-all", mediaType === 'portfolio_assets' ? "bg-ochre text-white" : "bg-cream text-charcoal/60")}
                   >
                     Full Portfolio
                   </button>
@@ -1874,7 +1866,7 @@ export default function OwnerDashboard() {
               })}
               {(mediaType === 'gallery' ? gallery : portfolio).length === 0 && (
                 <div className="col-span-full py-20 text-center border-2 border-dashed border-charcoal/10 rounded-3xl">
-                  <p className="text-charcoal/30 font-bold uppercase text-xs tracking-widest">Empty {mediaType}</p>
+                  <p className="text-charcoal/60 font-bold uppercase text-xs tracking-widest">Empty {mediaType}</p>
                 </div>
               )}
            </div>
@@ -1911,13 +1903,13 @@ export default function OwnerDashboard() {
                       inquiryDatePreset === 'custom' ? (inquiryCustomStart && inquiryCustomEnd ? `${inquiryCustomStart} to ${inquiryCustomEnd}` : 'Custom Range') :
                       'All time'}
                    </span>
-                   <ChevronDown className="w-3.5 h-3.5 text-charcoal/40" />
+                   <ChevronDown className="w-3.5 h-3.5 text-charcoal/60" />
                  </button>
 
                  {showDatePickerPopover && (
                    <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white rounded-2xl border border-charcoal/10 shadow-2xl p-4 z-30 space-y-4">
                      <div>
-                       <div className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 mb-2">Preset Ranges</div>
+                       <div className="text-[11px] font-bold uppercase tracking-wider text-charcoal/60 mb-2">Preset Ranges</div>
                        <div className="grid grid-cols-2 gap-1.5">
                          {[
                            { id: 'today', label: 'Today' },
@@ -1950,10 +1942,10 @@ export default function OwnerDashboard() {
                      </div>
 
                      <div className="border-t border-charcoal/10 pt-3 space-y-2">
-                       <div className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40">Custom Date Range</div>
+                       <div className="text-[11px] font-bold uppercase tracking-wider text-charcoal/60">Custom Date Range</div>
                        <div className="grid grid-cols-2 gap-2">
                          <div>
-                           <label className="block text-[9px] text-charcoal/50 font-bold mb-1">Start Date</label>
+                           <label className="block text-[11px] text-charcoal/65 font-bold mb-1">Start Date</label>
                            <input
                              type="date"
                              value={inquiryCustomStart}
@@ -1962,7 +1954,7 @@ export default function OwnerDashboard() {
                            />
                          </div>
                          <div>
-                           <label className="block text-[9px] text-charcoal/50 font-bold mb-1">End Date</label>
+                           <label className="block text-[11px] text-charcoal/65 font-bold mb-1">End Date</label>
                            <input
                              type="date"
                              value={inquiryCustomEnd}
@@ -1980,7 +1972,7 @@ export default function OwnerDashboard() {
                              setInquiryCustomEnd('');
                              setShowDatePickerPopover(false);
                            }}
-                           className="text-xs text-charcoal/50 hover:text-charcoal cursor-pointer font-medium"
+                           className="text-xs text-charcoal/65 hover:text-charcoal cursor-pointer font-medium"
                          >
                            Reset
                          </button>
@@ -2001,7 +1993,7 @@ export default function OwnerDashboard() {
                  )}
                </div>
 
-               <div className="text-xs text-charcoal/50 font-medium whitespace-nowrap">
+               <div className="text-xs text-charcoal/65 font-medium whitespace-nowrap">
                  {filteredInquiries.length} total ({filteredInquiries.filter(i => i.status === 'new').length} new)
                </div>
              </div>
@@ -2031,7 +2023,7 @@ export default function OwnerDashboard() {
                    : "bg-ochre/10 text-ochre-dark hover:bg-ochre/20"
                )}
              >
-               <Sparkles className="w-3 h-3" />
+               <TrendingUp className="w-3 h-3" />
                <span>High-Value Leads ({inquiries.filter(i => i.leadTag === 'high-value').length})</span>
              </button>
              <button
@@ -2065,7 +2057,7 @@ export default function OwnerDashboard() {
            {/* Filter by Service Needed */}
            {availableInquiryServices.length > 0 && (
              <div className="flex items-center gap-2 mb-6 flex-wrap">
-               <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/50">Filter by Service:</span>
+               <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/65">Filter by Service:</span>
                <select
                  value={inquiryServiceFilter}
                  onChange={(e) => setInquiryServiceFilter(e.target.value)}
@@ -2093,7 +2085,7 @@ export default function OwnerDashboard() {
            <div className="space-y-4">
               {filteredInquiries.length === 0 ? (
                 <div className="py-16 text-center border-2 border-dashed border-charcoal/10 rounded-3xl space-y-3">
-                  <p className="text-charcoal/40 text-sm font-medium">No customer inquiries found for this date range.</p>
+                  <p className="text-charcoal/60 text-sm font-medium">No customer inquiries found for this date range.</p>
                   <button
                     type="button"
                     onClick={() => {
@@ -2122,44 +2114,44 @@ export default function OwnerDashboard() {
                             <h3 className="font-bold text-lg text-charcoal">{inquiry.name}</h3>
                             {/* Lead Qualification & Request Type Badge */}
                             {(inquiry.leadTag === 'project' || inquiry.requestType === 'project_request' || inquiry.siteVisitDate) ? (
-                              <span className="bg-ochre text-white text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs">
+                              <span className="bg-ochre text-white text-[11px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs">
                                 <CalendarIcon className="w-3 h-3 text-white" />
                                 <span>I Have a Project • Site Visit</span>
                               </span>
                             ) : inquiry.leadTag === 'high-value' ? (
-                              <span className="bg-gradient-to-r from-ochre to-amber-600 text-white text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs">
-                                <Sparkles className="w-3 h-3 text-amber-200" />
+                              <span className="bg-gradient-to-r from-ochre to-amber-600 text-white text-[11px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs">
+                                <TrendingUp className="w-3 h-3 text-amber-200" />
                                 <span>High-Value Lead</span>
                               </span>
                             ) : inquiry.leadTag === 'incomplete' ? (
-                              <span className="bg-rose-100 text-rose-800 border border-rose-200 text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1">
+                              <span className="bg-rose-100 text-rose-800 border border-rose-200 text-[11px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1">
                                 <Clock className="w-3 h-3 text-rose-600" />
                                 <span>Incomplete Project Lead</span>
                               </span>
                             ) : (
-                              <span className="bg-charcoal/10 text-charcoal/80 text-[10px] px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider flex items-center gap-1">
-                                <Mail className="w-3 h-3 text-charcoal/50" />
+                              <span className="bg-charcoal/10 text-charcoal/80 text-[11px] px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider flex items-center gap-1">
+                                <Mail className="w-3 h-3 text-charcoal/65" />
                                 <span>Send Request</span>
                               </span>
                             )}
                             {inquiry.status === 'new' && (
-                              <span className="bg-ochre text-white text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+                              <span className="bg-ochre text-white text-[11px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
                                 New
                               </span>
                             )}
                             {inquiry.status === 'replied' && (
-                              <span className="bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider flex items-center gap-1">
+                              <span className="bg-emerald-600 text-white text-[11px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider flex items-center gap-1">
                                 <Check className="w-3 h-3" />
                                 <span>Replied</span>
                               </span>
                             )}
                             {inquiry.status === 'responded' && (
-                              <span className="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+                              <span className="bg-blue-600 text-white text-[11px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
                                 Responded
                               </span>
                             )}
                             {inquiry.status === 'read' && (
-                              <span className="bg-charcoal/20 text-charcoal/70 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                              <span className="bg-charcoal/20 text-charcoal/70 text-[11px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
                                 Read
                               </span>
                             )}
@@ -2184,12 +2176,12 @@ export default function OwnerDashboard() {
                          <button 
                            type="button"
                            onClick={() => handleOpenWhatsAppReply(inquiry)}
-                           className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all shadow-sm shadow-emerald-600/20 cursor-pointer"
+                           className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all shadow-sm cursor-pointer"
                            title="Opens WhatsApp in a new tab with pre-filled message"
                          >
                             <MessageSquare className="w-3.5 h-3.5" />
                             <span>Reply on WhatsApp</span>
-                            <span className="text-[9px] bg-emerald-800/80 text-emerald-100 px-1 py-0.5 rounded font-normal">
+                            <span className="text-[11px] bg-emerald-800/80 text-emerald-100 px-1 py-0.5 rounded font-normal">
                               opens WhatsApp
                             </span>
                          </button>
@@ -2208,7 +2200,7 @@ export default function OwnerDashboard() {
                          <button 
                            type="button"
                            onClick={() => handleDeleteInquiry(inquiry.id)}
-                           className="p-2 text-charcoal/30 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                           className="p-2 text-charcoal/60 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
                            title="Delete inquiry"
                          >
                             <Trash2 className="w-4 h-4" />
@@ -2220,7 +2212,7 @@ export default function OwnerDashboard() {
                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 mb-3 p-3.5 bg-ochre/5 border border-ochre/20 rounded-2xl text-xs">
                        {inquiry.siteVisitDate && (
                          <div className="p-2.5 bg-white rounded-xl border border-ochre/20 shadow-2xs">
-                           <span className="text-[10px] uppercase font-bold text-ochre block flex items-center gap-1">
+                           <span className="text-[11px] uppercase font-bold text-ochre block flex items-center gap-1">
                              <CalendarIcon className="w-3 h-3 text-ochre" /> Booked Site Visit
                            </span>
                            <span className="font-bold text-charcoal text-xs sm:text-sm">
@@ -2230,7 +2222,7 @@ export default function OwnerDashboard() {
                        )}
                        {inquiry.startDate && (
                          <div className="p-2.5 bg-white rounded-xl border border-ochre/20 shadow-2xs">
-                           <span className="text-[10px] uppercase font-bold text-charcoal/50 block flex items-center gap-1">
+                           <span className="text-[11px] uppercase font-bold text-charcoal/65 block flex items-center gap-1">
                              <Clock className="w-3 h-3" /> Desired Start Date
                            </span>
                            <span className="font-semibold text-charcoal text-xs sm:text-sm">
@@ -2240,7 +2232,7 @@ export default function OwnerDashboard() {
                        )}
                        {inquiry.location && (
                          <div className="p-2.5 bg-white rounded-xl border border-ochre/20 shadow-2xs">
-                           <span className="text-[10px] uppercase font-bold text-charcoal/50 block flex items-center gap-1">
+                           <span className="text-[11px] uppercase font-bold text-charcoal/65 block flex items-center gap-1">
                              <MapPin className="w-3 h-3 text-ochre" /> Location / Estate
                            </span>
                            <span className="font-semibold text-charcoal text-xs sm:text-sm truncate block" title={inquiry.location}>
@@ -2250,7 +2242,7 @@ export default function OwnerDashboard() {
                        )}
                        {inquiry.propertyStatus && (
                          <div className="p-2.5 bg-white rounded-xl border border-ochre/20 shadow-2xs">
-                           <span className="text-[10px] uppercase font-bold text-charcoal/50 block flex items-center gap-1">
+                           <span className="text-[11px] uppercase font-bold text-charcoal/65 block flex items-center gap-1">
                              Space Status
                            </span>
                            <span className="font-semibold text-charcoal text-xs sm:text-sm block">
@@ -2260,13 +2252,13 @@ export default function OwnerDashboard() {
                        )}
                        {inquiry.timeline && !inquiry.startDate && (
                          <div className="p-2.5 bg-white rounded-xl border border-ochre/20 shadow-2xs">
-                           <span className="text-[10px] uppercase font-bold text-charcoal/50 block">Desired Timeline</span>
+                           <span className="text-[11px] uppercase font-bold text-charcoal/65 block">Desired Timeline</span>
                            <span className="font-semibold text-charcoal text-xs sm:text-sm">{inquiry.timeline}</span>
                          </div>
                        )}
                        {(inquiry.scope || inquiry.description) && (
                          <div className="sm:col-span-2 md:col-span-3 pt-2 border-t border-ochre/15">
-                           <span className="text-[10px] uppercase font-bold text-charcoal/50 block mb-0.5">Project Scope / Description</span>
+                           <span className="text-[11px] uppercase font-bold text-charcoal/65 block mb-0.5">Project Scope / Description</span>
                            <span className="text-charcoal/80 font-medium text-xs leading-relaxed">{inquiry.description || inquiry.scope}</span>
                          </div>
                        )}
@@ -2277,7 +2269,7 @@ export default function OwnerDashboard() {
                      "{inquiry.message}"
                    </p>
 
-                   <div className="flex items-center justify-between mt-3 text-[10px] text-charcoal/40 uppercase font-bold tracking-widest">
+                   <div className="flex items-center justify-between mt-3 text-[11px] text-charcoal/60 uppercase font-bold tracking-widest">
                      <span>{new Date(inquiry.createdAt).toLocaleString()}</span>
                      {inquiry.repliedAt && (
                        <span className="text-emerald-600 font-semibold normal-case">
@@ -2300,7 +2292,7 @@ export default function OwnerDashboard() {
               </div>
               <button 
                 onClick={handleSaveCMS}
-                className="w-full sm:w-auto bg-ochre text-white font-bold px-6 sm:px-10 py-3 rounded-xl hover:bg-ochre/90 transition-all shadow-lg shadow-ochre/20 cursor-pointer text-center"
+                className="w-full sm:w-auto bg-ochre text-white font-bold px-6 sm:px-10 py-3 rounded-xl hover:bg-ochre/90 transition-all shadow-lg cursor-pointer text-center"
               >
                 Save All Changes
               </button>
@@ -2339,12 +2331,11 @@ export default function OwnerDashboard() {
                      referrerPolicy="no-referrer"
                    />
                  ) : (
-                   <div className="flex flex-col items-center gap-1.5 text-charcoal/40">
-                     <div className="h-8 px-3 rounded-lg border border-dashed border-charcoal/20 bg-charcoal/5 flex items-center gap-1.5 text-xs text-charcoal/50 font-medium">
-                       <Sparkle className="w-3.5 h-3.5 text-ochre/70" />
+                   <div className="flex flex-col items-center gap-1.5 text-charcoal/60">
+                     <div className="h-8 px-3 rounded-lg border border-dashed border-charcoal/20 bg-charcoal/5 flex items-center gap-1.5 text-xs text-charcoal/65 font-medium">
                        <span>Logo Placeholder</span>
                      </div>
-                     <span className="text-[10px] font-medium text-charcoal/40">No logo uploaded yet</span>
+                     <span className="text-[11px] font-medium text-charcoal/60">No logo uploaded yet</span>
                    </div>
                  )}
                </div>
@@ -2366,11 +2357,11 @@ export default function OwnerDashboard() {
                        }}
                      />
                    </label>
-                   <span className="text-xs text-charcoal/40 font-medium">PNG, SVG, JPG or WebP (Transparent PNG recommended)</span>
+                   <span className="text-xs text-charcoal/60 font-medium">PNG, SVG, JPG or WebP (Transparent PNG recommended)</span>
                  </div>
 
                  <div>
-                   <label className="block text-[10px] font-bold uppercase text-charcoal/40 mb-1">Or Paste Direct Logo Image URL</label>
+                   <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Or Paste Direct Logo Image URL</label>
                    <input 
                      type="url" 
                      placeholder="https://example.com/logo.png"
@@ -2385,16 +2376,16 @@ export default function OwnerDashboard() {
 
            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
               <div className="space-y-6">
-                <h3 className="text-lg font-bold text-charcoal/40 uppercase tracking-widest border-b border-charcoal/5 pb-2">Hero Section</h3>
+                <h3 className="text-lg font-bold text-charcoal/60 uppercase tracking-widest border-b border-charcoal/5 pb-2">Hero Section</h3>
                 <div>
                    <div className="flex justify-between items-center mb-2">
-                      <label className="block text-xs font-bold uppercase text-charcoal/40">Main Headline</label>
+                      <label className="block text-xs font-bold uppercase text-charcoal/60">Main Headline</label>
                       <button
                         type="button"
                         onClick={() => handleRefineText('heroTitle', cmsHero.title, 'Main header of the warm minimalist interior design landing page')}
-                        className="text-[10px] font-bold text-ochre hover:text-ochre/80 flex items-center gap-1 bg-ochre/5 hover:bg-ochre/10 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                        className="text-[11px] font-bold text-ochre hover:text-ochre/80 flex items-center gap-1 bg-ochre/5 hover:bg-ochre/10 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
                       >
-                        <span>✦ Refine with AI</span>
+                        <span>Refine with AI</span>
                       </button>
                    </div>
                    <textarea 
@@ -2405,9 +2396,9 @@ export default function OwnerDashboard() {
                    />
                    {refinement.field === 'heroTitle' && (
                      <div className="mt-2 p-4 bg-ochre/5 border border-ochre/20 rounded-xl space-y-3">
-                       <span className="text-[10px] uppercase font-bold text-ochre tracking-widest block">✦ Luxury Lookbook Suggestion</span>
+                       <span className="text-[11px] uppercase font-bold text-ochre tracking-widest block">Suggested lookbook text</span>
                        {refinement.loading ? (
-                         <p className="text-xs text-charcoal/50 animate-pulse font-medium">Elevating copywriting aesthetics...</p>
+                         <p className="text-xs text-charcoal/65 animate-pulse font-medium">Elevating copywriting aesthetics...</p>
                        ) : refinement.error ? (
                          <p className="text-xs text-red-500 font-medium font-mono">{refinement.error}</p>
                        ) : (
@@ -2433,7 +2424,7 @@ export default function OwnerDashboard() {
                    )}
                 </div>
                 <div>
-                   <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Highlight Word (ochre color)</label>
+                   <label className="block text-xs font-bold uppercase text-charcoal/60 mb-2">Highlight Word (ochre color)</label>
                    <input 
                      type="text"
                      value={cmsHero.highlightWord}
@@ -2443,13 +2434,13 @@ export default function OwnerDashboard() {
                 </div>
                 <div>
                    <div className="flex justify-between items-center mb-2">
-                      <label className="block text-xs font-bold uppercase text-charcoal/40">Sub-headline Description</label>
+                      <label className="block text-xs font-bold uppercase text-charcoal/60">Sub-headline Description</label>
                       <button
                         type="button"
                         onClick={() => handleRefineText('heroSub', cmsHero.subheadline, 'Sub-headline / intro copy of high-end interiors firm in Nairobi, Kenya')}
-                        className="text-[10px] font-bold text-ochre hover:text-ochre/80 flex items-center gap-1 bg-ochre/5 hover:bg-ochre/10 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                        className="text-[11px] font-bold text-ochre hover:text-ochre/80 flex items-center gap-1 bg-ochre/5 hover:bg-ochre/10 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
                       >
-                        <span>✦ Refine with AI</span>
+                        <span>Refine with AI</span>
                       </button>
                    </div>
                    <textarea 
@@ -2460,9 +2451,9 @@ export default function OwnerDashboard() {
                    />
                    {refinement.field === 'heroSub' && (
                      <div className="mt-2 p-4 bg-ochre/5 border border-ochre/20 rounded-xl space-y-3">
-                       <span className="text-[10px] uppercase font-bold text-ochre tracking-widest block">✦ Luxury Lookbook Suggestion</span>
+                       <span className="text-[11px] uppercase font-bold text-ochre tracking-widest block">Suggested lookbook text</span>
                        {refinement.loading ? (
-                         <p className="text-xs text-charcoal/50 animate-pulse font-medium">Elevating copywriting aesthetics...</p>
+                         <p className="text-xs text-charcoal/65 animate-pulse font-medium">Elevating copywriting aesthetics...</p>
                        ) : refinement.error ? (
                          <p className="text-xs text-red-500 font-medium font-mono">{refinement.error}</p>
                        ) : (
@@ -2491,10 +2482,10 @@ export default function OwnerDashboard() {
                 {/* Hero Background Image Management */}
                 <div className="pt-4 border-t border-charcoal/5">
                    <div className="flex justify-between items-center mb-2">
-                      <label className="block text-xs font-bold uppercase text-charcoal/40">Hero Background Image</label>
-                      <span className="text-[10px] text-charcoal/40 font-mono font-medium">Primary Image</span>
+                      <label className="block text-xs font-bold uppercase text-charcoal/60">Hero Background Image</label>
+                      <span className="text-[11px] text-charcoal/60 font-mono font-medium">Primary Image</span>
                    </div>
-                   <p className="text-xs text-charcoal/50 mb-4 font-medium">
+                   <p className="text-xs text-charcoal/65 mb-4 font-medium">
                       This image is displayed in the homepage hero background. Upload a new photo or select from the list below.
                    </p>
 
@@ -2507,14 +2498,14 @@ export default function OwnerDashboard() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium text-charcoal truncate" title={slideUrl}>{slideUrl}</p>
-                            <p className="text-[10px] text-charcoal/40">Slide #{index + 1}</p>
+                            <p className="text-[11px] text-charcoal/60">Slide #{index + 1}</p>
                           </div>
                           <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
                             <button
                               type="button"
                               disabled={index === 0}
                               onClick={() => handleMoveHeroSlide(index, 'up')}
-                              className="p-1.5 rounded-lg text-charcoal/40 hover:text-charcoal hover:bg-white disabled:opacity-20 transition-all cursor-pointer disabled:cursor-not-allowed"
+                              className="p-1.5 rounded-lg text-charcoal/60 hover:text-charcoal hover:bg-white disabled:opacity-20 transition-all cursor-pointer disabled:cursor-not-allowed"
                               title="Move Up"
                             >
                               <ArrowUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -2523,7 +2514,7 @@ export default function OwnerDashboard() {
                               type="button"
                               disabled={index === (cmsHero.heroSlideshow || []).length - 1}
                               onClick={() => handleMoveHeroSlide(index, 'down')}
-                              className="p-1.5 rounded-lg text-charcoal/40 hover:text-charcoal hover:bg-white disabled:opacity-20 transition-all cursor-pointer disabled:cursor-not-allowed"
+                              className="p-1.5 rounded-lg text-charcoal/60 hover:text-charcoal hover:bg-white disabled:opacity-20 transition-all cursor-pointer disabled:cursor-not-allowed"
                               title="Move Down"
                             >
                               <ArrowDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -2541,7 +2532,7 @@ export default function OwnerDashboard() {
                       ))}
                       {(cmsHero.heroSlideshow || []).length === 0 && (
                         <div className="p-6 text-center border-2 border-dashed border-charcoal/10 rounded-xl bg-cream/20">
-                          <p className="text-xs text-charcoal/40 font-medium">No slideshow images added yet. Upload or add image URLs below.</p>
+                          <p className="text-xs text-charcoal/60 font-medium">No slideshow images added yet. Upload or add image URLs below.</p>
                         </div>
                       )}
                    </div>
@@ -2586,9 +2577,9 @@ export default function OwnerDashboard() {
               </div>
 
               <div className="space-y-6">
-                <h3 className="text-lg font-bold text-charcoal/40 uppercase tracking-widest border-b border-charcoal/5 pb-2">Business Contact Info</h3>
+                <h3 className="text-lg font-bold text-charcoal/60 uppercase tracking-widest border-b border-charcoal/5 pb-2">Business Contact Info</h3>
                 <div>
-                   <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Phone Number (Display)</label>
+                   <label className="block text-xs font-bold uppercase text-charcoal/60 mb-2">Phone Number (Display)</label>
                    <input 
                      type="text"
                      value={cmsContact.phone}
@@ -2597,7 +2588,7 @@ export default function OwnerDashboard() {
                    />
                 </div>
                 <div>
-                   <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">WhatsApp Number (Digits only, incl. country code)</label>
+                   <label className="block text-xs font-bold uppercase text-charcoal/60 mb-2">WhatsApp Number (Digits only, incl. country code)</label>
                    <input 
                      type="text"
                      value={cmsContact.whatsapp}
@@ -2606,7 +2597,7 @@ export default function OwnerDashboard() {
                    />
                 </div>
                 <div>
-                   <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Email Address</label>
+                   <label className="block text-xs font-bold uppercase text-charcoal/60 mb-2">Email Address</label>
                    <input 
                      type="email"
                      value={cmsContact.email}
@@ -2615,7 +2606,7 @@ export default function OwnerDashboard() {
                    />
                 </div>
                 <div>
-                   <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Physical Address/Area</label>
+                   <label className="block text-xs font-bold uppercase text-charcoal/60 mb-2">Physical Address/Area</label>
                    <input 
                      type="text"
                      value={cmsContact.address}
@@ -2626,7 +2617,7 @@ export default function OwnerDashboard() {
                 <div className="space-y-4 pt-2 border-t border-charcoal/5">
                   <div>
                     <label className="block text-xs font-bold uppercase text-charcoal/70 mb-1">Payment Instructions by Method</label>
-                    <p className="text-[11px] text-charcoal/50">These method-specific instructions populate dynamically into invoices and quotations.</p>
+                    <p className="text-[11px] text-charcoal/65">These method-specific instructions populate dynamically into invoices and quotations.</p>
                   </div>
 
                   {/* 1. Bank Transfer */}
@@ -2794,15 +2785,15 @@ export default function OwnerDashboard() {
 
       {/* Sticky Mobile Save Bar for Homepage Editor */}
       {activeTab === 'content' && (
-        <div className="fixed bottom-0 left-0 right-0 sm:hidden bg-white/95 backdrop-blur-md border-t border-charcoal/10 p-3.5 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] flex items-center justify-between gap-3">
+        <div className="fixed bottom-0 left-0 right-0 sm:hidden bg-white/95 border-t border-charcoal/10 p-3.5 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold text-charcoal truncate">Homepage Editor</p>
-            <p className="text-[10px] text-charcoal/50 truncate">Unsaved changes will be applied</p>
+            <p className="text-[11px] text-charcoal/65 truncate">Unsaved changes will be applied</p>
           </div>
           <button
             type="button"
             onClick={handleSaveCMS}
-            className="bg-ochre text-white text-xs font-bold px-5 py-2.5 rounded-xl hover:bg-ochre/90 shadow-md shadow-ochre/20 transition-all shrink-0 cursor-pointer"
+            className="bg-ochre text-white text-xs font-bold px-5 py-2.5 rounded-xl hover:bg-ochre/90 shadow-md transition-all shrink-0 cursor-pointer"
           >
             Save All Changes
           </button>
@@ -2811,8 +2802,8 @@ export default function OwnerDashboard() {
 
       {/* Service Modal */}
       {showServiceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-charcoal/40 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-6 sm:p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-charcoal/40 overflow-y-auto">
+          <div className="bg-white rounded-3xl w-full max-w-lg p-6 sm:p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => setShowServiceModal(false)} 
               className="absolute top-6 right-6 text-charcoal/20 hover:text-charcoal transition-colors hover:rotate-90 duration-300"
@@ -2850,7 +2841,7 @@ export default function OwnerDashboard() {
               className="space-y-6"
             >
                <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Service Title</label>
+                  <label className="block text-xs font-bold uppercase text-charcoal/60 mb-2">Service Title</label>
                   <input 
                     type="text" required
                     placeholder="E.g. Residential Interior Design"
@@ -2860,7 +2851,7 @@ export default function OwnerDashboard() {
                   />
                </div>
                <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Description</label>
+                  <label className="block text-xs font-bold uppercase text-charcoal/60 mb-2">Description</label>
                   <textarea 
                     rows={4} required
                     placeholder="End-to-end design for homes that balance beauty..."
@@ -2870,7 +2861,7 @@ export default function OwnerDashboard() {
                   />
                </div>
                <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Select Accent Icon</label>
+                  <label className="block text-xs font-bold uppercase text-charcoal/60 mb-2">Select Accent Icon</label>
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 bg-cream/30 p-3 rounded-2xl border border-charcoal/5 max-h-48 overflow-y-auto">
                     {Object.keys(iconMap).map((key) => {
                       const IconOpt = iconMap[key];
@@ -2882,12 +2873,12 @@ export default function OwnerDashboard() {
                           className={cn(
                             "flex flex-col items-center justify-center p-3 rounded-xl border transition-all text-xs font-bold gap-1 aspect-square",
                             serviceForm.iconName === key 
-                              ? "bg-ochre text-white border-ochre scale-105 shadow-md shadow-ochre/10 animate-[pulse_1.5s_infinite]" 
+                              ? "bg-ochre text-white border-ochre scale-105 shadow-md animate-[pulse_1.5s_infinite]" 
                               : "bg-white text-charcoal border-charcoal/5 hover:bg-cream"
                           )}
                         >
                           <IconOpt className="w-5 h-5 mb-1" />
-                          <span className="text-[9px] truncate w-full text-center">{key}</span>
+                          <span className="text-[11px] truncate w-full text-center">{key}</span>
                         </button>
                       );
                     })}
@@ -2895,7 +2886,7 @@ export default function OwnerDashboard() {
                </div>
                <button 
                  type="submit"
-                 className="w-full bg-ochre text-white font-bold py-5 rounded-2xl hover:bg-ochre/90 transition-all shadow-xl shadow-ochre/20 mt-4"
+                 className="w-full bg-ochre text-white font-bold py-5 rounded-2xl hover:bg-ochre/90 transition-all shadow-xl mt-4"
                >
                  {editingServiceId !== null ? 'Update Service' : 'Create & Save Service'}
                </button>
@@ -2906,8 +2897,8 @@ export default function OwnerDashboard() {
 
       {/* Media Modal */}
       {showMediaModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-charcoal/40 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-xl p-6 sm:p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-charcoal/40 overflow-y-auto">
+          <div className="bg-white rounded-3xl w-full max-w-xl p-6 sm:p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => {
                 if (!isUploading) {
@@ -2924,14 +2915,14 @@ export default function OwnerDashboard() {
             </button>
             
             <h2 className="text-2xl sm:text-3xl font-bold mb-2">Upload to {mediaType === 'gallery' ? 'Home Gallery' : 'Portfolio'}</h2>
-            <p className="text-sm text-charcoal/40 mb-8 font-medium">
+            <p className="text-sm text-charcoal/60 mb-8 font-medium">
               Cinematic layout. Upload stunning project photographs (Images) or walk-throughs (Videos).
             </p>
 
             <form onSubmit={handleAddMedia} className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="block text-[10px] font-bold uppercase text-charcoal/40 tracking-wider">Asset Title (Optional)</label>
+                  <label className="block text-[11px] font-bold uppercase text-charcoal/60 tracking-wider">Asset Title (Optional)</label>
                   <input 
                     type="text"
                     placeholder="e.g. Minimalist Master Bed"
@@ -2942,7 +2933,7 @@ export default function OwnerDashboard() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-[10px] font-bold uppercase text-charcoal/40 tracking-wider">Category / Tag (Optional)</label>
+                  <label className="block text-[11px] font-bold uppercase text-charcoal/60 tracking-wider">Category / Tag (Optional)</label>
                   <input 
                     type="text"
                     placeholder="e.g. Living Space, Kitchen"
@@ -2956,7 +2947,7 @@ export default function OwnerDashboard() {
 
               {/* Seamless input selection controller toggle */}
               <div className="flex justify-between items-center bg-cream/50 p-2 rounded-xl text-xs font-bold">
-                <span className="text-charcoal/50 uppercase tracking-widest pl-2">SELECT SOURCE METHOD</span>
+                <span className="text-charcoal/65 uppercase tracking-widest pl-2">SELECT SOURCE METHOD</span>
                 <button
                   type="button"
                   onClick={() => setUseManualUrl(!useManualUrl)}
@@ -2970,7 +2961,7 @@ export default function OwnerDashboard() {
               {useManualUrl ? (
                 /* Manual entry */
                 <div className="space-y-2">
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Direct Media URL</label>
+                  <label className="block text-xs font-bold uppercase text-charcoal/60 mb-1">Direct Media URL</label>
                   <input 
                     type="url" required
                     placeholder="https://images.unsplash.com/your-image.jpg"
@@ -2979,7 +2970,7 @@ export default function OwnerDashboard() {
                     disabled={isUploading}
                     className="w-full p-4 bg-cream border border-charcoal/5 rounded-2xl focus:outline-none focus:border-ochre text-sm disabled:opacity-50"
                   />
-                  <p className="text-[10px] text-charcoal/40 uppercase font-bold tracking-tight">
+                  <p className="text-[11px] text-charcoal/60 uppercase font-bold tracking-tight">
                     Ensure this link resolves directly to a raw image or .mp4 video asset.
                   </p>
                 </div>
@@ -3041,7 +3032,7 @@ export default function OwnerDashboard() {
                         setSelectedFiles(prev => [...prev, ...filtered]);
                       }
                     }}
-                    className={`border-2 border-dashed rounded-[2rem] p-6 sm:p-10 text-center transition-all cursor-pointer relative ${
+                    className={`border-2 border-dashed rounded-3xl p-6 sm:p-10 text-center transition-all cursor-pointer relative ${
                       dragActive 
                         ? 'border-ochre bg-ochre/5 scale-[1.01] shadow-lg ring-4 ring-ochre/15' 
                         : 'border-charcoal/15 hover:border-ochre/50 bg-cream/10 hover:bg-cream/20'
@@ -3094,7 +3085,7 @@ export default function OwnerDashboard() {
                       <h4 className="font-bold text-charcoal">
                         {dragActive ? "Drop your cinematic assets now!" : "Drag & drop files here, or click to browse"}
                       </h4>
-                      <p className="text-xs text-charcoal/40 font-medium p-1">
+                      <p className="text-xs text-charcoal/60 font-medium p-1">
                         Supports photographs and cinematic walkthrough MP4 videos up to 50MB
                       </p>
                     </div>
@@ -3103,7 +3094,7 @@ export default function OwnerDashboard() {
                   {/* Queued files list display */}
                   {selectedFiles.length > 0 && (
                     <div className="bg-cream/30 border border-charcoal/5 rounded-2xl p-4 max-h-[180px] overflow-y-auto space-y-3">
-                      <div className="flex justify-between items-center text-[10px] font-bold text-charcoal/40 tracking-wider uppercase border-b border-charcoal/5 pb-2">
+                      <div className="flex justify-between items-center text-[11px] font-bold text-charcoal/60 tracking-wider uppercase border-b border-charcoal/5 pb-2">
                         <span>Queued Assets ({selectedFiles.length})</span>
                         {!isUploading && (
                           <button 
@@ -3127,7 +3118,7 @@ export default function OwnerDashboard() {
                               {isVideo ? <Film className="w-4 h-4 text-ochre shrink-0 animate-pulse" /> : <Plus className="w-4 h-4 text-zinc-400 shrink-0" />}
                               <div className="min-w-0 flex-1">
                                 <p className="font-bold text-charcoal truncate pr-2">{file.name}</p>
-                                <span className="text-[10px] text-charcoal/40 uppercase font-bold">{fileSizeMB} MB</span>
+                                <span className="text-[11px] text-charcoal/60 uppercase font-bold">{fileSizeMB} MB</span>
                               </div>
                             </div>
 
@@ -3135,20 +3126,20 @@ export default function OwnerDashboard() {
                             <div className="flex items-center gap-3 shrink-0 ml-4">
                               {statusObj.status === 'uploading' && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[10px] text-ochre font-extrabold animate-pulse">UPLOADING...</span>
+                                  <span className="text-[11px] text-ochre font-extrabold animate-pulse">UPLOADING...</span>
                                   <div className="w-12 bg-charcoal/5 h-1.5 rounded-full overflow-hidden">
                                     <div className="bg-ochre h-full rounded-full transition-all duration-300" style={{ width: `${statusObj.progress}%` }} />
                                   </div>
                                 </div>
                               )}
                               {statusObj.status === 'completed' && (
-                                <span className="text-[10px] text-green-600 font-extrabold bg-green-50 px-2 py-0.5 rounded-md">COMPLETED</span>
+                                <span className="text-[11px] text-green-600 font-extrabold bg-green-50 px-2 py-0.5 rounded-md">COMPLETED</span>
                               )}
                               {statusObj.status === 'failed' && (
                                 <div className="flex flex-col items-end gap-1">
-                                  <span className="text-[10px] text-red-600 font-extrabold bg-red-50 px-2 py-0.5 rounded-md">FAILED</span>
+                                  <span className="text-[11px] text-red-600 font-extrabold bg-red-50 px-2 py-0.5 rounded-md">FAILED</span>
                                   {statusObj.error && (
-                                    <span className="text-[9px] text-red-500 font-medium max-w-[120px] truncate" title={statusObj.error}>
+                                    <span className="text-[11px] text-red-500 font-medium max-w-[120px] truncate" title={statusObj.error}>
                                       {statusObj.error}
                                     </span>
                                   )}
@@ -3158,7 +3149,7 @@ export default function OwnerDashboard() {
                                 <button
                                   type="button"
                                   onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))}
-                                  className="text-charcoal/30 hover:text-red-500 text-xs font-bold transition-all cursor-pointer"
+                                  className="text-charcoal/60 hover:text-red-500 text-xs font-bold transition-all cursor-pointer"
                                 >
                                   Remove
                                 </button>
@@ -3181,7 +3172,7 @@ export default function OwnerDashboard() {
                 <button 
                   type="submit"
                   disabled={isUploading || (!useManualUrl && selectedFiles.length === 0)}
-                  className="w-full bg-ochre disabled:bg-charcoal/10 disabled:text-charcoal/30 text-white font-bold py-5 rounded-3xl hover:bg-ochre/90 transition-all shadow-xl disabled:shadow-none hover:shadow-ochre/15 flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full bg-ochre disabled:bg-charcoal/10 disabled:text-charcoal/60 text-white font-bold py-5 rounded-3xl hover:bg-ochre/90 transition-all shadow-xl disabled:shadow-none hover:shadow-ochre/15 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isUploading ? (
                     <>
@@ -3202,15 +3193,15 @@ export default function OwnerDashboard() {
 
       {/* Staff Modal */}
       {showStaffModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-charcoal/40 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-6 sm:p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-charcoal/40 overflow-y-auto">
+          <div className="bg-white rounded-3xl w-full max-w-lg p-6 sm:p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button onClick={() => setShowStaffModal(false)} className="absolute top-6 right-6 text-charcoal/20 hover:text-charcoal transition-colors">
                <Plus className="w-8 h-8 rotate-45" />
             </button>
             <h2 className="text-2xl sm:text-3xl font-bold mb-6">Add Team Member</h2>
             <form onSubmit={handleAddStaff} className="space-y-4">
                <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Full Name</label>
+                  <label className="block text-xs font-bold uppercase text-charcoal/60 mb-1">Full Name</label>
                   <input 
                     type="text" required
                     placeholder="Jane Smith"
@@ -3220,7 +3211,7 @@ export default function OwnerDashboard() {
                   />
                </div>
                <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Email Address</label>
+                  <label className="block text-xs font-bold uppercase text-charcoal/60 mb-1">Email Address</label>
                   <input 
                     type="email" required
                     placeholder="jane@pamniminteriors.com"
@@ -3230,7 +3221,7 @@ export default function OwnerDashboard() {
                   />
                </div>
                <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Role Type</label>
+                  <label className="block text-xs font-bold uppercase text-charcoal/60 mb-1">Role Type</label>
                   <select 
                     required
                     value={newStaff.role}
@@ -3244,7 +3235,7 @@ export default function OwnerDashboard() {
                </div>
                <button 
                  type="submit"
-                 className="w-full bg-ochre text-white font-bold py-5 rounded-2xl hover:bg-ochre/90 transition-all shadow-xl shadow-ochre/20 mt-4"
+                 className="w-full bg-ochre text-white font-bold py-5 rounded-2xl hover:bg-ochre/90 transition-all shadow-xl mt-4"
                >
                  Create Profile
                </button>
@@ -3253,15 +3244,15 @@ export default function OwnerDashboard() {
         </div>
       )}
       {showProjectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-charcoal/40 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-6 sm:p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-charcoal/40 overflow-y-auto">
+          <div className="bg-white rounded-3xl w-full max-w-lg p-6 sm:p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button onClick={() => setShowProjectModal(false)} className="absolute top-6 right-6 text-charcoal/20 hover:text-charcoal transition-colors">
                <Plus className="w-8 h-8 rotate-45" />
             </button>
             <h2 className="text-3xl font-bold mb-8">Start New Project</h2>
             <form onSubmit={handleCreateProject} className="space-y-4">
                <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Project Name</label>
+                  <label className="block text-xs font-bold uppercase text-charcoal/60 mb-1">Project Name</label>
                   <input 
                     type="text" required
                     placeholder="E.g. Modern Minimalist Villa"
@@ -3271,7 +3262,7 @@ export default function OwnerDashboard() {
                   />
                </div>
                <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Select Client</label>
+                  <label className="block text-xs font-bold uppercase text-charcoal/60 mb-1">Select Client</label>
                   <select 
                     required
                     value={newProject.clientId}
@@ -3283,7 +3274,7 @@ export default function OwnerDashboard() {
                   </select>
                </div>
                <div>
-                  <label className="block text-xs font-bold uppercase text-charcoal/40 mb-1">Assign Service Team</label>
+                  <label className="block text-xs font-bold uppercase text-charcoal/60 mb-1">Assign Service Team</label>
                   <div className="grid grid-cols-1 gap-2 mt-2 max-h-40 overflow-y-auto pr-2">
                     {staff.map(s => (
                        <label key={s.uid} className="flex items-center gap-3 p-3 bg-cream rounded-xl cursor-pointer hover:bg-ochre/10 transition-colors">
@@ -3305,7 +3296,7 @@ export default function OwnerDashboard() {
                </div>
                <button 
                  type="submit"
-                 className="w-full bg-ochre text-white font-bold py-5 rounded-2xl hover:bg-ochre/90 transition-all shadow-xl shadow-ochre/20 mt-4"
+                 className="w-full bg-ochre text-white font-bold py-5 rounded-2xl hover:bg-ochre/90 transition-all shadow-xl mt-4"
                >
                  Create & Notify Team
                </button>
@@ -3316,8 +3307,8 @@ export default function OwnerDashboard() {
 
       {/* Sub-Service Edit Modal */}
       {selectedSubService && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-charcoal/40 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-2xl p-10 shadow-2xl relative my-8 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-charcoal/40 overflow-y-auto">
+          <div className="bg-white rounded-3xl w-full max-w-2xl p-10 shadow-2xl relative my-8 max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => setSelectedSubService(null)} 
               className="absolute top-8 right-8 text-charcoal/20 hover:text-charcoal transition-colors cursor-pointer"
@@ -3326,7 +3317,7 @@ export default function OwnerDashboard() {
             </button>
             
             <div className="mb-6">
-              <span className="text-[10px] font-bold tracking-[0.2em] text-ochre uppercase block">
+              <span className="text-[11px] font-bold tracking-[0.14em] text-ochre uppercase block">
                 {selectedSubService.categoryTitle}
               </span>
               <h2 className="text-2xl sm:text-3xl font-bold text-charcoal mt-1">
@@ -3336,7 +3327,7 @@ export default function OwnerDashboard() {
 
             <form onSubmit={handleSaveSubService} className="space-y-6">
               <div>
-                <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Service Title</label>
+                <label className="block text-xs font-bold uppercase text-charcoal/60 mb-2">Service Title</label>
                 <input 
                   type="text" 
                   required
@@ -3347,7 +3338,7 @@ export default function OwnerDashboard() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase text-charcoal/40 mb-2">Service Description</label>
+                <label className="block text-xs font-bold uppercase text-charcoal/60 mb-2">Service Description</label>
                 <textarea 
                   required
                   rows={3}
@@ -3359,7 +3350,7 @@ export default function OwnerDashboard() {
 
               {/* Hero Image Section */}
               <div className="border-t border-charcoal/5 pt-6">
-                <label className="block text-xs font-bold uppercase text-charcoal/40 mb-3">Hero Image (Full-Width Aspect 21:9)</label>
+                <label className="block text-xs font-bold uppercase text-charcoal/60 mb-3">Hero Image (Full-Width Aspect 21:9)</label>
                 <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                   {subServiceForm.heroImage ? (
                     <div className="w-40 aspect-[21/9] rounded-xl overflow-hidden border border-charcoal/5 bg-cream relative group">
@@ -3373,7 +3364,7 @@ export default function OwnerDashboard() {
                       </button>
                     </div>
                   ) : (
-                    <div className="w-40 aspect-[21/9] rounded-xl border border-dashed border-charcoal/10 bg-cream/40 flex items-center justify-center text-charcoal/30">
+                    <div className="w-40 aspect-[21/9] rounded-xl border border-dashed border-charcoal/10 bg-cream/40 flex items-center justify-center text-charcoal/60">
                       <ImageIcon className="w-5 h-5" />
                     </div>
                   )}
@@ -3398,13 +3389,13 @@ export default function OwnerDashboard() {
 
               {/* Gallery Images (3 slots) */}
               <div className="border-t border-charcoal/5 pt-6">
-                <label className="block text-xs font-bold uppercase text-charcoal/40 mb-3">Project Lookbook Gallery (Max 3 Images)</label>
+                <label className="block text-xs font-bold uppercase text-charcoal/60 mb-3">Project Lookbook Gallery (Max 3 Images)</label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   {[0, 1, 2].map((idx) => {
                     const imgUrl = subServiceForm.images[idx];
                     return (
                       <div key={idx} className="space-y-2">
-                        <span className="text-[10px] font-bold text-charcoal/30 uppercase">Slot {idx + 1}</span>
+                        <span className="text-[11px] font-bold text-charcoal/60 uppercase">Slot {idx + 1}</span>
                         <div className="flex flex-col gap-3 items-start">
                           {imgUrl ? (
                             <div className="w-full aspect-[4/3] rounded-xl overflow-hidden border border-charcoal/5 bg-cream relative group">
@@ -3422,7 +3413,7 @@ export default function OwnerDashboard() {
                               </button>
                             </div>
                           ) : (
-                            <div className="w-full aspect-[4/3] rounded-xl border border-dashed border-charcoal/10 bg-cream/40 flex items-center justify-center text-charcoal/30">
+                            <div className="w-full aspect-[4/3] rounded-xl border border-dashed border-charcoal/10 bg-cream/40 flex items-center justify-center text-charcoal/60">
                               <ImageIcon className="w-5 h-5" />
                             </div>
                           )}
@@ -3460,7 +3451,7 @@ export default function OwnerDashboard() {
                 <button
                   type="submit"
                   disabled={isSavingSubService}
-                  className="bg-ochre hover:bg-ochre/90 disabled:bg-charcoal/10 disabled:text-charcoal/30 text-white text-xs font-bold px-8 py-3 rounded-xl transition-all shadow-lg shadow-ochre/20 uppercase tracking-wider flex items-center gap-2 cursor-pointer"
+                  className="bg-ochre hover:bg-ochre/90 disabled:bg-charcoal/10 disabled:text-charcoal/60 text-white text-xs font-bold px-8 py-3 rounded-xl transition-all shadow-lg uppercase tracking-wider flex items-center gap-2 cursor-pointer"
                 >
                   {isSavingSubService ? "Saving Changes..." : "Save Page Assets"}
                 </button>
@@ -3472,7 +3463,7 @@ export default function OwnerDashboard() {
 
       {/* WhatsApp Reply Modal (Manual-send handoff) */}
       {whatsAppModalInquiry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-charcoal/10 space-y-6">
             <div className="flex items-center justify-between border-b border-charcoal/5 pb-4">
               <div className="flex items-center gap-2.5">
@@ -3481,13 +3472,13 @@ export default function OwnerDashboard() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-charcoal">Reply via WhatsApp</h3>
-                  <p className="text-xs text-charcoal/50">Manual-send handoff to {whatsAppModalInquiry.name}</p>
+                  <p className="text-xs text-charcoal/65">Manual-send handoff to {whatsAppModalInquiry.name}</p>
                 </div>
               </div>
               <button 
                 type="button"
                 onClick={() => setWhatsAppModalInquiry(null)}
-                className="p-2 text-charcoal/40 hover:text-charcoal hover:bg-cream rounded-xl transition-all cursor-pointer"
+                className="p-2 text-charcoal/60 hover:text-charcoal hover:bg-cream rounded-xl transition-all cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -3505,7 +3496,7 @@ export default function OwnerDashboard() {
                   onChange={(e) => setWhatsAppPhone(e.target.value)}
                   className="w-full p-3 bg-cream/40 border border-charcoal/10 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-emerald-600"
                 />
-                <p className="text-[11px] text-charcoal/50 mt-1">
+                <p className="text-[11px] text-charcoal/65 mt-1">
                   Accepts Kenyan format (07... / 01...) or international (+254...).
                 </p>
               </div>
@@ -3520,7 +3511,7 @@ export default function OwnerDashboard() {
                   onChange={(e) => setWhatsAppMessage(e.target.value)}
                   className="w-full p-3 bg-cream/40 border border-charcoal/10 rounded-xl text-xs text-charcoal/80 focus:outline-none focus:border-emerald-600 font-sans leading-relaxed"
                 />
-                <p className="text-[11px] text-charcoal/50 mt-1">
+                <p className="text-[11px] text-charcoal/65 mt-1">
                   You can fine-tune this text here or adjust it directly inside WhatsApp after it opens.
                 </p>
               </div>
@@ -3548,11 +3539,11 @@ export default function OwnerDashboard() {
                 type="button"
                 onClick={handleSendWhatsAppReply}
                 disabled={!whatsAppPhone.trim()}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-40 cursor-pointer"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-6 py-2.5 rounded-xl transition-all shadow-lg disabled:opacity-40 cursor-pointer"
               >
                 <MessageSquare className="w-4 h-4" />
                 <span>Open in WhatsApp & Mark Replied</span>
-                <span className="text-[10px] bg-emerald-800 text-emerald-100 px-1.5 py-0.5 rounded font-normal">
+                <span className="text-[11px] bg-emerald-800 text-emerald-100 px-1.5 py-0.5 rounded font-normal">
                   opens WhatsApp
                 </span>
               </button>
@@ -3574,7 +3565,7 @@ export default function OwnerDashboard() {
 
       {/* Media Deletion Confirmation Modal */}
       {mediaToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 animate-fade-in">
           <div className="bg-white w-full max-w-md rounded-3xl border border-red-200 shadow-2xl overflow-hidden p-6 space-y-4 animate-scale-up">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -3588,7 +3579,7 @@ export default function OwnerDashboard() {
               </div>
               <button
                 onClick={() => setMediaToDelete(null)}
-                className="p-1.5 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream transition-colors cursor-pointer"
+                className="p-1.5 rounded-xl text-charcoal/60 hover:text-charcoal hover:bg-cream transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -3609,7 +3600,7 @@ export default function OwnerDashboard() {
               <button
                 type="button"
                 onClick={confirmDeleteMedia}
-                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-red-600/20 transition-colors cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md transition-colors cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Delete Asset</span>
@@ -3626,7 +3617,7 @@ function StatCard({ label, value, icon: Icon, color }: any) {
   return (
     <div className="bg-white p-8 rounded-3xl shadow-sm border border-charcoal/5 flex items-center justify-between">
       <div>
-        <p className="text-xs font-bold text-charcoal/40 uppercase tracking-widest mb-1">{label}</p>
+        <p className="text-xs font-bold text-charcoal/60 uppercase tracking-widest mb-1">{label}</p>
         <p className="text-3xl font-bold">{value}</p>
       </div>
       <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center", color)}>

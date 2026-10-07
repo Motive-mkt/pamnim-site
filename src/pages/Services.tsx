@@ -1,112 +1,106 @@
-import React from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Compass, Layers, Grid, Sparkles } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import BrandIconBox from '../components/BrandIconBox';
+import PageHeader from '../components/ui/PageHeader';
+import CtaBand from '../components/ui/CtaBand';
 import { serviceCategories } from '../data/servicesData';
+import { useCategoryImages } from '../hooks/useCategoryImages';
 
 export default function ServicesPage() {
+  const { imagesFor } = useCategoryImages();
+
   return (
-    <div className="min-h-screen bg-cream flex flex-col justify-between">
-      <div>
-        <Header />
+    <div className="flex min-h-screen flex-col bg-cream">
+      <Header />
 
-        {/* Hero Section */}
-        <section className="pt-28 sm:pt-36 pb-12 sm:pb-16 relative overflow-hidden bg-cream border-b border-charcoal/5">
-          <div className="max-w-7xl mx-auto px-6 md:px-12 relative z-10 text-center">
-            <motion.span 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="text-xs font-bold tracking-[0.2em] text-ochre uppercase mb-4 block"
-            >
-              OUR CORE DISCIPLINES
-            </motion.span>
-            <motion.h1 
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-serif text-charcoal font-medium mb-6 leading-tight max-w-4xl mx-auto"
-            >
-              Refined Services & <span className="italic font-light">Elevated Architecture</span>
-            </motion.h1>
-            <motion.p 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.2 }}
-              className="text-sm sm:text-base md:text-lg lg:text-xl text-charcoal/60 max-w-2xl mx-auto leading-relaxed"
-            >
-              Experience our comprehensive design spectrum, carefully structured to assure pristine finish quality and warm minimalist sophistication.
-            </motion.p>
-          </div>
-        </section>
+      <PageHeader
+        eyebrow="Services"
+        title="What we design and build."
+        description="Four services that cover a home from first layout to final finishing. Pick one, or combine them in a single project."
+        breadcrumbs={[{ label: 'Home', to: '/' }, { label: 'Services' }]}
+      />
 
-        {/* Category Cards Grid */}
-        <main className="py-20 max-w-7xl mx-auto px-6 md:px-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-            {serviceCategories.map((category, index) => {
-              const Icon = category.icon;
-              return (
-                <motion.div
-                  key={category.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                  className="bg-white border border-charcoal/5 rounded-3xl p-8 md:p-12 elevation-subtle hover:elevation-raised hover:border-ochre/20 transition-all duration-300 flex flex-col justify-between group"
+      <main className="section flex-1">
+        <div className="container-x grid gap-x-8 gap-y-16 md:grid-cols-2 lg:gap-x-12">
+          {serviceCategories.map((category, index) => {
+            const image = imagesFor(category.id)[0];
+            return (
+              <motion.article
+                key={category.id}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.5, delay: (index % 2) * 0.08 }}
+                className="group flex flex-col"
+              >
+                <Link
+                  to={`/services/${category.id}`}
+                  className="block overflow-hidden rounded-xl bg-charcoal/5"
+                  tabIndex={-1}
+                  aria-hidden="true"
                 >
-                  <div>
-                    {/* Index & Icon */}
-                    <div className="flex justify-between items-center mb-8">
-                      <span className="font-mono text-sm tracking-widest text-ochre font-extrabold">
+                  <div className="aspect-[4/3]">
+                    {image ? (
+                      <img
+                        src={image}
+                        alt=""
+                        width={1200}
+                        height={900}
+                        loading={index < 2 ? 'eager' : 'lazy'}
+                        decoding="async"
+                        referrerPolicy="no-referrer"
+                        className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-paper font-serif text-6xl text-charcoal/15">
                         {category.accent}
-                      </span>
-                      <BrandIconBox icon={Icon} />
-                    </div>
-
-                    {/* Content */}
-                    <h2 className="text-2xl md:text-3xl font-serif font-medium text-charcoal mb-4 group-hover:text-ochre transition-colors duration-300">
-                      {category.title}
-                    </h2>
-                    <p className="text-charcoal/60 text-sm leading-relaxed mb-6">
-                      {category.description}
-                    </p>
-
-                    {/* Included Solutions Pills */}
-                    <div className="mb-8">
-                      <span className="text-[10px] font-bold tracking-[0.15em] text-charcoal/30 uppercase mb-3 block">
-                        Included Solutions
-                      </span>
-                      <div className="flex flex-wrap gap-2">
-                        {category.items.map((item) => (
-                          <Link
-                            key={item.slug}
-                            to={`/services/${category.id}/${item.slug}`}
-                            className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-cream border border-charcoal/5 hover:border-ochre hover:bg-ochre/5 hover:text-ochre transition-all duration-300 inline-block"
-                          >
-                            {item.name}
-                          </Link>
-                        ))}
                       </div>
-                    </div>
+                    )}
                   </div>
+                </Link>
 
-                  {/* Navigation CTA */}
-                  <Link
-                    to={`/services/${category.id}`}
-                    className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-charcoal group-hover:text-ochre transition-all duration-300 self-start"
-                  >
-                    View Category
-                    <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
-                  </Link>
-                </motion.div>
-              );
-            })}
-          </div>
-        </main>
-      </div>
+                <div className="mt-6 flex items-baseline gap-4">
+                  <span className="font-serif text-xl text-ochre" aria-hidden="true">
+                    {category.accent}
+                  </span>
+                  <h2 className="text-[1.75rem] leading-tight">
+                    <Link to={`/services/${category.id}`} className="hover:text-ochre">
+                      {category.title}
+                    </Link>
+                  </h2>
+                </div>
+                <p className="mt-3 text-[15px] leading-relaxed text-charcoal/75 md:pl-9">{category.description}</p>
+
+                <ul className="mt-5 divide-y divide-charcoal/10 border-y border-charcoal/10 md:ml-9">
+                  {category.items.map((item) => (
+                    <li key={item.slug}>
+                      <Link
+                        to={`/services/${category.id}/${item.slug}`}
+                        className="flex min-h-11 items-center justify-between gap-4 py-2.5 text-[15px] text-charcoal hover:text-ochre"
+                      >
+                        {item.name}
+                        <ArrowRight className="h-4 w-4 shrink-0 text-charcoal/40 transition-transform group-hover:translate-x-0" aria-hidden="true" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+
+                <Link to={`/services/${category.id}`} className="btn-link mt-5 self-start md:ml-9">
+                  View service
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </motion.article>
+            );
+          })}
+        </div>
+      </main>
+
+      <CtaBand
+        title="Tell us about your home."
+        description="Share your space and budget and we will recommend where to start. The first consultation is free."
+      />
       <Footer />
     </div>
   );

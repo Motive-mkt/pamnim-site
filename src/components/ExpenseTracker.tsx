@@ -243,7 +243,7 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
               <Receipt className="w-4 h-4" />
             </div>
             <h3 className="text-xl font-bold text-charcoal">Internal Project Expenses</h3>
-            <span className="text-[10px] font-bold uppercase tracking-wider bg-charcoal/5 text-charcoal/60 px-2 py-0.5 rounded-md">
+            <span className="text-[11px] font-bold uppercase tracking-wider bg-charcoal/5 text-charcoal/60 px-2 py-0.5 rounded-md">
               Staff Only
             </span>
           </div>
@@ -259,7 +259,7 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
               <TrendingUp className="w-4 h-4" />
             </div>
             <div>
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-charcoal/50">
+              <span className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/65">
                 Total Expenses
               </span>
               <span className="text-lg font-black text-charcoal font-mono">
@@ -272,7 +272,7 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
           {isStaff && (
             <button
               onClick={handleOpenAddModal}
-              className="px-5 py-3 rounded-2xl bg-ochre text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-ochre/20 hover:bg-ochre-dark transition-all cursor-pointer shrink-0"
+              className="px-5 py-3 rounded-2xl bg-ochre text-white text-xs font-bold flex items-center gap-2 shadow-md hover:bg-ochre-dark transition-all cursor-pointer shrink-0"
             >
               <Plus className="w-4 h-4" />
               <span>Add Expense</span>
@@ -298,13 +298,13 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
                   : "bg-cream/30 border-charcoal/10 hover:border-ochre/40"
               )}
             >
-              <p className="text-[10px] font-bold uppercase tracking-wider text-charcoal/50 truncate">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-charcoal/65 truncate">
                 {cat}
               </p>
               <p className="text-sm font-bold font-mono text-charcoal mt-0.5">
                 KES {stats.total.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </p>
-              <span className="text-[10px] text-charcoal/40 font-medium">
+              <span className="text-[11px] text-charcoal/60 font-medium">
                 {stats.count} {stats.count === 1 ? 'entry' : 'entries'}
               </span>
             </button>
@@ -338,7 +338,7 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
             </button>
           )}
         </div>
-        <p className="text-xs text-charcoal/50">
+        <p className="text-xs text-charcoal/65">
           Showing {filteredExpenses.length} of {expenses.length} records
         </p>
       </div>
@@ -346,14 +346,14 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
       {/* Expense Entries List */}
       <div className="space-y-3">
         {loading ? (
-          <div className="p-8 text-center text-charcoal/40 animate-pulse bg-cream/30 rounded-2xl border border-charcoal/5">
+          <div className="p-8 text-center text-charcoal/60 animate-pulse bg-cream/30 rounded-2xl border border-charcoal/5">
             Loading expense logs...
           </div>
         ) : filteredExpenses.length === 0 ? (
-          <div className="p-8 text-center bg-cream/30 rounded-2xl border border-dashed border-charcoal/10 text-charcoal/50 space-y-1">
-            <Receipt className="w-8 h-8 mx-auto text-charcoal/30 mb-2" />
+          <div className="p-8 text-center bg-cream/30 rounded-2xl border border-dashed border-charcoal/10 text-charcoal/65 space-y-1">
+            <Receipt className="w-8 h-8 mx-auto text-charcoal/60 mb-2" />
             <p className="text-sm font-bold text-charcoal/70">No expenses in this view</p>
-            <p className="text-xs text-charcoal/40">
+            <p className="text-xs text-charcoal/60">
               Click "Add Expense" to start logging itemized project expenditures.
             </p>
           </div>
@@ -363,7 +363,7 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
-                  <tr className="bg-cream/60 border-b border-charcoal/10 text-xs font-bold uppercase tracking-wider text-charcoal/50">
+                  <tr className="bg-cream/60 border-b border-charcoal/10 text-xs font-bold uppercase tracking-wider text-charcoal/65">
                     <th className="py-3 px-4">Date & Time</th>
                     <th className="py-3 px-4">Category</th>
                     <th className="py-3 px-4">Description / Note</th>
@@ -376,12 +376,12 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
                     <tr key={item.id} className="hover:bg-cream/30 transition-colors group">
                       <td className="py-3.5 px-4 text-charcoal/70 font-medium whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <Clock className="w-3.5 h-3.5 text-charcoal/40" />
+                          <Clock className="w-3.5 h-3.5 text-charcoal/60" />
                           <span>{formatDisplayDate(item.date)}</span>
                         </div>
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-charcoal/5 text-charcoal/80 border border-charcoal/10">
+                        <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-charcoal/5 text-charcoal/80 border border-charcoal/10">
                           {item.category || 'Miscellaneous'}
                         </span>
                       </td>
@@ -389,7 +389,7 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
                         {item.note ? (
                           <span className="font-medium text-charcoal/90">{item.note}</span>
                         ) : (
-                          <span className="text-charcoal/30 italic text-xs">No note provided</span>
+                          <span className="text-charcoal/60 italic text-xs">No note provided</span>
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-right font-bold text-charcoal font-mono whitespace-nowrap">
@@ -400,7 +400,7 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
                           <button
                             onClick={() => handleDeleteExpense(item.id)}
                             disabled={deletingId === item.id}
-                            className="p-1.5 rounded-lg text-charcoal/30 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg text-charcoal/60 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                             title="Delete Expense"
                             aria-label="Delete Expense"
                           >
@@ -420,13 +420,13 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
                 <div key={item.id} className="p-4 flex items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-charcoal/5 text-charcoal/70 border border-charcoal/10">
+                      <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-charcoal/5 text-charcoal/70 border border-charcoal/10">
                         {item.category || 'Miscellaneous'}
                       </span>
-                      <span className="text-xs text-charcoal/50">{formatDisplayDate(item.date)}</span>
+                      <span className="text-xs text-charcoal/65">{formatDisplayDate(item.date)}</span>
                     </div>
                     <p className="text-sm font-semibold text-charcoal">
-                      {item.note || <span className="text-charcoal/30 italic text-xs">No note</span>}
+                      {item.note || <span className="text-charcoal/60 italic text-xs">No note</span>}
                     </p>
                   </div>
                   <div className="text-right shrink-0 flex flex-col items-end gap-1">
@@ -437,7 +437,7 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
                       <button
                         onClick={() => handleDeleteExpense(item.id)}
                         disabled={deletingId === item.id}
-                        className="text-xs text-charcoal/40 hover:text-red-600 transition-colors p-1"
+                        className="text-xs text-charcoal/60 hover:text-red-600 transition-colors p-1"
                         aria-label="Delete Expense"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -453,11 +453,11 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
 
       {/* Add Expense Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl relative border border-charcoal/10">
             <button
               onClick={handleCloseAddModal}
-              className="absolute top-5 right-5 text-charcoal/40 hover:text-charcoal transition-colors cursor-pointer"
+              className="absolute top-5 right-5 text-charcoal/60 hover:text-charcoal transition-colors cursor-pointer"
               aria-label="Close modal"
             >
               <X className="w-5 h-5" />
@@ -469,7 +469,7 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
               </div>
               <div>
                 <h3 className="text-xl font-bold text-charcoal">Add Expense</h3>
-                <p className="text-xs text-charcoal/50">Record an itemized project expenditure</p>
+                <p className="text-xs text-charcoal/65">Record an itemized project expenditure</p>
               </div>
             </div>
 
@@ -487,7 +487,7 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
                   Amount (KES) <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/40 font-bold text-xs select-none">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/60 font-bold text-xs select-none">
                     KES
                   </span>
                   <input
@@ -541,7 +541,7 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
                     className="w-full px-3.5 py-2.5 bg-cream/40 border border-charcoal/15 focus:border-ochre rounded-xl text-sm font-medium text-charcoal outline-none transition-all"
                   />
                 </div>
-                <p className="text-[11px] text-charcoal/40 mt-1">
+                <p className="text-[11px] text-charcoal/60 mt-1">
                   Defaults to current date/time, but you can backdate or adjust as needed.
                 </p>
               </div>
@@ -549,7 +549,7 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
               {/* Note / Description Field */}
               <div>
                 <label className="block text-xs font-bold text-charcoal/60 uppercase tracking-widest mb-1.5">
-                  Note / Purpose <span className="text-charcoal/40 font-normal lowercase">(optional)</span>
+                  Note / Purpose <span className="text-charcoal/60 font-normal lowercase">(optional)</span>
                 </label>
                 <textarea
                   rows={2}
@@ -571,7 +571,7 @@ export default function ExpenseTracker({ projectId, isReadOnly = false }: Expens
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-6 py-2.5 rounded-xl bg-ochre text-white text-xs font-bold flex items-center gap-2 hover:bg-ochre-dark transition-all disabled:opacity-50 cursor-pointer shadow-md shadow-ochre/20"
+                  className="px-6 py-2.5 rounded-xl bg-ochre text-white text-xs font-bold flex items-center gap-2 hover:bg-ochre-dark transition-all disabled:opacity-50 cursor-pointer shadow-md"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>{isSubmitting ? 'Recording...' : 'Add Expense'}</span>

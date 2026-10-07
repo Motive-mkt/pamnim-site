@@ -76,7 +76,7 @@ export default function DeleteProjectModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 animate-fade-in">
       <div 
         className="bg-white w-full max-w-lg rounded-3xl border border-red-200 shadow-2xl overflow-hidden animate-scale-up"
         role="dialog"
@@ -85,7 +85,7 @@ export default function DeleteProjectModal({
         {/* Modal Header */}
         <div className="p-6 bg-red-50/70 border-b border-red-100 flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-red-600 text-white flex items-center justify-center shadow-md shadow-red-600/20 shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-red-600 text-white flex items-center justify-center shadow-md shrink-0">
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div>
@@ -96,7 +96,7 @@ export default function DeleteProjectModal({
           <button
             onClick={handleCloseModal}
             disabled={isDeleting}
-            className="p-1.5 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-white/80 transition-colors disabled:opacity-40 cursor-pointer"
+            className="p-1.5 rounded-xl text-charcoal/60 hover:text-charcoal hover:bg-white/80 transition-colors disabled:opacity-40 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -127,7 +127,7 @@ export default function DeleteProjectModal({
                     <li>All logged client payments and transaction receipts</li>
                     <li>All internal project expenses</li>
                   </ul>
-                  <p className="text-[10px] text-charcoal/50 pt-1 italic">
+                  <p className="text-[11px] text-charcoal/65 pt-1 italic">
                     Note: Orphaned Cloudinary media will require periodic cleanup.
                   </p>
                 </div>
@@ -144,7 +144,7 @@ export default function DeleteProjectModal({
                       <li key={i}>{err}</li>
                     ))}
                   </ul>
-                  <p className="text-[10px] text-red-600/80 pt-1">
+                  <p className="text-[11px] text-red-600/80 pt-1">
                     Some items may have been deleted while others encountered errors. Details logged to console.
                   </p>
                 </div>
@@ -191,7 +191,7 @@ export default function DeleteProjectModal({
               type="button"
               onClick={handleDelete}
               disabled={!isConfirmed || isDeleting}
-              className="px-6 py-2.5 rounded-2xl bg-red-600 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-red-600/20 hover:bg-red-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer order-1 sm:order-2 min-h-[42px]"
+              className="px-6 py-2.5 rounded-2xl bg-red-600 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md hover:bg-red-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer order-1 sm:order-2 min-h-[42px]"
             >
               {isDeleting ? (
                 <>

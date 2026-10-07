@@ -5,12 +5,7 @@ import {
 import { db } from '../lib/firebase';
 import { useAuth } from '../hooks/useAuth';
 import { useCMS } from '../hooks/useCMS';
-import { 
-  FolderPlus, FileSignature, FileText, CreditCard, Tag, UserPlus, 
-  Receipt, Users, HardHat, Clock, ArrowUpDown, DollarSign, Wallet,
-  Search, X, CheckCircle2, AlertCircle, ChevronRight, ArrowRight,
-  Sparkle, ExternalLink, Zap
-} from 'lucide-react';
+import { FolderPlus, FileSignature, FileText, CreditCard, Tag, UserPlus, Receipt, Users, HardHat, Clock, ArrowUpDown, DollarSign, Wallet, Search, X, CheckCircle2, AlertCircle, ChevronRight, ArrowRight, ExternalLink, Zap } from 'lucide-react';
 import { cn } from '../lib/utils';
 import StartProjectModal from './StartProjectModal';
 import CatalogManagerModal from './CatalogManagerModal';
@@ -552,7 +547,7 @@ export default function QuickActions({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2 h-2 rounded-full bg-ochre animate-pulse" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-ochre">Fast Operations</span>
+            <span className="text-[11px] font-bold uppercase tracking-widest text-ochre">Fast Operations</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-bold text-charcoal">Quick Actions</h2>
           <p className="text-xs text-charcoal/60 mt-1 max-w-xl">
@@ -576,7 +571,7 @@ export default function QuickActions({
               key={card.id}
               type="button"
               onClick={card.onClick}
-              className="group relative flex flex-col justify-between text-left p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white border border-charcoal/10 hover:border-ochre/40 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer min-h-[140px] sm:min-h-[160px] active:scale-[0.98] select-none"
+              className="group relative flex flex-col justify-between text-left p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white border border-charcoal/10 hover:border-ochre/40 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer min-h-[140px] sm:min-h-[160px] select-none"
             >
               {/* Top row: Icon and live badge */}
               <div className="flex items-start justify-between w-full gap-2">
@@ -585,7 +580,7 @@ export default function QuickActions({
                 </div>
 
                 {card.badge !== undefined && card.badge !== null && (
-                  <span className="px-2 py-0.5 text-[10px] sm:text-[11px] font-black rounded-full bg-ochre text-white shadow-sm animate-pulse shrink-0">
+                  <span className="px-2 py-0.5 text-[11px] sm:text-[11px] font-black rounded-full bg-ochre text-white shadow-sm animate-pulse shrink-0">
                     {card.badge} {typeof card.badge === 'number' ? 'New' : ''}
                   </span>
                 )}
@@ -597,9 +592,9 @@ export default function QuickActions({
                   <h3 className="font-bold text-xs sm:text-sm text-charcoal group-hover:text-ochre transition-colors truncate">
                     {card.label}
                   </h3>
-                  <ChevronRight className="w-3.5 h-3.5 text-charcoal/30 group-hover:text-ochre group-hover:translate-x-0.5 transition-all shrink-0 hidden xs:block" />
+                  <ChevronRight className="w-3.5 h-3.5 text-charcoal/60 group-hover:text-ochre group-hover:translate-x-0.5 transition-all shrink-0 hidden xs:block" />
                 </div>
-                <p className="text-[10px] sm:text-xs text-charcoal/50 group-hover:text-charcoal/70 transition-colors line-clamp-2 leading-relaxed mt-0.5">
+                <p className="text-[11px] sm:text-xs text-charcoal/65 group-hover:text-charcoal/70 transition-colors line-clamp-2 leading-relaxed mt-0.5">
                   {card.description}
                 </p>
               </div>
@@ -628,7 +623,7 @@ export default function QuickActions({
 
       {/* Modal 3: Log Payment Modal (Type-ahead project picker, then payment form) */}
       {showPaymentPickerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-sm overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 overflow-y-auto">
           <div className="bg-white rounded-3xl w-full max-w-lg p-5 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto border border-charcoal/10">
             <button 
               type="button"
@@ -636,7 +631,7 @@ export default function QuickActions({
                 setShowPaymentPickerModal(false);
                 setSelectedPaymentProject(null);
               }}
-              className="absolute top-5 right-5 text-charcoal/40 hover:text-charcoal p-1 rounded-xl hover:bg-charcoal/5 transition-colors"
+              className="absolute top-5 right-5 text-charcoal/60 hover:text-charcoal p-1 rounded-xl hover:bg-charcoal/5 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -647,7 +642,7 @@ export default function QuickActions({
               </div>
               <div>
                 <h3 className="text-lg font-bold text-charcoal">Log Client Payment</h3>
-                <p className="text-xs text-charcoal/50">Record an installment, deposit, or final milestone payout.</p>
+                <p className="text-xs text-charcoal/65">Record an installment, deposit, or final milestone payout.</p>
               </div>
             </div>
 
@@ -664,7 +659,7 @@ export default function QuickActions({
                   Select Project (Type to Filter)
                 </label>
                 <div className="relative">
-                  <Search className="w-4 h-4 text-charcoal/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Search className="w-4 h-4 text-charcoal/60 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     placeholder="Search by project name or client..."
@@ -677,7 +672,7 @@ export default function QuickActions({
 
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                   {filteredPaymentProjects.length === 0 ? (
-                    <div className="p-6 text-center text-xs text-charcoal/40 bg-cream/20 rounded-xl">
+                    <div className="p-6 text-center text-xs text-charcoal/60 bg-cream/20 rounded-xl">
                       No matching projects found.
                     </div>
                   ) : (
@@ -690,11 +685,11 @@ export default function QuickActions({
                       >
                         <div>
                           <p className="font-bold text-charcoal text-xs sm:text-sm">{proj.name}</p>
-                          <p className="text-[11px] text-charcoal/50">
+                          <p className="text-[11px] text-charcoal/65">
                             Client: <span className="font-medium text-charcoal/70">{proj.clientName || 'Unassigned'}</span>
                           </p>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cream text-charcoal/60 uppercase">
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-cream text-charcoal/60 uppercase">
                           Select
                         </span>
                       </button>
@@ -707,9 +702,9 @@ export default function QuickActions({
               <form onSubmit={handleSavePayment} className="space-y-4">
                 <div className="p-3 bg-cream/40 rounded-2xl border border-charcoal/10 flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-ochre">Target Project</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-ochre">Target Project</span>
                     <p className="text-xs sm:text-sm font-bold text-charcoal">{selectedPaymentProject.name}</p>
-                    <p className="text-[11px] text-charcoal/50">Client: {selectedPaymentProject.clientName || 'Direct Client'}</p>
+                    <p className="text-[11px] text-charcoal/65">Client: {selectedPaymentProject.clientName || 'Direct Client'}</p>
                   </div>
                   <button
                     type="button"
@@ -824,7 +819,7 @@ export default function QuickActions({
 
       {/* Modal 4: Add Expense Modal (Type-ahead project picker, then expense form) */}
       {showExpensePickerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-sm overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 overflow-y-auto">
           <div className="bg-white rounded-3xl w-full max-w-lg p-5 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto border border-charcoal/10">
             <button 
               type="button"
@@ -832,7 +827,7 @@ export default function QuickActions({
                 setShowExpensePickerModal(false);
                 setSelectedExpenseProject(null);
               }}
-              className="absolute top-5 right-5 text-charcoal/40 hover:text-charcoal p-1 rounded-xl hover:bg-charcoal/5 transition-colors"
+              className="absolute top-5 right-5 text-charcoal/60 hover:text-charcoal p-1 rounded-xl hover:bg-charcoal/5 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -843,7 +838,7 @@ export default function QuickActions({
               </div>
               <div>
                 <h3 className="text-lg font-bold text-charcoal">Add Project Expense</h3>
-                <p className="text-xs text-charcoal/50">Record site procurement, subcontractor fee, or materials purchase.</p>
+                <p className="text-xs text-charcoal/65">Record site procurement, subcontractor fee, or materials purchase.</p>
               </div>
             </div>
 
@@ -860,7 +855,7 @@ export default function QuickActions({
                   Select Project (Type to Filter)
                 </label>
                 <div className="relative">
-                  <Search className="w-4 h-4 text-charcoal/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Search className="w-4 h-4 text-charcoal/60 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     placeholder="Search by project name or client..."
@@ -873,7 +868,7 @@ export default function QuickActions({
 
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                   {filteredExpenseProjects.length === 0 ? (
-                    <div className="p-6 text-center text-xs text-charcoal/40 bg-cream/20 rounded-xl">
+                    <div className="p-6 text-center text-xs text-charcoal/60 bg-cream/20 rounded-xl">
                       No matching projects found.
                     </div>
                   ) : (
@@ -886,11 +881,11 @@ export default function QuickActions({
                       >
                         <div>
                           <p className="font-bold text-charcoal text-xs sm:text-sm">{proj.name}</p>
-                          <p className="text-[11px] text-charcoal/50">
+                          <p className="text-[11px] text-charcoal/65">
                             Client: <span className="font-medium text-charcoal/70">{proj.clientName || 'Direct Client'}</span>
                           </p>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cream text-charcoal/60 uppercase">
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-cream text-charcoal/60 uppercase">
                           Select
                         </span>
                       </button>
@@ -903,7 +898,7 @@ export default function QuickActions({
               <form onSubmit={handleSaveExpense} className="space-y-4">
                 <div className="p-3 bg-cream/40 rounded-2xl border border-charcoal/10 flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-ochre">Target Project</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-ochre">Target Project</span>
                     <p className="text-xs sm:text-sm font-bold text-charcoal">{selectedExpenseProject.name}</p>
                   </div>
                   <button
@@ -1007,12 +1002,12 @@ export default function QuickActions({
 
       {/* Modal 5: Add Customer / Lead Modal */}
       {showCustomerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-sm overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 overflow-y-auto">
           <div className="bg-white rounded-3xl w-full max-w-lg p-5 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto border border-charcoal/10">
             <button 
               type="button"
               onClick={() => setShowCustomerModal(false)}
-              className="absolute top-5 right-5 text-charcoal/40 hover:text-charcoal p-1 rounded-xl hover:bg-charcoal/5 transition-colors"
+              className="absolute top-5 right-5 text-charcoal/60 hover:text-charcoal p-1 rounded-xl hover:bg-charcoal/5 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -1023,7 +1018,7 @@ export default function QuickActions({
               </div>
               <div>
                 <h3 className="text-lg font-bold text-charcoal">Add Customer Lead</h3>
-                <p className="text-xs text-charcoal/50">Record a new walk-in, phone lead, or prospective client inquiry.</p>
+                <p className="text-xs text-charcoal/65">Record a new walk-in, phone lead, or prospective client inquiry.</p>
               </div>
             </div>
 
@@ -1153,12 +1148,12 @@ export default function QuickActions({
 
       {/* Worker Modal: Request Wage Payment */}
       {showWorkerWageRequestModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60">
           <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl relative border border-charcoal/10">
             <button 
               type="button"
               onClick={() => setShowWorkerWageRequestModal(false)}
-              className="absolute top-5 right-5 text-charcoal/40 hover:text-charcoal p-1"
+              className="absolute top-5 right-5 text-charcoal/60 hover:text-charcoal p-1"
             >
               <X className="w-5 h-5" />
             </button>
@@ -1225,12 +1220,12 @@ export default function QuickActions({
 
       {/* Worker Modal: View Balance */}
       {showWorkerBalanceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60">
           <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl relative border border-charcoal/10 space-y-4">
             <button 
               type="button"
               onClick={() => setShowWorkerBalanceModal(false)}
-              className="absolute top-5 right-5 text-charcoal/40 hover:text-charcoal p-1"
+              className="absolute top-5 right-5 text-charcoal/60 hover:text-charcoal p-1"
             >
               <X className="w-5 h-5" />
             </button>
@@ -1246,17 +1241,17 @@ export default function QuickActions({
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="p-3 bg-cream/40 rounded-xl border border-charcoal/10">
-                    <span className="text-charcoal/50 text-[10px] uppercase font-bold">Total Earned</span>
+                    <span className="text-charcoal/65 text-[11px] uppercase font-bold">Total Earned</span>
                     <p className="font-bold text-charcoal mt-1">KES {workerBalanceData.totalEarned.toLocaleString()}</p>
                   </div>
                   <div className="p-3 bg-cream/40 rounded-xl border border-charcoal/10">
-                    <span className="text-charcoal/50 text-[10px] uppercase font-bold">Total Paid Out</span>
+                    <span className="text-charcoal/65 text-[11px] uppercase font-bold">Total Paid Out</span>
                     <p className="font-bold text-emerald-700 mt-1">KES {workerBalanceData.totalPaid.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="p-6 text-center text-xs text-charcoal/50">
+              <div className="p-6 text-center text-xs text-charcoal/65">
                 Calculating balance records...
               </div>
             )}

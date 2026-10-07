@@ -25,3 +25,18 @@ export function getOptimizedImageUrl(url?: string, width = 300): string {
   }
   return url;
 }
+
+const FREE_MAIL_DOMAINS = [
+  'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.co.uk', 'ymail.com',
+  'hotmail.com', 'outlook.com', 'live.com', 'msn.com', 'icloud.com', 'me.com',
+  'aol.com', 'proton.me', 'protonmail.com', 'mail.com', 'gmx.com'
+];
+
+/**
+ * True for addresses on free consumer mail providers. Used on public pages so a premium brand
+ * shows a branded address (name@yourdomain) once one is set in the admin Homepage Editor.
+ */
+export function isFreeMailAddress(email?: string): boolean {
+  const domain = (email || '').trim().toLowerCase().split('@')[1];
+  return !!domain && FREE_MAIL_DOMAINS.includes(domain);
+}

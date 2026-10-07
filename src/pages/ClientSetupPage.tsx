@@ -3,10 +3,7 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc, deleteDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { 
-  Lock, Mail, User, MapPin, CheckCircle2, AlertCircle, 
-  ArrowRight, Loader2, Sparkles, ShieldCheck 
-} from 'lucide-react';
+import { Lock, Mail, User, MapPin, CheckCircle2, AlertCircle, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 import { createNotification } from '../services/notificationService';
 
 export default function ClientSetupPage() {
@@ -232,7 +229,7 @@ export default function ClientSetupPage() {
 
   if (loadingInvite) {
     return (
-      <div className="min-h-screen bg-cream flex items-center justify-center p-4">
+      <div className="app-ui min-h-screen bg-cream flex items-center justify-center p-4">
         <div className="text-center space-y-3">
           <Loader2 className="w-8 h-8 animate-spin text-ochre mx-auto" />
           <p className="text-sm font-bold text-charcoal/60">Loading your account details...</p>
@@ -242,16 +239,16 @@ export default function ClientSetupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-cream flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden">
+    <div className="app-ui min-h-screen bg-cream flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden">
       {/* Decorative Blur Backgrounds */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-ochre/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-charcoal/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-lg relative z-10">
-        <div className="bg-white rounded-[2.5rem] p-6 sm:p-10 shadow-xl border border-charcoal/10 space-y-6">
+        <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-xl border border-charcoal/10 space-y-6">
           <div className="text-center">
             <div className="w-14 h-14 bg-ochre/10 text-ochre rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Sparkles className="w-7 h-7" />
+              <ShieldCheck className="w-7 h-7" />
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-charcoal">
               Welcome to Pamnim Interiors
@@ -389,7 +386,7 @@ export default function ClientSetupPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-3.5 px-6 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-sm font-bold shadow-lg shadow-ochre/25 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 mt-2"
+                className="w-full py-3.5 px-6 rounded-2xl bg-ochre hover:bg-ochre-dark text-white text-sm font-bold shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 mt-2"
               >
                 {submitting ? (
                   <>
@@ -407,7 +404,7 @@ export default function ClientSetupPage() {
           )}
 
           <div className="text-center pt-2">
-            <Link to="/login" className="text-xs font-semibold text-charcoal/50 hover:text-ochre transition-colors">
+            <Link to="/login" className="text-xs font-semibold text-charcoal/65 hover:text-ochre transition-colors">
               Already have an activated password? Log in here
             </Link>
           </div>

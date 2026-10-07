@@ -161,7 +161,7 @@ export default function LeaveAndExtraRequests({ workers, projects }: LeaveAndExt
             <Calendar className="w-3.5 h-3.5" />
             <span>Leave Requests</span>
             {pendingLeaveCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-ochre text-white text-[10px] font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-ochre text-white text-[11px] font-bold">
                 {pendingLeaveCount}
               </span>
             )}
@@ -178,7 +178,7 @@ export default function LeaveAndExtraRequests({ workers, projects }: LeaveAndExt
             <DollarSign className="w-3.5 h-3.5" />
             <span>Extra Pay & Overtime</span>
             {pendingExtrasCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-bold">
                 {pendingExtrasCount}
               </span>
             )}
@@ -191,7 +191,7 @@ export default function LeaveAndExtraRequests({ workers, projects }: LeaveAndExt
         <div className="space-y-3">
           {leaveRequests.length === 0 ? (
             <div className="p-12 text-center bg-white rounded-3xl border border-charcoal/10">
-              <Calendar className="w-8 h-8 text-charcoal/30 mx-auto mb-2" />
+              <Calendar className="w-8 h-8 text-charcoal/60 mx-auto mb-2" />
               <p className="text-sm font-bold text-charcoal">No leave requests found</p>
               <p className="text-xs text-charcoal/60 mt-1">When site workers submit time off, they will appear here.</p>
             </div>
@@ -212,7 +212,7 @@ export default function LeaveAndExtraRequests({ workers, projects }: LeaveAndExt
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-base text-charcoal">{req.workerName}</span>
                       <span className={cn(
-                        "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                        "px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider",
                         req.status === 'approved' ? "bg-emerald-100 text-emerald-800" :
                         req.status === 'declined' ? "bg-rose-100 text-rose-800" :
                         "bg-amber-100 text-amber-800"
@@ -234,7 +234,7 @@ export default function LeaveAndExtraRequests({ workers, projects }: LeaveAndExt
                     )}
 
                     {req.reviewNotes && (
-                      <p className="text-xs text-charcoal/50 italic">
+                      <p className="text-xs text-charcoal/65 italic">
                         Owner note: {req.reviewNotes}
                       </p>
                     )}
@@ -260,7 +260,7 @@ export default function LeaveAndExtraRequests({ workers, projects }: LeaveAndExt
                       </button>
                     </div>
                   ) : (
-                    <div className="text-xs text-charcoal/40 text-right shrink-0">
+                    <div className="text-xs text-charcoal/60 text-right shrink-0">
                       Reviewed by {req.reviewedBy || 'Owner'}
                     </div>
                   )}
@@ -276,7 +276,7 @@ export default function LeaveAndExtraRequests({ workers, projects }: LeaveAndExt
         <div className="space-y-3">
           {extraRequests.length === 0 ? (
             <div className="p-12 text-center bg-white rounded-3xl border border-charcoal/10">
-              <DollarSign className="w-8 h-8 text-charcoal/30 mx-auto mb-2" />
+              <DollarSign className="w-8 h-8 text-charcoal/60 mx-auto mb-2" />
               <p className="text-sm font-bold text-charcoal">No extra payment requests found</p>
               <p className="text-xs text-charcoal/60 mt-1">Workers can submit requests for overtime, transport, or material reimbursements.</p>
             </div>
@@ -296,7 +296,7 @@ export default function LeaveAndExtraRequests({ workers, projects }: LeaveAndExt
                         {formatMoney(req.approvedAmount !== undefined && req.status === 'approved' ? req.approvedAmount : req.amount)}
                       </span>
                       <span className={cn(
-                        "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                        "px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider",
                         req.status === 'approved' ? "bg-emerald-100 text-emerald-800" :
                         req.status === 'declined' ? "bg-rose-100 text-rose-800" :
                         "bg-amber-100 text-amber-800"
@@ -318,7 +318,7 @@ export default function LeaveAndExtraRequests({ workers, projects }: LeaveAndExt
                     )}
 
                     {req.reviewNotes && (
-                      <p className="text-xs text-charcoal/50 italic">
+                      <p className="text-xs text-charcoal/65 italic">
                         Owner note: {req.reviewNotes}
                       </p>
                     )}
@@ -344,7 +344,7 @@ export default function LeaveAndExtraRequests({ workers, projects }: LeaveAndExt
                       </button>
                     </div>
                   ) : (
-                    <div className="text-xs text-charcoal/40 text-right shrink-0">
+                    <div className="text-xs text-charcoal/60 text-right shrink-0">
                       Reviewed by {req.reviewedBy || 'Owner'}
                     </div>
                   )}
@@ -357,7 +357,7 @@ export default function LeaveAndExtraRequests({ workers, projects }: LeaveAndExt
 
       {/* Review Modal */}
       {actionModal && (
-        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4">
           <div className="bg-white max-w-md w-full rounded-3xl p-6 sm:p-8 shadow-2xl border border-charcoal/10 space-y-5 animate-fade-in">
             <div className="flex items-center gap-3">
               <div className={cn(
@@ -370,13 +370,13 @@ export default function LeaveAndExtraRequests({ workers, projects }: LeaveAndExt
                 <h3 className="text-lg font-bold text-charcoal capitalize">
                   {actionModal.action} {actionModal.type === 'leave' ? 'Leave Request' : 'Extra Pay'}
                 </h3>
-                <span className="text-xs text-charcoal/50">{actionModal.item.workerName}</span>
+                <span className="text-xs text-charcoal/65">{actionModal.item.workerName}</span>
               </div>
             </div>
 
             {actionModal.type === 'extra' && actionModal.action === 'approve' && (
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                   Approved Amount (KES)
                 </label>
                 <input
@@ -391,7 +391,7 @@ export default function LeaveAndExtraRequests({ workers, projects }: LeaveAndExt
             )}
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
                 Note / Feedback (Optional)
               </label>
               <textarea

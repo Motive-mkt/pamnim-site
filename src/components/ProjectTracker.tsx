@@ -288,7 +288,7 @@ export default function ProjectTracker({
                     className="text-xs font-bold px-3 py-1 rounded-full bg-cream border border-charcoal/15 text-charcoal flex items-center gap-1.5"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-ochre" />
-                    {svc.type === 'category' ? `📁 ${svc.title} (Whole Category)` : `🛠️ ${svc.title}`}
+                    {svc.type === 'category' ? `${svc.title} (whole category)` : svc.title}
                   </span>
                 ))
               ) : (
@@ -313,7 +313,7 @@ export default function ProjectTracker({
               {project.currentStageIndex < 3 && (
                 <button
                   onClick={() => requestStageChange(project.currentStageIndex + 1)}
-                  className="px-5 py-2.5 rounded-2xl bg-ochre text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-ochre/20 hover:bg-ochre-dark transition-all"
+                  className="px-5 py-2.5 rounded-2xl bg-ochre text-white text-xs font-bold flex items-center gap-2 shadow-md hover:bg-ochre-dark transition-all"
                 >
                   Advance Stage <ChevronRight className="w-4 h-4" />
                 </button>
@@ -324,7 +324,7 @@ export default function ProjectTracker({
                 disabled={isCompleteStageLocked}
                 className={`px-5 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 border transition-all ${
                   isCompleteStageLocked
-                    ? 'bg-charcoal/5 text-charcoal/40 border-charcoal/10 cursor-not-allowed'
+                    ? 'bg-charcoal/5 text-charcoal/60 border-charcoal/10 cursor-not-allowed'
                     : 'bg-cream text-charcoal border-charcoal/20 hover:border-ochre hover:bg-white'
                 }`}
               >
@@ -356,16 +356,16 @@ export default function ProjectTracker({
                 >
                   <div className={cn(
                     "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm mb-2 transition-all",
-                    isCurrent && "bg-ochre text-white shadow-md shadow-ochre/30 scale-110",
+                    isCurrent && "bg-ochre text-white shadow-md scale-110",
                     isPassed && "bg-ochre/20 text-ochre",
-                    isFuture && "bg-cream text-charcoal/40"
+                    isFuture && "bg-cream text-charcoal/60"
                   )}>
                     {isPassed ? <CheckCircle2 className="w-5 h-5 text-ochre" /> : idx + 1}
                   </div>
 
                   <span className={cn(
                     "text-xs font-bold uppercase tracking-wider",
-                    isCurrent ? "text-ochre" : isPassed ? "text-charcoal" : "text-charcoal/40"
+                    isCurrent ? "text-ochre" : isPassed ? "text-charcoal" : "text-charcoal/60"
                   )}>
                     {stageName}
                   </span>
@@ -376,7 +376,7 @@ export default function ProjectTracker({
                       onClick={() => requestStageChange(idx)}
                       disabled={isCurrent}
                       className={cn(
-                        "mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all",
+                        "mt-2 text-[11px] font-bold px-2 py-0.5 rounded-full border transition-all",
                         isCurrent 
                           ? "bg-ochre/10 text-ochre border-ochre/20 cursor-default" 
                           : "bg-cream text-charcoal/60 border-charcoal/10 hover:border-ochre hover:text-ochre"
@@ -394,11 +394,11 @@ export default function ProjectTracker({
 
       {/* Upload Prompt Options Modal (Camera / Gallery / Upload Later) */}
       {showUploadPromptModal && (
-        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl relative border border-charcoal/10">
             <button 
               onClick={() => setShowUploadPromptModal(false)}
-              className="absolute top-5 right-5 text-charcoal/40 hover:text-charcoal"
+              className="absolute top-5 right-5 text-charcoal/60 hover:text-charcoal"
             >
               <X className="w-5 h-5" />
             </button>
@@ -418,7 +418,7 @@ export default function ProjectTracker({
                 </div>
                 <div>
                   <h4 className="font-bold text-sm text-charcoal">Take Photo / Video</h4>
-                  <p className="text-xs text-charcoal/50">Capture live using device camera</p>
+                  <p className="text-xs text-charcoal/65">Capture live using device camera</p>
                 </div>
               </button>
 
@@ -431,7 +431,7 @@ export default function ProjectTracker({
                 </div>
                 <div>
                   <h4 className="font-bold text-sm text-charcoal">Choose from Gallery</h4>
-                  <p className="text-xs text-charcoal/50">Select stored file from device</p>
+                  <p className="text-xs text-charcoal/65">Select stored file from device</p>
                 </div>
               </button>
 
@@ -444,7 +444,7 @@ export default function ProjectTracker({
                 </div>
                 <div>
                   <h4 className="font-bold text-sm text-charcoal">Upload Later</h4>
-                  <p className="text-xs text-charcoal/50">Skip for now; return to add media anytime</p>
+                  <p className="text-xs text-charcoal/65">Skip for now; return to add media anytime</p>
                 </div>
               </button>
             </div>
@@ -454,11 +454,11 @@ export default function ProjectTracker({
 
       {/* Selected File Details & Optional Note Modal */}
       {selectedFile && mediaPreview && (
-        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-2xl relative border border-charcoal/10 my-8">
             <button 
               onClick={resetUploadState}
-              className="absolute top-5 right-5 text-charcoal/40 hover:text-charcoal"
+              className="absolute top-5 right-5 text-charcoal/60 hover:text-charcoal"
             >
               <X className="w-5 h-5" />
             </button>
@@ -519,7 +519,7 @@ export default function ProjectTracker({
 
       {/* Stage Confirmation Prompt Modal */}
       {showStageConfirmModal && pendingStageIndex !== null && (
-        <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-charcoal/60 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl relative border border-charcoal/10 text-center">
             <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 mx-auto flex items-center justify-center mb-4">
               <AlertCircle className="w-6 h-6" />
@@ -543,7 +543,7 @@ export default function ProjectTracker({
               <button
                 onClick={confirmStageChange}
                 disabled={isUpdatingStage}
-                className="px-6 py-2.5 rounded-2xl bg-ochre text-white font-bold text-xs shadow-md shadow-ochre/20 hover:bg-ochre-dark transition-all"
+                className="px-6 py-2.5 rounded-2xl bg-ochre text-white font-bold text-xs shadow-md hover:bg-ochre-dark transition-all"
               >
                 {isUpdatingStage ? 'Updating...' : 'Yes, Change Stage'}
               </button>
@@ -554,16 +554,16 @@ export default function ProjectTracker({
 
       {/* Stage Media & Updates Section */}
       <div className="space-y-6">
-        <h4 className="text-sm font-bold text-charcoal/40 uppercase tracking-widest px-1">
+        <h4 className="text-sm font-bold text-charcoal/60 uppercase tracking-widest px-1">
           Stage Uploads & Activity History
         </h4>
 
         {loadingUpdates ? (
-          <div className="p-8 text-center text-charcoal/40 animate-pulse bg-white rounded-3xl border">
+          <div className="p-8 text-center text-charcoal/60 animate-pulse bg-white rounded-3xl border">
             Loading stage updates...
           </div>
         ) : updates.length === 0 ? (
-          <div className="p-8 text-center text-charcoal/40 bg-white rounded-3xl border border-charcoal/10">
+          <div className="p-8 text-center text-charcoal/60 bg-white rounded-3xl border border-charcoal/10">
             No media or notes uploaded for this project yet.
           </div>
         ) : (
@@ -581,7 +581,7 @@ export default function ProjectTracker({
                     <img src={item.mediaUrl} alt={item.note || 'Stage update'} className="w-full h-full object-cover" />
                   )}
 
-                  <span className="absolute top-3 left-3 bg-black/60 text-white text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-sm">
+                  <span className="absolute top-3 left-3 bg-black/60 text-white text-[11px] font-bold px-2.5 py-1 rounded-full">
                     {item.stageName}
                   </span>
 
@@ -602,11 +602,11 @@ export default function ProjectTracker({
                     {item.note ? (
                       <p className="text-sm text-charcoal font-medium mb-3">{item.note}</p>
                     ) : (
-                      <p className="text-xs text-charcoal/40 italic mb-3">No note attached</p>
+                      <p className="text-xs text-charcoal/60 italic mb-3">No note attached</p>
                     )}
                   </div>
 
-                  <div className="pt-3 border-t border-charcoal/5 flex items-center justify-between text-xs text-charcoal/50">
+                  <div className="pt-3 border-t border-charcoal/5 flex items-center justify-between text-xs text-charcoal/65">
                     <span>By {item.uploadedBy || 'Staff'}</span>
                     <span>{new Date(item.createdAt).toLocaleDateString()}</span>
                   </div>
@@ -614,7 +614,7 @@ export default function ProjectTracker({
                   {/* Comment on stage button (for Client & Staff) */}
                   {onOpenChatWithTag && (
                     <button
-                      onClick={() => onOpenChatWithTag(`📌 Project: ${project.name} | Stage: ${item.stageName}${item.note ? ` ("${item.note}")` : ''}`)}
+                      onClick={() => onOpenChatWithTag(`Project: ${project.name} | Stage: ${item.stageName}${item.note ? ` ("${item.note}")` : ''}`)}
                       className="mt-3 w-full py-2 px-3 rounded-xl bg-ochre/10 text-ochre hover:bg-ochre hover:text-white text-xs font-bold transition-all flex items-center justify-center gap-2"
                     >
                       <MessageSquare className="w-3.5 h-3.5" /> Comment in Chat

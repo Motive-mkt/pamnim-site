@@ -79,7 +79,7 @@ export default function EmployeeDashboard() {
   if (loading) {
     return (
       <AdminLayout activeTab="overview">
-        <div className="p-12 text-center text-charcoal/40 animate-pulse">
+        <div className="p-12 text-center text-charcoal/60 animate-pulse">
           Loading team portal...
         </div>
       </AdminLayout>
@@ -113,7 +113,7 @@ export default function EmployeeDashboard() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 bg-white p-5 sm:p-8 rounded-3xl border border-charcoal/10 shadow-sm flex-wrap">
               <div>
                 <h3 className="font-bold text-lg text-charcoal">Project Management</h3>
-                <p className="text-xs text-charcoal/50">Start projects and manage stage media & status updates.</p>
+                <p className="text-xs text-charcoal/65">Start projects and manage stage media & status updates.</p>
               </div>
 
               <div className="flex items-center gap-2">
@@ -137,7 +137,7 @@ export default function EmployeeDashboard() {
             </div>
 
             {projects.length === 0 ? (
-              <div className="p-12 text-center text-charcoal/40 bg-white rounded-3xl border border-charcoal/10">
+              <div className="p-12 text-center text-charcoal/60 bg-white rounded-3xl border border-charcoal/10">
                 No active projects found. Click "Start Project" above to create one.
               </div>
             ) : (
@@ -150,10 +150,10 @@ export default function EmployeeDashboard() {
                     >
                       <div className="space-y-3">
                         <div className="flex items-center justify-between gap-2 flex-wrap">
-                          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-ochre/10 text-ochre border border-ochre/20">
+                          <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-ochre/10 text-ochre border border-ochre/20">
                             {proj.currentStageName || 'Started'}
                           </span>
-                          <span className="text-[10px] font-semibold text-charcoal/50 truncate max-w-[150px]">
+                          <span className="text-[11px] font-semibold text-charcoal/65 truncate max-w-[150px]">
                             {proj.selectedServices && proj.selectedServices.length > 0
                               ? `${proj.selectedServices.length} Scopes`
                               : (proj.serviceName || proj.categoryTitle || 'Interior')}
@@ -168,7 +168,7 @@ export default function EmployeeDashboard() {
                         </div>
 
                         {proj.createdAt && (
-                          <p className="text-[11px] text-charcoal/40 flex items-center gap-1">
+                          <p className="text-[11px] text-charcoal/60 flex items-center gap-1">
                             <Calendar className="w-3 h-3" /> Started: {new Date(proj.createdAt).toLocaleDateString()}
                           </p>
                         )}
@@ -205,7 +205,7 @@ export default function EmployeeDashboard() {
             <div className="bg-white rounded-3xl p-5 sm:p-8 border border-charcoal/10 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4 flex-wrap">
               <div>
                 <h3 className="text-xl font-bold">Client Chat Threads</h3>
-                <p className="text-xs text-charcoal/50">Select a client below to converse in real-time or address stage comments.</p>
+                <p className="text-xs text-charcoal/65">Select a client below to converse in real-time or address stage comments.</p>
               </div>
 
               <select
@@ -232,7 +232,7 @@ export default function EmployeeDashboard() {
               const activeChatUser = selectedChatClient || clients[0];
               if (!activeChatUser) {
                 return (
-                  <div className="p-12 text-center text-charcoal/40 bg-white rounded-3xl border border-charcoal/10">
+                  <div className="p-12 text-center text-charcoal/60 bg-white rounded-3xl border border-charcoal/10">
                     No active clients available for messaging yet.
                   </div>
                 );

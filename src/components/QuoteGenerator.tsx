@@ -3,11 +3,7 @@ import {
   collection, query, getDocs, where, onSnapshot, orderBy, doc, addDoc, updateDoc 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { 
-  Plus, Trash2, FileSignature, Sparkles, Building2, User, Phone, Mail, 
-  DollarSign, Calendar, CheckCircle2, Layers, AlertCircle, TrendingUp, Info, Eye,
-  History, X, Share2
-} from 'lucide-react';
+import { Plus, Trash2, FileSignature, Building2, User, Phone, Mail, DollarSign, Calendar, CheckCircle2, Layers, AlertCircle, TrendingUp, Info, Eye, History, X, Share2 } from 'lucide-react';
 import { generateDocumentPDF, shareDocumentPDF, PDFLineItem, formatMoney } from '../utils/pdfGenerator';
 import { useCMS } from '../hooks/useCMS';
 import { useAuth } from '../hooks/useAuth';
@@ -502,7 +498,7 @@ export default function QuoteGenerator() {
             <FileSignature className="w-3.5 h-3.5 text-ochre" />
             <span>{editingQuoteId ? 'Edit Quotation' : 'New Quotation'}</span>
             {editingQuoteId && (
-              <span className="text-[10px] px-1.5 py-0.5 bg-ochre/10 text-ochre-dark rounded-md font-mono">
+              <span className="text-[11px] px-1.5 py-0.5 bg-ochre/10 text-ochre-dark rounded-md font-mono">
                 {docNumber}
               </span>
             )}
@@ -656,7 +652,7 @@ export default function QuoteGenerator() {
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-[10px] font-bold uppercase text-charcoal/50 mb-1">Email</label>
+                <label className="block text-[11px] font-bold uppercase text-charcoal/65 mb-1">Email</label>
                 <input
                   type="email"
                   placeholder="client@email.com"
@@ -666,7 +662,7 @@ export default function QuoteGenerator() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase text-charcoal/50 mb-1">Phone</label>
+                <label className="block text-[11px] font-bold uppercase text-charcoal/65 mb-1">Phone</label>
                 <input
                   type="text"
                   placeholder="+254 7..."
@@ -687,7 +683,7 @@ export default function QuoteGenerator() {
                 <FileSignature className="w-4 h-4 text-ochre" />
                 <span>Quotation Scope & Line Items</span>
               </h3>
-              <p className="text-xs text-charcoal/50">
+              <p className="text-xs text-charcoal/65">
                 Add services or materials from your catalog or enter custom specifications.
               </p>
             </div>
@@ -751,7 +747,7 @@ export default function QuoteGenerator() {
                               }}
                             />
                             {item.purchasePrice !== undefined && item.purchasePrice > 0 && (
-                              <span className="text-[10px] text-emerald-600 font-medium pl-1 block">
+                              <span className="text-[11px] text-emerald-600 font-medium pl-1 block">
                                 Cost: KES {formatMoney(item.purchasePrice)}/unit • Est. Profit: +KES {formatMoney(rowProfit)}
                               </span>
                             )}
@@ -793,7 +789,7 @@ export default function QuoteGenerator() {
                           <button
                             type="button"
                             onClick={() => handleRemoveItem(item.id)}
-                            className="p-1.5 text-charcoal/30 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                            className="p-1.5 text-charcoal/60 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
                             title="Remove row"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -821,7 +817,7 @@ export default function QuoteGenerator() {
               onChange={(e) => setNotes(e.target.value)}
               className="w-full p-3 bg-white border border-charcoal/10 rounded-xl text-xs text-charcoal/80 focus:outline-none focus:border-ochre leading-relaxed font-sans"
             />
-            <p className="text-[10px] text-charcoal/50">
+            <p className="text-[11px] text-charcoal/65">
               This text appears on the client-facing PDF quote.
             </p>
           </div>
@@ -830,7 +826,7 @@ export default function QuoteGenerator() {
           <div className="w-full md:w-80 space-y-4 bg-white p-5 rounded-2xl border border-charcoal/10 shadow-sm shrink-0">
             {/* Client-Facing Quote Total */}
             <div className="p-4 bg-ochre/10 rounded-xl border border-ochre/20">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-ochre-dark block">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-ochre-dark block">
                 Total Quotation Estimate
               </span>
               <span className="font-mono font-black text-xl text-charcoal mt-1 block">
@@ -840,7 +836,7 @@ export default function QuoteGenerator() {
 
             {/* Internal Margin Derived Preview (Owner Only - Not shown on client PDF) */}
             <div className="p-3.5 bg-cream/50 rounded-xl border border-charcoal/10 space-y-2 text-xs">
-              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-charcoal/60">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-charcoal/60">
                 <Eye className="w-3 h-3 text-ochre" />
                 <span>Internal Margin (Owner Eyes Only)</span>
               </div>
@@ -861,7 +857,7 @@ export default function QuoteGenerator() {
                   </div>
                 </div>
               ) : (
-                <p className="text-[10px] text-charcoal/40 italic">
+                <p className="text-[11px] text-charcoal/60 italic">
                   Select items from the catalog with purchase costs to see internal profit margins.
                 </p>
               )}
@@ -893,7 +889,7 @@ export default function QuoteGenerator() {
           <button
             type="submit"
             disabled={isGenerating || isSavingDraft || !clientName.trim()}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-ochre hover:bg-ochre-dark text-white text-sm font-bold px-8 py-3 rounded-xl transition-all shadow-lg shadow-ochre/20 disabled:opacity-40 cursor-pointer"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-ochre hover:bg-ochre-dark text-white text-sm font-bold px-8 py-3 rounded-xl transition-all shadow-lg disabled:opacity-40 cursor-pointer"
           >
             {isGenerating || isSavingDraft ? (
               <>

@@ -1,66 +1,78 @@
-import React from 'react';
+import { Mail, Phone, MapPin, MessageSquare } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { Mail, Phone, MapPin } from 'lucide-react';
-import { useCMS } from '../hooks/useCMS';
+import PageHeader from '../components/ui/PageHeader';
 import LeadQualifyingForm from '../components/LeadQualifyingForm';
-import BrandIconBox from '../components/BrandIconBox';
+import { useCMS } from '../hooks/useCMS';
+import { isFreeMailAddress } from '../lib/utils';
 
 export default function ContactPage() {
   const { content } = useCMS();
+  const { phone, email, address, whatsapp } = content.contact;
+  // Free consumer addresses are left off the public page until a branded one is set in the admin
+  const showEmail = !!email && !isFreeMailAddress(email);
+
+  const rows = [
+    { icon: Phone, label: 'Call', value: phone, href: `tel:${phone.replace(/\s/g, '')}` },
+    {
+      icon: MessageSquare,
+      label: 'WhatsApp',
+      value: 'Message us',
+      href: `https://wa.me/${whatsapp}?text=${encodeURIComponent("Hello Pamnim Interiors, I'd like to ask about a project.")}`,
+      external: true
+    },
+    ...(showEmail ? [{ icon: Mail, label: 'Email', value: email, href: `mailto:${email}` }] : []),
+    { icon: MapPin, label: 'Visit', value: address, href: undefined as string | undefined }
+  ];
 
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="flex min-h-screen flex-col bg-cream">
       <Header />
-      
-      <main className="pt-32 pb-24 section-rhythm">
-        <div className="max-w-7xl mx-auto px-6 md:px-12">
-          <div className="grid lg:grid-cols-2 gap-16 items-start">
-            {/* Info */}
-            <div>
-              <span className="text-xs font-bold tracking-[0.2em] text-ochre uppercase mb-4 block">CONTACT US</span>
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold mb-8">Let's talk about your space.</h1>
-              <p className="text-base sm:text-lg text-charcoal/60 mb-12 max-w-md">
-                We're ready to help you transform your vision into a reality. Reach out to us through any of these channels.
-              </p>
 
-              <div className="space-y-8">
-                <div className="flex items-center gap-6">
-                  <BrandIconBox icon={Phone} className="w-14 h-14" iconClassName="w-6 h-6" />
-                  <div>
-                    <p className="text-xs font-bold text-charcoal/40 uppercase mb-1">Call Us</p>
-                    <p className="text-xl font-bold">{content.contact.phone}</p>
-                  </div>
-                </div>
+      <PageHeader
+        eyebrow="Contact"
+        title="Let's talk about your space."
+        description="Call, message us on WhatsApp or send the form. We reply within one working day, and the first consultation is free."
+        breadcrumbs={[{ label: 'Home', to: '/' }, { label: 'Contact' }]}
+      />
 
-                <div className="flex items-center gap-6">
-                  <BrandIconBox icon={Mail} className="w-14 h-14" iconClassName="w-6 h-6" />
-                  <div>
-                    <p className="text-xs font-bold text-charcoal/40 uppercase mb-1">Email Us</p>
-                    <p className="text-xl font-bold truncate max-w-[250px]">{content.contact.email}</p>
-                  </div>
-                </div>
+      <main className="section flex-1">
+        <div className="container-x grid items-start gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
+          <ul className="divide-y divide-charcoal/10 border-y border-charcoal/10">
+            {rows.map(({ icon: Icon, label, value, href, external }) => {
+              const body = (
+                <>
+                  <Icon className="mt-1 h-5 w-5 shrink-0 text-ochre" aria-hidden="true" />
+                  <span>
+                    <span className="block text-sm text-charcoal/65">{label}</span>
+                    <span className="mt-0.5 block break-words text-lg font-medium text-charcoal">{value}</span>
+                  </span>
+                </>
+              );
+              return (
+                <li key={label}>
+                  {href ? (
+                    <a
+                      href={href}
+                      {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                      className="flex min-h-[72px] items-start gap-4 py-5 hover:text-ochre"
+                    >
+                      {body}
+                    </a>
+                  ) : (
+                    <div className="flex min-h-[72px] items-start gap-4 py-5">{body}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
 
-                <div className="flex items-center gap-6">
-                  <BrandIconBox icon={MapPin} className="w-14 h-14" iconClassName="w-6 h-6" />
-                  <div>
-                    <p className="text-xs font-bold text-charcoal/40 uppercase mb-1">Visit Us</p>
-                    <p className="text-xl font-bold">{content.contact.address}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Form */}
-            <div className="w-full">
-              <LeadQualifyingForm
-                variant="card"
-                source="contact_page"
-                title="Send a message or launch a project"
-                subtitle="Whether you have an upcoming property renovation or a simple inquiry, we are here to help."
-              />
-            </div>
-          </div>
+          <LeadQualifyingForm
+            variant="card"
+            source="contact_page"
+            title="Send us your project details"
+            subtitle="Whether you are renovating, building or just collecting ideas, we are happy to help."
+          />
         </div>
       </main>
 

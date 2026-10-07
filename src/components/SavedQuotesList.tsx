@@ -154,19 +154,19 @@ export default function SavedQuotesList({
       {/* Top Bar with Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="p-4 bg-cream/40 rounded-2xl border border-charcoal/10">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-charcoal/50">Total Quotations</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-charcoal/65">Total Quotations</p>
           <p className="text-xl font-bold text-charcoal mt-1">{quotes.length}</p>
         </div>
         <div className="p-4 bg-cream/40 rounded-2xl border border-charcoal/10">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-charcoal/50">Total Quoted Value</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-charcoal/65">Total Quoted Value</p>
           <p className="text-xl font-bold font-mono text-charcoal mt-1">KES {formatMoney(totalQuotesValue)}</p>
         </div>
         <div className="p-4 bg-emerald-50/70 rounded-2xl border border-emerald-200">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">Accepted Proposals</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Accepted Proposals</p>
           <p className="text-xl font-bold font-mono text-emerald-700 mt-1">KES {formatMoney(acceptedValue)}</p>
         </div>
         <div className="p-4 bg-ochre/10 rounded-2xl border border-ochre/20">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-ochre-dark">Acceptance Rate</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-ochre-dark">Acceptance Rate</p>
           <p className="text-xl font-bold text-ochre mt-1">{winRate}%</p>
         </div>
       </div>
@@ -174,7 +174,7 @@ export default function SavedQuotesList({
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-charcoal/10 shadow-sm">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-charcoal/40 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-charcoal/60 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search by quote number, client name, or project..."
@@ -201,7 +201,7 @@ export default function SavedQuotesList({
           <button
             type="button"
             onClick={onCreateNew}
-            className="px-4 py-2 bg-ochre hover:bg-ochre-dark text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm shadow-ochre/20 shrink-0 cursor-pointer"
+            className="px-4 py-2 bg-ochre hover:bg-ochre-dark text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>New Quotation</span>
@@ -211,19 +211,19 @@ export default function SavedQuotesList({
 
       {/* Quote List / Table */}
       {loading ? (
-        <div className="p-12 text-center text-charcoal/40 text-xs">
-          <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-charcoal/30" />
+        <div className="p-12 text-center text-charcoal/60 text-xs">
+          <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-charcoal/60" />
           <span>Loading saved quotations archive...</span>
         </div>
       ) : filtered.length === 0 ? (
         <div className="p-12 text-center bg-white rounded-3xl border border-charcoal/10 space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-charcoal/5 flex items-center justify-center mx-auto text-charcoal/30">
+          <div className="w-12 h-12 rounded-2xl bg-charcoal/5 flex items-center justify-center mx-auto text-charcoal/60">
             <FileSignature className="w-6 h-6" />
           </div>
           <h4 className="text-base font-bold text-charcoal">
             {search || statusFilter !== 'all' ? 'No quotes match your filter' : 'No saved quotations yet'}
           </h4>
-          <p className="text-xs text-charcoal/50 max-w-sm mx-auto">
+          <p className="text-xs text-charcoal/65 max-w-sm mx-auto">
             {search || statusFilter !== 'all' 
               ? 'Try adjusting your search keywords or status filter.'
               : 'Generate and save your first professional quotation to keep an organized history of estimates and client scopes.'}
@@ -271,7 +271,7 @@ export default function SavedQuotesList({
                       <td className="p-3.5">
                         <div className="font-bold text-charcoal">{qt.clientName}</div>
                         {qt.projectName && (
-                          <div className="text-[11px] text-charcoal/50 truncate max-w-xs">
+                          <div className="text-[11px] text-charcoal/65 truncate max-w-xs">
                             {qt.projectName}
                           </div>
                         )}
@@ -298,7 +298,7 @@ export default function SavedQuotesList({
                           value={qt.status || 'draft'}
                           onChange={(e) => handleStatusChange(qt.id!, e.target.value as QuoteStatus)}
                           className={cn(
-                            "text-[10px] font-bold px-2 py-1 rounded-lg border focus:outline-none cursor-pointer",
+                            "text-[11px] font-bold px-2 py-1 rounded-lg border focus:outline-none cursor-pointer",
                             statusInfo.bg, statusInfo.text, statusInfo.border
                           )}
                         >
@@ -366,7 +366,7 @@ export default function SavedQuotesList({
 
       {/* Delete Confirmation Modal */}
       {quoteToDelete && (
-        <div className="fixed inset-0 bg-charcoal/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+        <div className="fixed inset-0 bg-charcoal/60 flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full border border-charcoal/10 shadow-2xl space-y-5">
             <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center">
               <AlertCircle className="w-6 h-6" />

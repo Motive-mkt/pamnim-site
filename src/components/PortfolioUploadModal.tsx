@@ -230,8 +230,8 @@ export default function PortfolioUploadModal({ isOpen, onClose, onSuccess }: Por
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-charcoal/50 backdrop-blur-sm overflow-y-auto animate-fade-in">
-      <div className="bg-white rounded-[2.5rem] w-full max-w-xl p-6 sm:p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-charcoal/50 overflow-y-auto animate-fade-in">
+      <div className="bg-white rounded-3xl w-full max-w-xl p-6 sm:p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
         <button 
           onClick={() => {
             if (!isUploading) {
@@ -241,13 +241,13 @@ export default function PortfolioUploadModal({ isOpen, onClose, onSuccess }: Por
             }
           }}
           disabled={isUploading}
-          className="absolute top-6 right-6 p-2 rounded-full text-charcoal/30 hover:text-charcoal hover:bg-cream transition-colors cursor-pointer"
+          className="absolute top-6 right-6 p-2 rounded-full text-charcoal/60 hover:text-charcoal hover:bg-cream transition-colors cursor-pointer"
         >
           <X className="w-6 h-6" />
         </button>
 
         <div className="mb-6">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-ochre block mb-1">PORTFOLIO ASSETS</span>
+          <span className="text-[11px] font-bold uppercase tracking-widest text-ochre block mb-1">PORTFOLIO ASSETS</span>
           <h2 className="text-2xl sm:text-3xl font-bold text-charcoal">Upload to Portfolio</h2>
           <p className="text-xs text-charcoal/60 mt-1 font-medium">
             Upload photographs or cinematic walkthrough videos. Displays raw media with duplicate upload detection.
@@ -306,7 +306,7 @@ export default function PortfolioUploadModal({ isOpen, onClose, onSuccess }: Por
                 document.getElementById('portfolio-file-picker')?.click();
               }
             }}
-            className={`border-2 border-dashed rounded-[2rem] p-6 sm:p-10 text-center transition-all cursor-pointer relative ${
+            className={`border-2 border-dashed rounded-3xl p-6 sm:p-10 text-center transition-all cursor-pointer relative ${
               dragActive 
                 ? 'border-ochre bg-ochre/5 scale-[1.01] shadow-lg ring-4 ring-ochre/15' 
                 : 'border-charcoal/15 hover:border-ochre/50 bg-cream/20 hover:bg-cream/40'
@@ -335,7 +335,7 @@ export default function PortfolioUploadModal({ isOpen, onClose, onSuccess }: Por
               <h4 className="font-bold text-sm text-charcoal">
                 {dragActive ? "Drop files now!" : "Drag & drop photos or videos, or click to browse"}
               </h4>
-              <p className="text-[11px] text-charcoal/50">
+              <p className="text-[11px] text-charcoal/65">
                 Supports JPG, PNG, WEBP and MP4 cinematic walks
               </p>
             </div>
@@ -344,7 +344,7 @@ export default function PortfolioUploadModal({ isOpen, onClose, onSuccess }: Por
           {/* Queued files */}
           {selectedFiles.length > 0 && (
             <div className="bg-cream/40 border border-charcoal/5 rounded-2xl p-4 max-h-[180px] overflow-y-auto space-y-2.5">
-              <div className="flex justify-between items-center text-[10px] font-bold text-charcoal/50 uppercase tracking-wider pb-1 border-b border-charcoal/5">
+              <div className="flex justify-between items-center text-[11px] font-bold text-charcoal/65 uppercase tracking-wider pb-1 border-b border-charcoal/5">
                 <span>Selected Files ({selectedFiles.length})</span>
                 {!isUploading && (
                   <button 
@@ -368,7 +368,7 @@ export default function PortfolioUploadModal({ isOpen, onClose, onSuccess }: Por
                       {isVid ? <Film className="w-4 h-4 text-ochre shrink-0" /> : <ImageIcon className="w-4 h-4 text-zinc-400 shrink-0" />}
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-charcoal truncate">{file.name}</p>
-                        <span className="text-[10px] text-charcoal/40 font-semibold">{sizeMb} MB</span>
+                        <span className="text-[11px] text-charcoal/60 font-semibold">{sizeMb} MB</span>
                       </div>
                     </div>
 
@@ -376,20 +376,20 @@ export default function PortfolioUploadModal({ isOpen, onClose, onSuccess }: Por
                       {prog.status === 'uploading' && (
                         <div className="flex items-center gap-2">
                           <Loader2 className="w-3.5 h-3.5 text-ochre animate-spin" />
-                          <span className="text-[10px] font-bold text-ochre">{prog.progress}%</span>
+                          <span className="text-[11px] font-bold text-ochre">{prog.progress}%</span>
                         </div>
                       )}
                       {prog.status === 'completed' && (
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">Uploaded</span>
+                        <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">Uploaded</span>
                       )}
                       {prog.status === 'failed' && (
-                        <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md">Failed</span>
+                        <span className="text-[11px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md">Failed</span>
                       )}
                       {prog.status === 'pending' && !isUploading && (
                         <button 
                           type="button" 
                           onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))}
-                          className="text-charcoal/30 hover:text-red-500 font-bold cursor-pointer"
+                          className="text-charcoal/60 hover:text-red-500 font-bold cursor-pointer"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -404,7 +404,7 @@ export default function PortfolioUploadModal({ isOpen, onClose, onSuccess }: Por
           <button
             type="submit"
             disabled={isUploading || selectedFiles.length === 0}
-            className="w-full bg-ochre hover:bg-ochre-dark text-white font-bold py-4 rounded-2xl transition-all shadow-md shadow-ochre/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full bg-ochre hover:bg-ochre-dark text-white font-bold py-4 rounded-2xl transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
           >
             {isUploading ? (
               <>

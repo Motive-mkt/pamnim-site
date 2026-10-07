@@ -1,9 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Bell, CheckCheck, Trash2, Mail, MessageSquare, 
-  Briefcase, HardHat, DollarSign, Sparkles, X, Check, ExternalLink 
-} from 'lucide-react';
+import { Bell, CheckCheck, Trash2, Mail, MessageSquare, Briefcase, HardHat, DollarSign, X, Check, ExternalLink } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 import { AppNotification } from '../services/notificationService';
 import { cn } from '../lib/utils';
@@ -67,7 +64,7 @@ export default function NotificationCenter({ className, buttonClassName }: Notif
       case 'worker':
         return <HardHat className="w-4 h-4 text-purple-600" />;
       default:
-        return <Sparkles className="w-4 h-4 text-charcoal/60" />;
+        return <Bell className="w-4 h-4 text-charcoal/60" />;
     }
   };
 
@@ -103,7 +100,7 @@ export default function NotificationCenter({ className, buttonClassName }: Notif
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white font-black text-[10px] min-w-4 h-4 px-1 rounded-full flex items-center justify-center shadow-xs animate-pulse">
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white font-black text-[11px] min-w-4 h-4 px-1 rounded-full flex items-center justify-center shadow-xs animate-pulse">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -117,7 +114,7 @@ export default function NotificationCenter({ className, buttonClassName }: Notif
             <div className="flex items-center gap-2">
               <h3 className="font-bold text-sm text-charcoal">Notifications</h3>
               {unreadCount > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200">
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200">
                   {unreadCount} new
                 </span>
               )}
@@ -138,7 +135,7 @@ export default function NotificationCenter({ className, buttonClassName }: Notif
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="p-1 rounded-lg text-charcoal/40 hover:text-charcoal hover:bg-cream transition-colors cursor-pointer"
+                className="p-1 rounded-lg text-charcoal/60 hover:text-charcoal hover:bg-cream transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -154,7 +151,7 @@ export default function NotificationCenter({ className, buttonClassName }: Notif
               <button
                 type="button"
                 onClick={requestPermission}
-                className="px-2.5 py-1 bg-ochre text-white text-[10px] font-bold rounded-lg hover:bg-ochre-dark transition-colors cursor-pointer shrink-0"
+                className="px-2.5 py-1 bg-ochre text-white text-[11px] font-bold rounded-lg hover:bg-ochre-dark transition-colors cursor-pointer shrink-0"
               >
                 Enable
               </button>
@@ -164,16 +161,16 @@ export default function NotificationCenter({ className, buttonClassName }: Notif
           {/* List of Notifications */}
           <div className="max-h-80 overflow-y-auto divide-y divide-charcoal/5">
             {loading ? (
-              <div className="p-8 text-center text-charcoal/40 text-xs animate-pulse">
+              <div className="p-8 text-center text-charcoal/60 text-xs animate-pulse">
                 Loading notifications...
               </div>
             ) : notifications.length === 0 ? (
               <div className="p-8 text-center space-y-2">
-                <div className="w-10 h-10 rounded-full bg-cream text-charcoal/30 flex items-center justify-center mx-auto">
+                <div className="w-10 h-10 rounded-full bg-cream text-charcoal/60 flex items-center justify-center mx-auto">
                   <Bell className="w-5 h-5" />
                 </div>
                 <p className="text-xs font-bold text-charcoal/70">All caught up!</p>
-                <p className="text-[11px] text-charcoal/40">
+                <p className="text-[11px] text-charcoal/60">
                   You have no unread alerts or notifications.
                 </p>
               </div>
@@ -203,7 +200,7 @@ export default function NotificationCenter({ className, buttonClassName }: Notif
                     <p className="text-[11px] text-charcoal/60 line-clamp-2 mt-0.5 leading-snug">
                       {notif.body}
                     </p>
-                    <span className="text-[10px] text-charcoal/40 mt-1 block">
+                    <span className="text-[11px] text-charcoal/60 mt-1 block">
                       {formatRelativeTime(notif.createdAt)}
                     </span>
                   </div>
@@ -215,7 +212,7 @@ export default function NotificationCenter({ className, buttonClassName }: Notif
                       e.stopPropagation();
                       removeNotification(notif.id);
                     }}
-                    className="absolute right-3 top-3 p-1 rounded-md text-charcoal/30 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                    className="absolute right-3 top-3 p-1 rounded-md text-charcoal/60 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                     title="Dismiss notification"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -228,7 +225,7 @@ export default function NotificationCenter({ className, buttonClassName }: Notif
           {/* Footer */}
           {notifications.length > 0 && (
             <div className="p-2.5 bg-cream/30 border-t border-charcoal/5 text-center">
-              <span className="text-[10px] text-charcoal/40">
+              <span className="text-[11px] text-charcoal/60">
                 Click any notification to open its details
               </span>
             </div>

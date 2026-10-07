@@ -1,28 +1,47 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useCMS } from '../hooks/useCMS';
-import { 
-  CheckCircle2, MessageSquare, HelpCircle, 
-  Phone, Mail, User, X, Layers, MapPin, Home, Check
-} from 'lucide-react';
+import { CheckCircle2, MessageSquare, AlertCircle, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { createNotification } from '../services/notificationService';
-import { PROPERTY_STATUS_OPTIONS, PROJECT_SCOPE_OPTIONS } from './HeroContactForm';
 
 export type LeadTag = 'high-value' | 'project' | 'incomplete' | 'general';
 
-export const DESIRED_TIMELINES = [
-  'ASAP',
-  'Within 1 month',
-  '1–3 months',
-  '3–6 months',
-  'Just exploring'
+export const PROPERTY_STATUS_OPTIONS = [
+  {
+    value: 'I own/lease the space & have the keys',
+    label: 'I own or lease the space and have the keys',
+    priority: 'high' as const,
+    leadTag: 'high-value' as const
+  },
+  {
+    value: 'Under construction / Handover coming soon',
+    label: 'Under construction, handover coming soon',
+    priority: 'medium' as const,
+    leadTag: 'project' as const
+  },
+  {
+    value: 'Just inquiring / Collecting design ideas',
+    label: 'Just exploring ideas for now',
+    priority: 'low' as const,
+    leadTag: 'general' as const
+  }
+];
+
+export const PROJECT_SCOPE_OPTIONS = [
+  'Full Home / Apartment Renovation',
+  'Living Room & Gypsum Ceiling Focus',
+  'Custom Kitchen & Premium Carpentry',
+  'Flooring & Finishing Solutions',
+  'Commercial / Office Space'
 ] as const;
+
+export const DESIRED_TIMELINES = ['ASAP', 'Within 1 month', '1–3 months', '3–6 months', 'Just exploring'] as const;
 
 export interface LeadQualifyingFormProps {
   source?: string;
-  variant?: 'card' | 'modal' | 'inline';
+  variant?: 'card' | 'modal' | 'inline' | 'hero';
   onClose?: () => void;
   title?: string;
   subtitle?: string;
@@ -38,8 +57,10 @@ export default function LeadQualifyingForm({
   className
 }: LeadQualifyingFormProps) {
   const { content } = useCMS();
+  const uid = useId();
+  const id = (name: string) => `${uid}-${name}`;
 
-  // Form Fields
+  // Form fields
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -47,7 +68,7 @@ export default function LeadQualifyingForm({
   const [propertyStatus, setPropertyStatus] = useState<string>(PROPERTY_STATUS_OPTIONS[0].value);
   const [projectScope, setProjectScope] = useState<string>('');
 
-  // UI States
+  // UI state
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +79,16 @@ export default function LeadQualifyingForm({
     "Hi Pamnim Interiors, I'd like to discuss a project for my space."
   )}`;
 
+  const resetForm = () => {
+    setSubmitted(false);
+    setName('');
+    setPhone('');
+    setEmail('');
+    setLocationAddress('');
+    setPropertyStatus(PROPERTY_STATUS_OPTIONS[0].value);
+    setProjectScope('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -67,7 +98,7 @@ export default function LeadQualifyingForm({
       return;
     }
     if (!phone.trim()) {
-      setError('Please provide your Phone or WhatsApp number.');
+      setError('Please provide your phone or WhatsApp number.');
       return;
     }
     if (!locationAddress.trim()) {
@@ -83,7 +114,7 @@ export default function LeadQualifyingForm({
       return;
     }
 
-    const statusObj = PROPERTY_STATUS_OPTIONS.find(o => o.value === propertyStatus) || PROPERTY_STATUS_OPTIONS[0];
+    const statusObj = PROPERTY_STATUS_OPTIONS.find((o) => o.value === propertyStatus) || PROPERTY_STATUS_OPTIONS[0];
     const hasActiveProject = statusObj.priority !== 'low';
 
     setSubmitting(true);
@@ -112,7 +143,7 @@ export default function LeadQualifyingForm({
 
       await addDoc(collection(db, 'inquiries'), payload);
 
-      // Trigger owner notification
+      // Notify the owner
       createNotification({
         userId: 'all_owners',
         role: 'owner',
@@ -122,7 +153,7 @@ export default function LeadQualifyingForm({
         type: 'inquiry'
       }).catch(() => {});
 
-      // Meta Pixel Lead tracking if configured
+      // Meta Pixel lead event
       if (typeof (window as any).fbq === 'function') {
         try {
           (window as any).fbq('track', 'Lead', {
@@ -133,63 +164,50 @@ export default function LeadQualifyingForm({
             source
           });
         } catch {
-          // ignore tracking error
+          // tracking must never block the form
         }
       }
 
       setSubmitted(true);
     } catch (err: any) {
       console.error('Error submitting qualified lead:', err);
-      setError(err?.message || 'Could not send your request. Please try again or chat with us on WhatsApp.');
+      setError(err?.message || 'We could not send your request. Please try again or message us on WhatsApp.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Success view
+  const shell = cn(
+    'w-full',
+    variant === 'hero' && 'rounded-2xl bg-white p-6 shadow-2xl sm:p-8',
+    variant === 'card' && 'rounded-2xl border border-charcoal/10 bg-white p-6 shadow-md sm:p-8 md:p-10',
+    variant === 'modal' && 'bg-white',
+    className
+  );
+  const pad = variant === 'modal' ? 'px-6 sm:px-8' : '';
+
+  // Success
   if (submitted) {
     return (
-      <div className={cn(
-        "p-6 sm:p-10 text-center space-y-5 animate-fade-in",
-        variant === 'card' && "bg-white rounded-3xl border border-charcoal/10 shadow-xl",
-        variant === 'modal' && "bg-white",
-        className
-      )}>
-        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-200">
-          <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10" />
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-ochre flex items-center justify-center gap-1.5">
-            <Check className="w-3.5 h-3.5" />
-            <span>Consultation Request Received</span>
-          </p>
-          <h3 className="text-2xl sm:text-3xl font-bold text-charcoal">
-            Thank you, {name.split(' ')[0]}!
-          </h3>
-          <p className="text-sm sm:text-base text-charcoal/70 max-w-md mx-auto leading-relaxed">
-            Our senior designer has received your project details for <span className="font-semibold text-charcoal">{locationAddress}</span> and will call you within 24 hours.
-          </p>
-        </div>
-
-        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <a
-            href={directWhatsAppUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md shadow-emerald-700/20"
-          >
-            <MessageSquare className="w-4 h-4" />
-            <span>Or Chat Directly on WhatsApp</span>
+      <div className={cn(shell, 'text-center', variant === 'modal' ? 'px-6 py-10 sm:px-10' : '')} role="status">
+        <CheckCircle2 className="mx-auto h-11 w-11 text-ochre" aria-hidden="true" />
+        <h3 className="mt-5 text-3xl">Thank you, {name.trim().split(' ')[0]}.</h3>
+        <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-charcoal/75">
+          We have your details for <span className="font-semibold text-charcoal">{locationAddress}</span>. A senior designer will
+          call you within 24 hours.
+        </p>
+        <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <a href={directWhatsAppUrl} target="_blank" rel="noopener noreferrer" className="btn btn-dark w-full sm:w-auto">
+            <MessageSquare className="h-4 w-4" aria-hidden="true" />
+            Message us on WhatsApp
           </a>
-
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full sm:w-auto px-5 py-3 rounded-xl border border-charcoal/15 text-xs font-bold text-charcoal/70 hover:bg-cream transition-colors cursor-pointer"
-            >
+          {onClose ? (
+            <button type="button" onClick={onClose} className="btn btn-outline w-full sm:w-auto">
               Close
+            </button>
+          ) : (
+            <button type="button" onClick={resetForm} className="btn btn-outline w-full sm:w-auto">
+              Send another request
             </button>
           )}
         </div>
@@ -197,162 +215,163 @@ export default function LeadQualifyingForm({
     );
   }
 
+  const heading = title || (variant === 'hero' ? 'Speak with a senior designer' : 'Tell us about your space');
+  const sub =
+    subtitle ||
+    (variant === 'hero'
+      ? 'Tell us about your space and we will match you with the right specialist.'
+      : 'Share a few details and we will prepare a consultation with no obligation.');
+
   return (
-    <div className={cn(
-      "w-full transition-all duration-300",
-      variant === 'card' && "bg-white/95 backdrop-blur-xl p-6 sm:p-8 md:p-10 rounded-3xl border border-charcoal/10 shadow-xl",
-      variant === 'modal' && "bg-white p-6 sm:p-8",
-      className
-    )}>
-      {/* Header */}
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-widest text-ochre mb-1.5">
-            Consultation & Project Launch
-          </p>
-          <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-charcoal tracking-tight">
-            {title || 'Tell us about your space'}
+    <div className={shell}>
+      {/* Header. In a modal it sticks to the top of the scrolling panel so the title is never cut off. */}
+      <div
+        className={cn(
+          'flex items-start justify-between gap-4',
+          variant === 'modal' ? 'sticky top-0 z-10 border-b border-charcoal/10 bg-white py-5 ' + pad : 'mb-6'
+        )}
+      >
+        <div className="min-w-0">
+          <h3 id={id('title')} className="text-[1.65rem] leading-tight sm:text-3xl">
+            {heading}
           </h3>
-          <p className="text-xs sm:text-sm text-charcoal/60 mt-1">
-            {subtitle || 'Get a bespoke interior consultation and spatial plan with no obligations.'}
-          </p>
+          <p className="mt-1.5 text-sm text-charcoal/70">{sub}</p>
         </div>
 
         {onClose && (
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-cream transition-colors cursor-pointer shrink-0"
+            className="-mr-2 -mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-charcoal/60 hover:bg-charcoal/5 hover:text-charcoal"
             aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         )}
       </div>
 
-      {error && (
-        <div className="mb-5 p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-medium animate-fade-in flex items-center gap-2">
-          <HelpCircle className="w-4 h-4 shrink-0 text-red-500" />
-          <span>{error}</span>
-        </div>
-      )}
+      <form onSubmit={handleSubmit} className={cn('space-y-4', variant === 'modal' && pad + ' py-6')} noValidate>
+        {error && (
+          <div
+            role="alert"
+            className="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-800"
+          >
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>{error}</span>
+          </div>
+        )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* 1. Full Name & 2. Phone / WhatsApp */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
-              <User className="w-3.5 h-3.5 text-ochre" />
-              <span>Full Name <span className="text-ochre">*</span></span>
+            <label htmlFor={id('name')} className="field-label">
+              Full name <span className="text-ochre" aria-hidden="true">*</span>
             </label>
             <input
+              id={id('name')}
               type="text"
               required
-              placeholder="e.g., Jane Doe"
+              autoComplete="name"
+              placeholder="Jane Wanjiru"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal placeholder:text-charcoal/35 shadow-xs transition-colors"
+              className="field"
             />
           </div>
-
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
-              <Phone className="w-3.5 h-3.5 text-ochre" />
-              <span>Phone / WhatsApp <span className="text-ochre">*</span></span>
+            <label htmlFor={id('phone')} className="field-label">
+              Phone or WhatsApp <span className="text-ochre" aria-hidden="true">*</span>
             </label>
             <input
+              id={id('phone')}
               type="tel"
               required
-              placeholder="e.g., 0712 345 678"
+              autoComplete="tel"
+              inputMode="tel"
+              placeholder="0712 345 678"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal placeholder:text-charcoal/35 shadow-xs transition-colors"
+              className="field"
             />
           </div>
         </div>
 
-        {/* 3. Email Address (Optional) & 4. Property Location / Estate (Required) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
-              <Mail className="w-3.5 h-3.5 text-ochre" />
-              <span>Email Address <span className="text-charcoal/40 font-normal lowercase">(optional)</span></span>
+            <label htmlFor={id('email')} className="field-label">
+              Email <span className="font-normal text-charcoal/60">(optional)</span>
             </label>
             <input
+              id={id('email')}
               type="email"
-              placeholder="e.g., jane@example.com"
+              autoComplete="email"
+              placeholder="jane@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal placeholder:text-charcoal/35 shadow-xs transition-colors"
+              className="field"
             />
           </div>
-
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-ochre" />
-              <span>Property Location / Estate <span className="text-ochre">*</span></span>
+            <label htmlFor={id('location')} className="field-label">
+              Property location <span className="text-ochre" aria-hidden="true">*</span>
             </label>
             <input
+              id={id('location')}
               type="text"
               required
-              placeholder="e.g., Kilimani, Runda, Karen"
+              placeholder="Kilimani, Runda, Karen…"
               value={locationAddress}
               onChange={(e) => setLocationAddress(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal placeholder:text-charcoal/35 shadow-xs transition-colors"
+              className="field"
             />
-            <p className="text-[10px] text-charcoal/50 mt-1">
-              e.g., Kilimani, Runda, Westlands, Karen, Syokimau
-            </p>
           </div>
         </div>
 
-        {/* 5. Property Readiness / Status (Required - Lead Intent Filter) */}
-        <div>
-          <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
-            <Home className="w-3.5 h-3.5 text-ochre" />
-            <span>What is the status of your space? <span className="text-ochre">*</span></span>
-          </label>
-          <div className="space-y-1.5">
+        <fieldset>
+          <legend className="field-label">
+            Where is your space at? <span className="text-ochre" aria-hidden="true">*</span>
+          </legend>
+          <div className="space-y-2">
             {PROPERTY_STATUS_OPTIONS.map((option) => {
               const isSelected = propertyStatus === option.value;
               return (
                 <label
                   key={option.value}
                   className={cn(
-                    "flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition-all",
+                    'flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3.5 py-2.5 text-sm transition-colors',
                     isSelected
-                      ? "bg-ochre/10 border-ochre text-charcoal shadow-2xs"
-                      : "bg-white border-charcoal/15 text-charcoal/75 hover:border-charcoal/30"
+                      ? 'border-ochre bg-ochre/[0.06] text-charcoal'
+                      : 'border-charcoal/20 bg-white text-charcoal/80 hover:border-charcoal/40'
                   )}
                 >
                   <input
                     type="radio"
-                    name={`propertyStatus_${source}`}
+                    name={`propertyStatus_${source}_${uid}`}
                     value={option.value}
                     checked={isSelected}
                     onChange={(e) => setPropertyStatus(e.target.value)}
-                    className="w-3.5 h-3.5 text-ochre accent-ochre focus:ring-ochre cursor-pointer shrink-0"
+                    className="h-4 w-4 shrink-0 accent-ochre"
                   />
                   <span className="leading-snug">{option.label}</span>
                 </label>
               );
             })}
           </div>
-        </div>
+        </fieldset>
 
-        {/* 6. Project Scope (Required) */}
         <div>
-          <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1.5 flex items-center gap-1">
-            <Layers className="w-3.5 h-3.5 text-ochre" />
-            <span>What best describes your project? <span className="text-ochre">*</span></span>
+          <label htmlFor={id('scope')} className="field-label">
+            What best describes your project? <span className="text-ochre" aria-hidden="true">*</span>
           </label>
           <select
+            id={id('scope')}
             required
             value={projectScope}
             onChange={(e) => setProjectScope(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-white border border-charcoal/15 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-ochre text-charcoal shadow-xs transition-colors cursor-pointer"
+            className="field"
           >
-            <option value="" disabled>Select project scope...</option>
+            <option value="" disabled>
+              Select a project type
+            </option>
             {PROJECT_SCOPE_OPTIONS.map((scopeOption) => (
               <option key={scopeOption} value={scopeOption}>
                 {scopeOption}
@@ -361,31 +380,19 @@ export default function LeadQualifyingForm({
           </select>
         </div>
 
-        {/* Primary Button CTA & Microcopy */}
-        <div className="pt-2 space-y-2.5">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full py-3.5 px-6 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-sm font-bold tracking-wide shadow-lg shadow-ochre/25 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer disabled:opacity-50"
-          >
-            <span>{submitting ? 'Submitting Request...' : 'Request Call with Designer →'}</span>
+        <div className="space-y-3 pt-2">
+          <button type="submit" disabled={submitting} className="btn btn-primary btn-lg w-full">
+            {submitting ? 'Sending…' : 'Request a call from a designer'}
           </button>
-
-          <p className="text-[11px] text-charcoal/60 text-center italic leading-relaxed px-2">
-            No commitment. We will call you within 24 hours to discuss your project vision and details.
+          <p className="text-center text-[13px] text-charcoal/65">
+            No commitment. We call within 24 hours to talk through your project.
           </p>
         </div>
 
-        {/* Secondary WhatsApp Direct Route */}
-        <div className="pt-2 border-t border-charcoal/10">
-          <a
-            href={directWhatsAppUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full py-2.5 px-4 rounded-xl border border-charcoal/15 hover:border-emerald-600/40 bg-cream/40 hover:bg-emerald-50/50 text-charcoal/80 hover:text-emerald-800 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
-          >
-            <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>Or Chat Directly on WhatsApp</span>
+        <div className="border-t border-charcoal/10 pt-4">
+          <a href={directWhatsAppUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline w-full">
+            <MessageSquare className="h-4 w-4 text-ochre" aria-hidden="true" />
+            Prefer WhatsApp? Message us
           </a>
         </div>
       </form>

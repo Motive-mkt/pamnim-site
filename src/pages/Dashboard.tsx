@@ -4,13 +4,14 @@ import EmployeeDashboard from './dashboards/EmployeeDashboard';
 import ClientPortal from './dashboards/ClientPortal';
 import WorkerDashboard from './dashboards/WorkerDashboard';
 import { Navigate } from 'react-router-dom';
+import { Clock } from 'lucide-react';
 
 export default function Dashboard() {
   const { profile, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-cream flex items-center justify-center">
+      <div className="app-ui min-h-screen bg-cream flex items-center justify-center">
         <div className="animate-pulse flex flex-col items-center">
           <div className="w-12 h-12 bg-ochre/20 rounded-full mb-4"></div>
           <div className="h-4 w-32 bg-ochre/20 rounded"></div>
@@ -23,10 +24,10 @@ export default function Dashboard() {
 
   if (profile.role === 'pending' || profile.status === 'pending') {
     return (
-      <div className="min-h-screen bg-cream flex items-center justify-center p-6">
+      <div className="app-ui min-h-screen bg-cream flex items-center justify-center p-6">
         <div className="bg-white max-w-md w-full p-8 rounded-3xl border border-charcoal/10 shadow-xl text-center space-y-4">
           <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto">
-            <span className="text-2xl font-bold">⏳</span>
+            <Clock className="w-7 h-7" aria-hidden="true" />
           </div>
           <h2 className="text-2xl font-bold text-charcoal">Request Pending Review</h2>
           <p className="text-sm text-charcoal/70 leading-relaxed">

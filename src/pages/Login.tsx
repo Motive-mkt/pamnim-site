@@ -6,7 +6,7 @@ import {
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useNavigate, Link } from 'react-router-dom';
-import { Sparkle, Mail, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
 
 enum OperationType {
   CREATE = 'create',
@@ -169,12 +169,12 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-cream flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8">
+    <div className="app-ui min-h-screen bg-cream flex items-center justify-center p-6">
+      <div className="max-w-md w-full bg-white rounded-2xl border border-charcoal/10 shadow-lg p-8 sm:p-10">
         <Link to="/" className="flex flex-col items-center text-center mb-8 group cursor-pointer">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Sparkle className="w-8 h-8 text-ochre transition-transform group-hover:rotate-12" />
-            <span className="font-serif text-3xl font-bold tracking-tight text-charcoal">Pamnim Interiors</span>
+          <div className="mb-5 flex flex-col items-center leading-none">
+            <span className="font-serif text-4xl font-semibold tracking-tight text-charcoal">pamnim</span>
+            <span className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-ochre">Interior Designers</span>
           </div>
           <h1 className="text-2xl font-bold mb-2">
             {isForgotPassword ? 'Reset Password' : 'Welcome Back'}
@@ -199,7 +199,7 @@ export default function Login() {
         {isForgotPassword ? (
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal/30" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal/60" />
               <input
                 type="email"
                 placeholder="Email Address"
@@ -232,7 +232,7 @@ export default function Login() {
         ) : (
           <form onSubmit={handleAuth} className="space-y-4">
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal/30" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal/60" />
               <input
                 type="email"
                 placeholder="Email Address"
@@ -244,7 +244,7 @@ export default function Login() {
             </div>
 
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal/30" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal/60" />
               <input
                 type="password"
                 placeholder="Password"
@@ -292,7 +292,7 @@ export default function Login() {
           </p>
         </div>
         
-        <p className="mt-8 text-[10px] text-charcoal/40 text-center leading-relaxed">
+        <p className="mt-8 text-[11px] text-charcoal/60 text-center leading-relaxed">
           By signing in, you agree to our Terms of Service and Privacy Policy.
           Secure access managed by Pamnim Interiors.
         </p>

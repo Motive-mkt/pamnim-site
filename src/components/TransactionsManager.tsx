@@ -680,7 +680,7 @@ export default function TransactionsManager() {
           <Layers className="w-4 h-4" />
           <span>All Documents & Ledger</span>
           <span className={cn(
-            "text-[10px] px-2 py-0.5 rounded-full font-bold",
+            "text-[11px] px-2 py-0.5 rounded-full font-bold",
             docFilter === 'all' ? "bg-white/20 text-white" : "bg-charcoal/10 text-charcoal/70"
           )}>
             {docCounts.all}
@@ -703,7 +703,7 @@ export default function TransactionsManager() {
           <FileText className="w-4 h-4" />
           <span>Invoices</span>
           <span className={cn(
-            "text-[10px] px-2 py-0.5 rounded-full font-bold",
+            "text-[11px] px-2 py-0.5 rounded-full font-bold",
             docFilter === 'invoices' ? "bg-white/20 text-white" : "bg-blue-100 text-blue-800"
           )}>
             {docCounts.invoices}
@@ -726,7 +726,7 @@ export default function TransactionsManager() {
           <FileSignature className="w-4 h-4" />
           <span>Quotes</span>
           <span className={cn(
-            "text-[10px] px-2 py-0.5 rounded-full font-bold",
+            "text-[11px] px-2 py-0.5 rounded-full font-bold",
             docFilter === 'quotes' ? "bg-white/20 text-white" : "bg-amber-100 text-amber-800"
           )}>
             {docCounts.quotes}
@@ -749,7 +749,7 @@ export default function TransactionsManager() {
           <Receipt className="w-4 h-4" />
           <span>Receipts</span>
           <span className={cn(
-            "text-[10px] px-2 py-0.5 rounded-full font-bold",
+            "text-[11px] px-2 py-0.5 rounded-full font-bold",
             docFilter === 'receipts' ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-800"
           )}>
             {docCounts.receipts}
@@ -765,28 +765,28 @@ export default function TransactionsManager() {
             <div className="text-xl sm:text-2xl font-black font-mono text-blue-700">
               KES {formatMoney(stats.totalInvoiced)}
             </div>
-            <p className="text-[11px] text-charcoal/50">Across {docCounts.invoices} invoices</p>
+            <p className="text-[11px] text-charcoal/65">Across {docCounts.invoices} invoices</p>
           </div>
           <div className="p-5 rounded-2xl bg-white border border-emerald-200 shadow-sm space-y-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Amount Collected</span>
             <div className="text-xl sm:text-2xl font-black font-mono text-emerald-700">
               KES {formatMoney(stats.totalInvoicesPaid)}
             </div>
-            <p className="text-[11px] text-charcoal/50">Paid against invoices</p>
+            <p className="text-[11px] text-charcoal/65">Paid against invoices</p>
           </div>
           <div className="p-5 rounded-2xl bg-white border border-amber-200 shadow-sm space-y-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">Outstanding Balance Due</span>
             <div className="text-xl sm:text-2xl font-black font-mono text-amber-700">
               KES {formatMoney(stats.totalInvoicesBalanceDue)}
             </div>
-            <p className="text-[11px] text-charcoal/50">Awaiting client payment</p>
+            <p className="text-[11px] text-charcoal/65">Awaiting client payment</p>
           </div>
           <div className="p-5 rounded-2xl bg-white border border-charcoal/10 shadow-sm space-y-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/60">Total Invoices</span>
             <div className="text-xl sm:text-2xl font-black font-mono text-charcoal">
               {docCounts.invoices}
             </div>
-            <p className="text-[11px] text-charcoal/50">Official billing records</p>
+            <p className="text-[11px] text-charcoal/65">Official billing records</p>
           </div>
         </div>
       ) : docFilter === 'quotes' ? (
@@ -796,28 +796,28 @@ export default function TransactionsManager() {
             <div className="text-xl sm:text-2xl font-black font-mono text-amber-700">
               KES {formatMoney(stats.totalQuotesValue)}
             </div>
-            <p className="text-[11px] text-charcoal/50">Across {docCounts.quotes} quotes</p>
+            <p className="text-[11px] text-charcoal/65">Across {docCounts.quotes} quotes</p>
           </div>
           <div className="p-5 rounded-2xl bg-white border border-emerald-200 shadow-sm space-y-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Accepted Quotes</span>
             <div className="text-xl sm:text-2xl font-black font-mono text-emerald-700">
               KES {formatMoney(stats.acceptedQuotesValue)}
             </div>
-            <p className="text-[11px] text-charcoal/50">Client approved proposals</p>
+            <p className="text-[11px] text-charcoal/65">Client approved proposals</p>
           </div>
           <div className="p-5 rounded-2xl bg-white border border-blue-200 shadow-sm space-y-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-blue-800">Pending / Sent</span>
             <div className="text-xl sm:text-2xl font-black font-mono text-blue-700">
               KES {formatMoney(Math.max(0, stats.totalQuotesValue - stats.acceptedQuotesValue))}
             </div>
-            <p className="text-[11px] text-charcoal/50">Awaiting client decision</p>
+            <p className="text-[11px] text-charcoal/65">Awaiting client decision</p>
           </div>
           <div className="p-5 rounded-2xl bg-white border border-charcoal/10 shadow-sm space-y-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/60">Total Quotes</span>
             <div className="text-xl sm:text-2xl font-black font-mono text-charcoal">
               {docCounts.quotes}
             </div>
-            <p className="text-[11px] text-charcoal/50">Generated estimates</p>
+            <p className="text-[11px] text-charcoal/65">Generated estimates</p>
           </div>
         </div>
       ) : (
@@ -833,7 +833,7 @@ export default function TransactionsManager() {
             <div className="text-xl sm:text-2xl font-black font-mono text-emerald-700">
               KES {formatMoney(stats.inflow)}
             </div>
-            <p className="text-[11px] text-charcoal/50">
+            <p className="text-[11px] text-charcoal/65">
               Client invoice payments & receipts
             </p>
           </div>
@@ -849,7 +849,7 @@ export default function TransactionsManager() {
             <div className="text-xl sm:text-2xl font-black font-mono text-rose-700">
               KES {formatMoney(stats.outflow)}
             </div>
-            <div className="flex items-center gap-2 text-[10px] text-charcoal/50">
+            <div className="flex items-center gap-2 text-[11px] text-charcoal/65">
               <span>Labor: KES {formatMoney(stats.laborOutflow)}</span>
               <span>•</span>
               <span>Site: KES {formatMoney(stats.siteExpenseOutflow)}</span>
@@ -889,7 +889,7 @@ export default function TransactionsManager() {
           {/* M-Pesa Collections */}
           <div className="p-5 rounded-2xl bg-white border border-charcoal/10 shadow-sm space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/50">M-Pesa Inflow</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal/65">M-Pesa Inflow</span>
               <div className="w-8 h-8 rounded-xl bg-green-50 text-green-700 flex items-center justify-center font-bold text-xs">
                 M
               </div>
@@ -897,7 +897,7 @@ export default function TransactionsManager() {
             <div className="text-xl sm:text-2xl font-black font-mono text-green-700">
               KES {formatMoney(stats.mpesaInflow)}
             </div>
-            <p className="text-[11px] text-charcoal/40">Bank Inflow: KES {formatMoney(stats.bankInflow)}</p>
+            <p className="text-[11px] text-charcoal/60">Bank Inflow: KES {formatMoney(stats.bankInflow)}</p>
           </div>
         </div>
       )}
@@ -968,7 +968,7 @@ export default function TransactionsManager() {
         <div className="bg-white p-4 rounded-2xl border border-charcoal/10 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Search */}
           <div className="relative w-full md:w-80">
-            <Search className="w-4 h-4 text-charcoal/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-charcoal/60 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder={
@@ -1095,12 +1095,12 @@ export default function TransactionsManager() {
       {/* Transactions Table */}
       <div className="bg-white rounded-2xl border border-charcoal/10 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-16 text-center text-charcoal/40 text-xs flex flex-col items-center justify-center gap-2">
+          <div className="p-16 text-center text-charcoal/60 text-xs flex flex-col items-center justify-center gap-2">
             <RefreshCw className="w-5 h-5 animate-spin text-ochre" />
             <span>Loading financial records...</span>
           </div>
         ) : filteredTransactions.length === 0 ? (
-          <div className="p-16 text-center text-charcoal/40 text-xs space-y-2">
+          <div className="p-16 text-center text-charcoal/60 text-xs space-y-2">
             <Receipt className="w-8 h-8 text-charcoal/20 mx-auto" />
             <p className="font-bold text-charcoal/60">
               {docFilter === 'invoices' ? 'No invoices found.' :
@@ -1155,7 +1155,7 @@ export default function TransactionsManager() {
                           </div>
                           <div>
                             <span className={cn(
-                              "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full inline-block",
+                              "text-[11px] font-bold uppercase px-2 py-0.5 rounded-full inline-block",
                               t.docType === 'invoice' ? "bg-blue-100 text-blue-800" :
                               t.docType === 'quote' ? "bg-amber-100 text-amber-800" :
                               t.docType === 'receipt' ? "bg-emerald-100 text-emerald-800" :
@@ -1186,12 +1186,12 @@ export default function TransactionsManager() {
                       <td className="p-3.5">
                         <div className="font-bold text-charcoal flex items-center gap-1.5">
                           <span>{t.partyName}</span>
-                          <span className="text-[10px] text-charcoal/40 font-normal">({t.partyRole})</span>
+                          <span className="text-[11px] text-charcoal/60 font-normal">({t.partyRole})</span>
                         </div>
                         {t.projectName ? (
                           <div className="text-[11px] text-ochre font-medium truncate max-w-xs">{t.projectName}</div>
                         ) : (
-                          <div className="text-[10px] text-charcoal/40">General Workshop</div>
+                          <div className="text-[11px] text-charcoal/60">General Workshop</div>
                         )}
                       </td>
 
@@ -1200,7 +1200,7 @@ export default function TransactionsManager() {
                         <div className="font-semibold text-charcoal">{t.category}</div>
                         {t.status ? (
                           <span className={cn(
-                            "inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded-full mt-0.5",
+                            "inline-block text-[11px] font-bold uppercase px-2 py-0.5 rounded-full mt-0.5",
                             t.status === 'paid' || t.status === 'accepted' ? "bg-emerald-100 text-emerald-800" :
                             t.status === 'partial' ? "bg-amber-100 text-amber-800" :
                             t.status === 'sent' ? "bg-blue-100 text-blue-800" :
@@ -1210,7 +1210,7 @@ export default function TransactionsManager() {
                           </span>
                         ) : (
                           <span className={cn(
-                            "inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded-full mt-0.5",
+                            "inline-block text-[11px] font-bold uppercase px-2 py-0.5 rounded-full mt-0.5",
                             isMpesa ? "bg-green-100 text-green-800" : isBank ? "bg-blue-100 text-blue-800" : "bg-charcoal/10 text-charcoal"
                           )}>
                             {t.paymentMethod || 'Record'}
@@ -1225,7 +1225,7 @@ export default function TransactionsManager() {
                             {t.referenceCode}
                           </span>
                         ) : (
-                          <span className="text-charcoal/30">—</span>
+                          <span className="text-charcoal/60">—</span>
                         )}
                       </td>
 
@@ -1240,12 +1240,12 @@ export default function TransactionsManager() {
                           {t.docType === 'invoice' || t.docType === 'quote' ? '' : (isInflow ? '+' : '−')} KES {formatMoney(t.amount)}
                         </span>
                         {typeof t.balanceRemaining === 'number' && (
-                          <div className="text-[10px] text-charcoal/50 font-normal">
+                          <div className="text-[11px] text-charcoal/65 font-normal">
                             Bal: KES {formatMoney(t.balanceRemaining)}
                           </div>
                         )}
                         {typeof t.amountPaid === 'number' && t.amountPaid > 0 && (
-                          <div className="text-[10px] text-emerald-600 font-normal">
+                          <div className="text-[11px] text-emerald-600 font-normal">
                             Paid: KES {formatMoney(t.amountPaid)}
                           </div>
                         )}
@@ -1287,7 +1287,7 @@ export default function TransactionsManager() {
                             <span>{downloadingId === (t.receiptData.id || t.receiptData.receiptNumber) ? 'PDF...' : 'Receipt PDF'}</span>
                           </button>
                         ) : (
-                          <span className="text-[11px] text-charcoal/40 italic">
+                          <span className="text-[11px] text-charcoal/60 italic">
                             {t.notes ? (
                               <span title={t.notes} className="cursor-help underline decoration-dotted">
                                 {t.notes.length > 20 ? t.notes.slice(0, 20) + '...' : t.notes}

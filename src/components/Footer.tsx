@@ -1,86 +1,127 @@
-import { Phone, Sparkle } from 'lucide-react';
+import { Phone, Mail, MapPin, MessageSquare } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
 import { useCMS } from '../hooks/useCMS';
-import { getOptimizedImageUrl } from '../lib/utils';
+import { getOptimizedImageUrl, isFreeMailAddress } from '../lib/utils';
+
+const FOOTER_LINKS = [
+  { name: 'Home', path: '/' },
+  { name: 'Services', path: '/services' },
+  { name: 'Portfolio', path: '/portfolio' },
+  { name: 'Contact', path: '/contact' }
+];
 
 export default function Footer() {
-  const { user } = useAuth();
   const { content } = useCMS();
+  const { phone, email, address, whatsapp } = content.contact;
+  const year = new Date().getFullYear();
+  // A free Gmail-style address undercuts a premium brand, so it is only shown once a branded one is set
+  const showEmail = !!email && !isFreeMailAddress(email);
+
   return (
-    <footer className="pt-24 pb-12 bg-charcoal text-white">
-      <div className="max-w-7xl mx-auto px-6 md:px-12">
-        {/* CTA Section */}
-        <div id="footer-cta" className="mb-24 text-center">
-          <span className="text-xs font-bold tracking-[0.2em] text-ochre uppercase mb-4 block">READY WHEN YOU ARE</span>
-          <h2 className="text-5xl md:text-7xl font-bold mb-8 max-w-4xl mx-auto leading-tight">
-            Let's design a home you'll love coming back to.
-          </h2>
-          <p className="text-xl text-white/60 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Book a free consultation today. We'll discuss your vision, budget and timeline with no obligations.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+    <footer className="dark-surface bg-charcoal text-white">
+      <div className="container-x">
+        {/* Closing call to action */}
+        <div id="footer-cta" className="grid gap-8 border-b border-white/15 py-16 md:grid-cols-[1.4fr_1fr] md:items-end md:py-20">
+          <div>
+            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-ochre-light">Start a project</p>
+            <h2 className="max-w-[20ch] text-4xl text-white md:text-5xl">Let&rsquo;s design a home you&rsquo;ll love coming back to.</h2>
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-white/75">
+              Book a free consultation. We will talk through your plans, budget and timeline, with no obligation.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row md:flex-col lg:flex-row md:justify-end">
+            <a href={`tel:${phone.replace(/\s/g, '')}`} className="btn btn-primary btn-lg">
+              <Phone className="h-4 w-4" aria-hidden="true" />
+              Call {phone}
+            </a>
             <a
-              href={`tel:${content.contact.phone.replace(/\s/g, '')}`}
-              className="w-full sm:w-auto bg-ochre hover:bg-ochre-dark text-white px-10 py-4 rounded-xl font-bold flex items-center justify-center gap-3 transition-all duration-300 transform hover:-translate-y-0.5 shadow-md shadow-ochre/25"
+              href={`https://wa.me/${whatsapp}?text=${encodeURIComponent("Hello Pamnim Interiors, I'd like to book a consultation.")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-outline-light btn-lg"
             >
-              <Phone className="w-5 h-5" />
-              Call {content.contact.phone}
+              <MessageSquare className="h-4 w-4" aria-hidden="true" />
+              WhatsApp
             </a>
           </div>
         </div>
 
-        {/* Info Grid */}
-        <div className="grid md:grid-cols-12 gap-12 py-16 border-y border-white/10">
-          <div id="footer-call" className="md:col-span-3">
-            <p className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase mb-4">CALL US</p>
-            <p className="text-2xl font-serif font-medium">{content.contact.phone}</p>
-          </div>
-          <div id="footer-hours" className="md:col-span-3">
-            <p className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase mb-4">EMAIL DIRECT</p>
-            <p className="text-2xl font-serif font-medium truncate">{content.contact.email}</p>
-          </div>
-          <div id="footer-area" className="md:col-span-6">
-            <p className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase mb-4">STUDIO ADDRESS & LANDMARKS</p>
-            <p className="text-lg font-serif font-medium leading-relaxed mb-2">
-              {content.contact.address}
+        {/* Details */}
+        <div className="grid gap-10 py-14 md:grid-cols-12">
+          <div className="md:col-span-5">
+            <Link to="/" className="inline-block" aria-label="Pamnim Interior Designers, home">
+              {content?.logoUrl ? (
+                <span className="inline-flex rounded-lg bg-white px-3.5 py-2">
+                  <img
+                    src={getOptimizedImageUrl(content.logoUrl, 220)}
+                    alt="Pamnim Interior Designers"
+                    className="h-9 w-auto object-contain"
+                    referrerPolicy="no-referrer"
+                    loading="lazy"
+                  />
+                </span>
+              ) : (
+                <span className="flex flex-col leading-none">
+                  <span className="font-serif text-3xl font-semibold tracking-tight text-white">pamnim</span>
+                  <span className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-ochre-light">Interior Designers</span>
+                </span>
+              )}
+            </Link>
+            <p className="mt-5 max-w-sm text-sm leading-relaxed text-white/70">
+              Interior design, joinery, flooring and lighting for homes in Nairobi and across Kenya.
             </p>
+          </div>
+
+          <nav className="md:col-span-3" aria-label="Footer">
+            <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-white/60">Explore</h4>
+            <ul className="space-y-2.5">
+              {FOOTER_LINKS.map((link) => (
+                <li key={link.path}>
+                  <Link to={link.path} className="text-[15px] text-white/85 hover:text-ochre-light">
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <div className="md:col-span-4">
+            <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-white/60">Contact</h4>
+            <ul className="space-y-3 text-[15px] text-white/85">
+              <li id="footer-call" className="flex items-start gap-3">
+                <Phone className="mt-1 h-4 w-4 shrink-0 text-ochre-light" aria-hidden="true" />
+                <a href={`tel:${phone.replace(/\s/g, '')}`} className="hover:text-ochre-light">
+                  {phone}
+                </a>
+              </li>
+              {showEmail && (
+                <li id="footer-hours" className="flex items-start gap-3">
+                  <Mail className="mt-1 h-4 w-4 shrink-0 text-ochre-light" aria-hidden="true" />
+                  <a href={`mailto:${email}`} className="break-all hover:text-ochre-light">
+                    {email}
+                  </a>
+                </li>
+              )}
+              <li id="footer-area" className="flex items-start gap-3">
+                <MapPin className="mt-1 h-4 w-4 shrink-0 text-ochre-light" aria-hidden="true" />
+                <span>{address}</span>
+              </li>
+            </ul>
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-12 flex flex-col md:flex-row justify-between items-center gap-6">
-          <Link to="/" className="flex items-center gap-2 group transition-all duration-300">
-            {content?.logoUrl ? (
-              <div className="bg-white/95 px-3 py-1.5 rounded-xl shadow-sm backdrop-blur-sm flex items-center justify-center group-hover:bg-white transition-colors">
-                <img 
-                  src={getOptimizedImageUrl(content.logoUrl, 200)} 
-                  alt="Company Logo" 
-                  className="h-8 w-auto object-contain transition-transform duration-300 group-hover:scale-105" 
-                  referrerPolicy="no-referrer"
-                  loading="eager"
-                />
-              </div>
-            ) : (
-              <div className="h-8 px-3 rounded-lg border border-dashed border-white/20 bg-white/5 flex items-center gap-1.5 text-xs text-white/50 font-medium">
-                <Sparkle className="w-3.5 h-3.5 text-ochre/70" />
-                <span>Logo Placeholder</span>
-              </div>
-            )}
-          </Link>
-          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 text-sm text-white/40">
-            <p>© 2026 Pamnim Interiors. All rights reserved.</p>
-            <span className="hidden sm:inline h-3 w-[1px] bg-white/10" />
-            <Link to="/privacy" className="hover:text-white transition-colors duration-300 font-sans text-xs tracking-wide">
-              Privacy Policy
+        {/* Legal */}
+        <div className="flex flex-col items-start justify-between gap-4 border-t border-white/15 py-6 text-sm text-white/65 sm:flex-row sm:items-center">
+          <p>&copy; {year} Pamnim Interior Designers. All rights reserved.</p>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <Link to="/privacy" className="hover:text-white">
+              Privacy policy
             </Link>
-            <span className="hidden sm:inline h-3 w-[1px] bg-white/10" />
-            <Link to="/terms" className="hover:text-white transition-colors duration-300 font-sans text-xs tracking-wide">
-              Terms of Service
+            <Link to="/terms" className="hover:text-white">
+              Terms of service
             </Link>
-            <span className="hidden sm:inline h-3 w-[1px] bg-white/10" />
-            <Link to="/login" className="hover:text-white transition-colors duration-300 font-sans tracking-wide">
-              Client Portal
+            <Link to="/login" className="hover:text-white">
+              Client portal
             </Link>
           </div>
         </div>

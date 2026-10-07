@@ -4,11 +4,7 @@ import AdminLayout, { NavItemConfig } from '../../components/AdminLayout';
 import { collection, query, getDocs, where, onSnapshot, orderBy, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
-import { 
-  Sparkles, MessageSquare, Compass, Phone, ArrowRight, ExternalLink, 
-  Calendar, Briefcase, DollarSign, Receipt, CreditCard, Search, ArrowDownRight, 
-  CheckCircle2, Download, HelpCircle, MapPin, Edit3, Loader2
-} from 'lucide-react';
+import { MessageSquare, Compass, Phone, ArrowRight, ExternalLink, Calendar, Briefcase, DollarSign, Receipt, CreditCard, Search, ArrowDownRight, CheckCircle2, Download, HelpCircle, MapPin, Edit3, Loader2 } from 'lucide-react';
 import ProjectChat from '../../components/ProjectChat';
 import OnboardingWalkthrough from '../../components/onboarding/OnboardingWalkthrough';
 
@@ -321,7 +317,7 @@ export default function ClientPortal() {
   if (loading) {
     return (
       <AdminLayout activeTab="my-project">
-        <div className="p-12 text-center text-charcoal/40 animate-pulse">
+        <div className="p-12 text-center text-charcoal/60 animate-pulse">
           Loading your project portal...
         </div>
       </AdminLayout>
@@ -338,7 +334,7 @@ export default function ClientPortal() {
     <AdminLayout activeTab={activeTab} onTabChange={handleTabChange} navItems={clientNavItems}>
       <div className="space-y-8">
         {/* Welcome Header */}
-        <div className="bg-ochre text-white p-6 sm:p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="bg-ochre text-white p-6 sm:p-10 rounded-3xl shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="relative z-10 max-w-xl">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs font-bold uppercase tracking-widest text-white/80 bg-white/10 px-3 py-1 rounded-full">
@@ -363,7 +359,6 @@ export default function ClientPortal() {
             </button>
           </div>
 
-          <Sparkles className="absolute -bottom-10 -right-10 w-64 h-64 text-white/5 pointer-events-none" />
         </div>
 
         {/* Client Address Card (Client-side Address Capture & Geolocation) */}
@@ -374,7 +369,7 @@ export default function ClientPortal() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-bold uppercase tracking-wider text-charcoal/50">My Project Property Address</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-charcoal/65">My Project Property Address</span>
                 {addressSuccessMsg && (
                   <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 animate-fade-in">
                     {addressSuccessMsg}
@@ -436,7 +431,7 @@ export default function ClientPortal() {
               ) : (
                 <p className="text-sm font-semibold text-charcoal mt-1 truncate">
                   {clientAddress || (
-                    <span className="text-charcoal/40 italic font-normal">
+                    <span className="text-charcoal/60 italic font-normal">
                       No property address recorded yet. Click edit to set your location.
                     </span>
                   )}
@@ -464,7 +459,7 @@ export default function ClientPortal() {
               <div className="p-12 text-center bg-white rounded-3xl border border-charcoal/10 shadow-sm text-charcoal/60">
                 <Compass className="w-10 h-10 text-ochre/40 mx-auto mb-3" />
                 <h3 className="font-bold text-lg mb-1">No Active Project Linked Yet</h3>
-                <p className="text-sm text-charcoal/50">
+                <p className="text-sm text-charcoal/65">
                   Our team is assigning your project details. You can also send us a message in the Chat tab anytime!
                 </p>
               </div>
@@ -477,11 +472,11 @@ export default function ClientPortal() {
                   >
                     <div className="space-y-3">
                       <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <span className="text-[10px] font-bold uppercase tracking-wider bg-ochre/10 text-ochre px-3 py-1 rounded-full border border-ochre/20">
+                        <span className="text-[11px] font-bold uppercase tracking-wider bg-ochre/10 text-ochre px-3 py-1 rounded-full border border-ochre/20">
                           Stage: {proj.currentStageName || 'Started'}
                         </span>
                         {proj.categoryTitle && (
-                          <span className="text-[10px] font-bold uppercase tracking-wider bg-charcoal/5 text-charcoal/60 px-3 py-1 rounded-full">
+                          <span className="text-[11px] font-bold uppercase tracking-wider bg-charcoal/5 text-charcoal/60 px-3 py-1 rounded-full">
                             {proj.categoryTitle}
                           </span>
                         )}
@@ -490,7 +485,7 @@ export default function ClientPortal() {
                       <h3 className="text-xl font-bold text-charcoal">{proj.name}</h3>
 
                       {proj.createdAt && (
-                        <div className="flex items-center gap-1.5 text-xs text-charcoal/40">
+                        <div className="flex items-center gap-1.5 text-xs text-charcoal/60">
                           <Calendar className="w-3.5 h-3.5" />
                           <span>Started: {new Date(proj.createdAt).toLocaleDateString()}</span>
                         </div>
@@ -499,7 +494,7 @@ export default function ClientPortal() {
 
                     <button
                       onClick={() => navigate(`/tracker/${proj.id}`)}
-                      className="w-full py-3 px-4 rounded-2xl bg-ochre text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-ochre/20 hover:bg-ochre-dark transition-all cursor-pointer"
+                      className="w-full py-3 px-4 rounded-2xl bg-ochre text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md hover:bg-ochre-dark transition-all cursor-pointer"
                     >
                       <span>View Project Tracker</span>
                       <ArrowRight className="w-4 h-4" />
@@ -517,27 +512,27 @@ export default function ClientPortal() {
             {/* Stat Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
               <div className="bg-white rounded-3xl p-6 border border-charcoal/10 shadow-sm space-y-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-charcoal/50">Total Paid (All Projects)</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-charcoal/65">Total Paid (All Projects)</span>
                 <p className="text-2xl sm:text-3xl font-bold text-emerald-700 font-mono">
                   KES {totalPaidAll.toLocaleString()}
                 </p>
-                <p className="text-[11px] text-charcoal/50">Consolidated payments recorded across your invoices & projects</p>
+                <p className="text-[11px] text-charcoal/65">Consolidated payments recorded across your invoices & projects</p>
               </div>
 
               <div className="bg-white rounded-3xl p-6 border border-charcoal/10 shadow-sm space-y-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-charcoal/50">Transactions Logged</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-charcoal/65">Transactions Logged</span>
                 <p className="text-2xl sm:text-3xl font-bold text-charcoal">
                   {payments.length}
                 </p>
-                <p className="text-[11px] text-charcoal/50">Verified receipts & milestone deposits</p>
+                <p className="text-[11px] text-charcoal/65">Verified receipts & milestone deposits</p>
               </div>
 
               <div className="bg-white rounded-3xl p-6 border border-charcoal/10 shadow-sm space-y-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-charcoal/50">Active Projects</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-charcoal/65">Active Projects</span>
                 <p className="text-2xl sm:text-3xl font-bold text-ochre">
                   {projects.length}
                 </p>
-                <p className="text-[11px] text-charcoal/50">Linked luxury interior designs</p>
+                <p className="text-[11px] text-charcoal/65">Linked luxury interior designs</p>
               </div>
             </div>
 
@@ -566,7 +561,7 @@ export default function ClientPortal() {
 
               {/* Search bar */}
               <div className="relative">
-                <Search className="w-4 h-4 text-charcoal/40 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Search className="w-4 h-4 text-charcoal/60 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="Search by project name, M-Pesa code, or payment method..."
@@ -577,16 +572,16 @@ export default function ClientPortal() {
               </div>
 
               {loadingPayments ? (
-                <div className="p-12 text-center text-charcoal/40 animate-pulse text-sm">
+                <div className="p-12 text-center text-charcoal/60 animate-pulse text-sm">
                   Loading your payment history...
                 </div>
               ) : filteredPayments.length === 0 ? (
                 <div className="p-12 text-center bg-cream/20 rounded-2xl border border-dashed border-charcoal/15 space-y-2">
-                  <Receipt className="w-8 h-8 text-charcoal/30 mx-auto" />
+                  <Receipt className="w-8 h-8 text-charcoal/60 mx-auto" />
                   <p className="text-sm font-bold text-charcoal/70">
                     {paymentSearch ? 'No matching payment records found.' : 'No payments recorded yet.'}
                   </p>
-                  <p className="text-xs text-charcoal/50 max-w-md mx-auto">
+                  <p className="text-xs text-charcoal/65 max-w-md mx-auto">
                     {paymentSearch 
                       ? 'Try adjusting your search keywords.' 
                       : 'Once your deposits or milestone payments are recorded by our accounting team, your receipts and confirmation codes will appear here automatically.'}
@@ -596,7 +591,7 @@ export default function ClientPortal() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-charcoal/10 text-[10px] font-bold uppercase tracking-wider text-charcoal/50">
+                      <tr className="border-b border-charcoal/10 text-[11px] font-bold uppercase tracking-wider text-charcoal/65">
                         <th className="py-3 px-3">Date</th>
                         <th className="py-3 px-3">Project / Invoice</th>
                         <th className="py-3 px-3">Method</th>
@@ -618,7 +613,7 @@ export default function ClientPortal() {
                           <td className="py-3.5 px-3">
                             <span className="font-bold text-charcoal block">{p.projectName}</span>
                             {p.invoiceNumber && (
-                              <span className="text-[10px] text-charcoal/40 block">Inv #{p.invoiceNumber}</span>
+                              <span className="text-[11px] text-charcoal/60 block">Inv #{p.invoiceNumber}</span>
                             )}
                           </td>
                           <td className="py-3.5 px-3 whitespace-nowrap">

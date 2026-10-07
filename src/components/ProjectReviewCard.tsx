@@ -154,7 +154,7 @@ export default function ProjectReviewCard({ project }: ProjectReviewCardProps) {
         <form onSubmit={handleSubmitReview} className="space-y-4">
           {/* Star Rating Selector */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-2">
+            <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-2">
               Your Rating
             </label>
             <div className="flex items-center gap-2">
@@ -167,7 +167,7 @@ export default function ProjectReviewCard({ project }: ProjectReviewCardProps) {
                     onClick={() => setRating(star)}
                     onMouseEnter={() => setHoverRating(star)}
                     onMouseLeave={() => setHoverRating(null)}
-                    className="p-1 rounded-lg transition-transform hover:scale-110 focus:outline-none cursor-pointer"
+                    className="p-1 rounded-lg transition-transform focus:outline-none cursor-pointer"
                   >
                     <Star
                       className={cn(
@@ -186,7 +186,7 @@ export default function ProjectReviewCard({ project }: ProjectReviewCardProps) {
 
           {/* Comment Area */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/50 mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-widest text-charcoal/65 mb-1.5">
               Share details of your experience (optional)
             </label>
             <textarea
@@ -199,14 +199,14 @@ export default function ProjectReviewCard({ project }: ProjectReviewCardProps) {
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
-            <p className="text-[11px] text-charcoal/50">
+            <p className="text-[11px] text-charcoal/65">
               Submitting saves your review and opens our official Google Review page in a new tab.
             </p>
 
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2.5 rounded-2xl bg-ochre text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-ochre/20 hover:bg-ochre-dark transition-all disabled:opacity-50 cursor-pointer shrink-0"
+              className="px-6 py-2.5 rounded-2xl bg-ochre text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md hover:bg-ochre-dark transition-all disabled:opacity-50 cursor-pointer shrink-0"
             >
               <Star className="w-3.5 h-3.5 fill-white" />
               <span>{submitting ? 'Submitting...' : 'Submit Review'}</span>

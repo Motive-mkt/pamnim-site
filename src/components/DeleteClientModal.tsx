@@ -110,7 +110,7 @@ export default function DeleteClientModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 animate-fade-in">
       <div 
         className="bg-white w-full max-w-lg rounded-3xl border border-red-200 shadow-2xl overflow-hidden animate-scale-up"
         role="dialog"
@@ -119,7 +119,7 @@ export default function DeleteClientModal({
         {/* Modal Header */}
         <div className="p-6 bg-red-50/70 border-b border-red-100 flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-red-600 text-white flex items-center justify-center shadow-md shadow-red-600/20 shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-red-600 text-white flex items-center justify-center shadow-md shrink-0">
               <Trash2 className="w-6 h-6" />
             </div>
             <div>
@@ -130,7 +130,7 @@ export default function DeleteClientModal({
           <button
             onClick={handleCloseModal}
             disabled={isDeleting}
-            className="p-1.5 rounded-xl text-charcoal/40 hover:text-charcoal hover:bg-white/80 transition-colors disabled:opacity-40 cursor-pointer"
+            className="p-1.5 rounded-xl text-charcoal/60 hover:text-charcoal hover:bg-white/80 transition-colors disabled:opacity-40 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -160,7 +160,7 @@ export default function DeleteClientModal({
               </div>
 
               <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-charcoal/50">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-charcoal/65">
                   Unfinished Projects for {clientDisplayName}:
                 </label>
                 <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
@@ -170,7 +170,7 @@ export default function DeleteClientModal({
                       className="p-3 bg-cream/40 rounded-xl border border-charcoal/10 flex items-center justify-between gap-3 text-xs"
                     >
                       <span className="font-bold text-charcoal">{p.name}</span>
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-ochre/15 text-ochre px-2.5 py-0.5 rounded-full">
+                      <span className="text-[11px] font-bold uppercase tracking-wider bg-ochre/15 text-ochre px-2.5 py-0.5 rounded-full">
                         Stage: {p.stage}
                       </span>
                     </div>
@@ -213,7 +213,7 @@ export default function DeleteClientModal({
                     <li>Any pending registration entry in pending_signups</li>
                   </ul>
                   <p className="text-[11px] text-emerald-800 bg-emerald-50/80 p-2 rounded-xl border border-emerald-200 font-medium">
-                    ✓ Completed project records will be safely retained as historical business records.
+                    Completed project records will be safely retained as historical business records.
                   </p>
                 </div>
               </div>
@@ -229,7 +229,7 @@ export default function DeleteClientModal({
                       <li key={i}>{err}</li>
                     ))}
                   </ul>
-                  <p className="text-[10px] text-red-600/80 pt-1">
+                  <p className="text-[11px] text-red-600/80 pt-1">
                     Details have been logged to the console for review.
                   </p>
                 </div>
@@ -276,7 +276,7 @@ export default function DeleteClientModal({
               type="button"
               onClick={handleDelete}
               disabled={!isConfirmed || isDeleting}
-              className="px-6 py-2.5 rounded-2xl bg-red-600 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-red-600/20 hover:bg-red-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer order-1 sm:order-2 min-h-[42px]"
+              className="px-6 py-2.5 rounded-2xl bg-red-600 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md hover:bg-red-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer order-1 sm:order-2 min-h-[42px]"
             >
               {isDeleting ? (
                 <>
