@@ -20,6 +20,7 @@ import HRMSManager from '../../components/HRMSManager';
 import QuickActions from '../../components/QuickActions';
 import ProjectActivityFeed from '../../components/ProjectActivityFeed';
 import CatalogManagerView from '../../components/CatalogManagerView';
+import CategoryImagesEditor from '../../components/CategoryImagesEditor';
 import { checkPortfolioDuplicates } from '../../services/portfolioDuplicateService';
 
 const iconMap: Record<string, any> = {
@@ -2714,6 +2715,12 @@ export default function OwnerDashboard() {
                 </div>
               </div>
            </div>
+
+           <CategoryImagesEditor
+             categories={cmsLuxuryCategories}
+             onChange={setCmsLuxuryCategories}
+             upload={uploadFileToCloudinary}
+           />
         </div>
       )}
 
