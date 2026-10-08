@@ -271,7 +271,6 @@ export default function LeadQualifyingForm({
               type="text"
               required
               autoComplete="name"
-              placeholder="Jane Wanjiru"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="field"
@@ -287,7 +286,6 @@ export default function LeadQualifyingForm({
               required
               autoComplete="tel"
               inputMode="tel"
-              placeholder="0712 345 678"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="field"
@@ -304,7 +302,6 @@ export default function LeadQualifyingForm({
               id={id('email')}
               type="email"
               autoComplete="email"
-              placeholder="jane@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="field"

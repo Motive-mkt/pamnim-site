@@ -6,6 +6,7 @@ import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useCMS } from '../hooks/useCMS';
 import Modal from './ui/Modal';
+import { serviceCategories } from '../data/servicesData';
 
 /**
  * Default service categories. The owner can override these from the admin CMS;
@@ -235,14 +236,36 @@ export default function Services() {
 
                 <p className="mt-3 text-[15px] leading-relaxed text-charcoal/75 md:pl-9">{category.outcome}</p>
 
-                <ul className="mt-5 space-y-2 md:pl-9">
-                  {category.bullets.map((bullet: string, idx: number) => (
-                    <li key={idx} className="flex items-start gap-2.5 text-sm text-charcoal/80">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-ochre" aria-hidden="true" />
-                      {bullet}
-                    </li>
-                  ))}
-                </ul>
+                {/* Each service inside the category links to its own page, with an arrow so it reads as clickable */}
+                {serviceCategories.find((c) => c.id === category.id)?.items.length ? (
+                  <ul className="mt-5 divide-y divide-charcoal/10 border-y border-charcoal/10 md:ml-9">
+                    {serviceCategories
+                      .find((c) => c.id === category.id)!
+                      .items.map((item) => (
+                        <li key={item.slug}>
+                          <Link
+                            to={`/services/${category.id}/${item.slug}`}
+                            className="group/item flex min-h-11 items-center justify-between gap-4 py-2.5 text-[15px] font-medium text-charcoal hover:text-ochre"
+                          >
+                            <span>{item.name}</span>
+                            <ArrowRight
+                              className="h-4 w-4 shrink-0 text-ochre transition-transform group-hover/item:translate-x-1"
+                              aria-hidden="true"
+                            />
+                          </Link>
+                        </li>
+                      ))}
+                  </ul>
+                ) : (
+                  <ul className="mt-5 space-y-2 md:pl-9">
+                    {(category.bullets || []).map((bullet: string, idx: number) => (
+                      <li key={idx} className="flex items-start gap-2.5 text-sm text-charcoal/80">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-ochre" aria-hidden="true" />
+                        {bullet}
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
                 <div className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-charcoal/10 pt-5 md:ml-9">
                   <p className="text-sm text-charcoal/70">
