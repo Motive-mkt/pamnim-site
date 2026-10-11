@@ -5,6 +5,7 @@ import { useCMS } from '../hooks/useCMS';
 import { CheckCircle2, MessageSquare, AlertCircle, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { createNotification } from '../services/notificationService';
+import OfferCountdown from './ui/OfferCountdown';
 
 export type LeadTag = 'high-value' | 'project' | 'incomplete' | 'general';
 
@@ -76,7 +77,7 @@ export default function LeadQualifyingForm({
   const rawNumber = content?.contact?.whatsapp || '254714984268';
   const cleanNumber = rawNumber.replace(/[^0-9]/g, '');
   const directWhatsAppUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(
-    "Hi Pamnim Interiors, I'd like to discuss a project for my space."
+    "Hi, I just filled out your contact form. When's a good time for a quick call?"
   )}`;
 
   const resetForm = () => {
@@ -224,6 +225,8 @@ export default function LeadQualifyingForm({
 
   return (
     <div className={shell}>
+      {variant === 'hero' && <OfferCountdown />}
+
       {/* Header. In a modal it sticks to the top of the scrolling panel so the title is never cut off. */}
       <div
         className={cn(
