@@ -1,4 +1,5 @@
 import { QuoteLineItem } from '../components/QuoteGenerator';
+import { ItemTax, TaxLineTotal } from '../lib/tax';
 
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'partial' | 'cancelled';
 export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired';
@@ -17,6 +18,7 @@ export interface InvoiceLineItem {
   paymentType?: 'Partial' | 'Full';
   refCode?: string;
   date?: string;
+  taxes?: ItemTax[]; // snapshot of the taxes charged on this line
 }
 
 export type InvoicePaymentItem = InvoiceLineItem;
@@ -64,8 +66,13 @@ export interface SavedInvoice {
   discount?: number;
   discountType?: 'amount' | 'percentage';
   discountValue?: number;
-  taxRate?: number;
+  taxRate?: number; // legacy single document-level rate
   taxAmount?: number;
+  taxSummary?: TaxLineTotal[];
+  clientKraPin?: string;
+  ownKraPin?: string;
+  terms?: string[];
+  paymentDetails?: string;
   totalInvoiced: number;
   amountPaid: number;
   balanceDue: number;
@@ -92,7 +99,14 @@ export interface SavedQuote {
   clientAddress?: string;
   projectName?: string;
   items: QuoteLineItem[];
-  subtotal: number;
+  subtotal: number; // before tax
+  taxTotal?: number;
+  taxSummary?: TaxLineTotal[];
+  total?: number; // subtotal + tax (older quotes only have subtotal)
+  clientKraPin?: string;
+  ownKraPin?: string;
+  terms?: string[];
+  paymentDetails?: string;
   notes: string;
   status: QuoteStatus;
   createdAt: string;
@@ -105,6 +119,7 @@ export interface Lead {
   name: string;
   phone?: string;
   email?: string;
+  kraPin?: string;
   notes?: string;
   createdAt: string;
   createdBy?: string;

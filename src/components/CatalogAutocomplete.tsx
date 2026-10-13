@@ -105,9 +105,11 @@ export default function CatalogAutocomplete({
     setAddError(null);
   };
 
-  const handleSaveNewItem = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!trimmedVal) return;
+  const handleSaveNewItem = async (e?: React.SyntheticEvent) => {
+    // This panel renders inside the quote/invoice <form>; never let events bubble into it.
+    e?.preventDefault();
+    e?.stopPropagation();
+    if (!trimmedVal || isSavingNew) return;
     setIsSavingNew(true);
     setAddError(null);
 
@@ -221,7 +223,16 @@ export default function CatalogAutocomplete({
         <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-charcoal/15 rounded-xl shadow-xl z-50 overflow-hidden animate-fade-in max-h-80 overflow-y-auto divide-y divide-charcoal/5">
           {/* INLINE ADD TO CATALOG PROMPT */}
           {showInlineAdd ? (
-            <form onSubmit={handleSaveNewItem} className="p-4 bg-ochre/5 space-y-3 animate-fade-in">
+            <div
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if ((e.target as HTMLElement).tagName !== 'SELECT') handleSaveNewItem(e);
+                }
+              }}
+              className="p-4 bg-ochre/5 space-y-3 animate-fade-in"
+            >
               <div className="flex items-center justify-between pb-1 border-b border-ochre/20">
                 <span className="text-xs font-bold text-charcoal flex items-center gap-1">
                   <Plus className="w-3.5 h-3.5 text-ochre" />
@@ -249,7 +260,6 @@ export default function CatalogAutocomplete({
                     type="number"
                     min="0"
                     step="any"
-                    required
                     autoFocus
                     placeholder="e.g. 2500"
                     value={newPrice}
@@ -296,15 +306,16 @@ export default function CatalogAutocomplete({
                   Cancel
                 </button>
                 <button
-                  type="submit"
-                  disabled={isSavingNew}
+                  type="button"
+                  onClick={handleSaveNewItem}
+                  disabled={isSavingNew || newPrice === ''}
                   className="px-4 py-1.5 rounded-lg bg-ochre hover:bg-ochre-dark text-white text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-1"
                 >
                   <Plus className="w-3 h-3" />
                   <span>{isSavingNew ? 'Saving...' : 'Add to Catalog & Use'}</span>
                 </button>
               </div>
-            </form>
+            </div>
           ) : (
             <>
               {/* Option to Add New Item if not matching */}

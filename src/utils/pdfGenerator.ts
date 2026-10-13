@@ -3,12 +3,21 @@ import jsPDF from 'jspdf';
 export interface PDFLineItem {
   id: string;
   description: string;
+  unit?: string;
   quantity?: number;
   unitPrice?: number;
+  taxes?: { name: string; rate: number }[]; // taxes charged on this line (shown in the Tax column)
   paymentType?: 'Partial' | 'Full' | string;
   amount?: number;
   refCode?: string;
   date?: string;
+}
+
+export interface PDFTaxLine {
+  name: string;
+  rate: number;
+  base: number;
+  amount: number;
 }
 
 export interface PDFDocumentData {
@@ -20,8 +29,14 @@ export interface PDFDocumentData {
   clientName: string;
   clientEmail?: string;
   clientPhone?: string;
+  clientAddress?: string;
+  clientKraPin?: string;
+  ownKraPin?: string; // the business's own KRA PIN, printed in the header
   projectName?: string;
   items: PDFLineItem[];
+  taxLines?: PDFTaxLine[]; // one entry per tax type, already totalled
+  terms?: string[]; // numbered terms & conditions
+  paymentDetails?: string; // how to pay (bank / M-Pesa / etc.)
   subtotal?: number; // Base subtotal before discount/tax
   discount?: number; // Discount amount in KES
   taxRate?: number; // e.g. 16 for 16%
@@ -139,7 +154,14 @@ export async function buildDocumentPDF(
   doc.text(`Phone: ${compPhone}`, pageWidth - margin, yPos + 13.5, { align: 'right' });
   doc.text(`Email: ${compEmail}`, pageWidth - margin, yPos + 18, { align: 'right' });
 
-  yPos += 26;
+  if (data.ownKraPin) {
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+    doc.text(`KRA PIN: ${data.ownKraPin}`, pageWidth - margin, yPos + 22.5, { align: 'right' });
+    yPos += 30;
+  } else {
+    yPos += 26;
+  }
 
   // Horizontal Divider
   doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
@@ -182,7 +204,13 @@ export async function buildDocumentPDF(
 
   // 3. "Bill To" / "Prepared For" Section
   const cardY = yPos;
-  const cardHeight = data.projectName ? 26 : 22;
+  const contactParts = [data.clientPhone, data.clientEmail].filter(Boolean);
+  const cardLines: { text: string; bold?: boolean }[] = [];
+  if (contactParts.length > 0) cardLines.push({ text: contactParts.join('  •  ') });
+  if (data.clientAddress) cardLines.push({ text: data.clientAddress });
+  if (data.clientKraPin) cardLines.push({ text: `KRA PIN: ${data.clientKraPin}`, bold: true });
+  if (data.projectName) cardLines.push({ text: `Project: ${data.projectName}`, bold: true });
+  const cardHeight = Math.max(17, 11 + cardLines.length * 5 + 6);
 
   // Card Background
   doc.setFillColor(lightGrayBg[0], lightGrayBg[1], lightGrayBg[2]);
@@ -201,27 +229,35 @@ export async function buildDocumentPDF(
   doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
   doc.text(data.clientName || 'Valued Client', margin + 5, cardY + 11);
 
-  doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
-  doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
-  const contactParts = [data.clientPhone, data.clientEmail].filter(Boolean);
-  if (contactParts.length > 0) {
-    doc.text(contactParts.join('  •  '), margin + 5, cardY + 16);
-  }
-
-  if (data.projectName) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
-    doc.text(`Project: ${data.projectName}`, margin + 5, cardY + 21);
-  }
+  cardLines.forEach((line, i) => {
+    doc.setFont('helvetica', line.bold ? 'bold' : 'normal');
+    if (line.bold) {
+      doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+    } else {
+      doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+    }
+    doc.text(line.text, margin + 5, cardY + 16 + i * 5);
+  });
 
   yPos = cardY + cardHeight + 8;
 
+  // Shared page helpers
+  const pageBottomLimit = pageHeight - 32; // keep clear of the footer
+  const ensureSpace = (needed: number) => {
+    if (yPos + needed > pageBottomLimit) {
+      doc.addPage();
+      yPos = margin;
+    }
+  };
+  const fmtQty = (n: number) => (Number.isInteger(n) ? n.toString() : n.toFixed(2).replace(/0+$/, '').replace(/\.$/, ''));
+  const fmtRate = (n: number) => (Number.isInteger(n) ? n.toString() : n.toFixed(2).replace(/0+$/, '').replace(/\.$/, ''));
+
   // 4. Line Items Table
   let subtotal = 0;
+  const useLegacyPaymentTable = isInvoice && data.invoiceMode === 'walk_in';
 
-  if (isInvoice && data.invoiceMode !== 'pay_later') {
+  if (useLegacyPaymentTable) {
     // Walk-in / Direct Payment Invoice Columns: Name / Item (70mm), Payment Type (25mm), Ref Code (35mm), Date (25mm), Amount (25mm)
     const colNameX = margin;
     const colNameW = 70;
@@ -286,233 +322,295 @@ export async function buildDocumentPDF(
       yPos += 7.5;
     });
   } else {
-    // Quote Columns: Description (95mm), Qty (20mm), Unit Price (32mm), Total (33mm)
-    const colDescX = margin;
-    const colDescW = 95;
-    const colQtyX = margin + colDescW;
-    const colQtyW = 20;
-    const colUnitPriceX = colQtyX + colQtyW;
-    const colUnitPriceW = 32;
-    const colTotalX = colUnitPriceX + colUnitPriceW;
-    const colTotalW = 33;
+    // Columns: # (8) | Description (70) | Qty (22) | Rate (26) | Tax (24) | Amount (30)  = 180mm
+    const colIdxX = margin;
+    const colDescX = margin + 8;
+    const colDescW = 70;
+    const colQtyX = colDescX + colDescW;
+    const colQtyW = 22;
+    const colRateX = colQtyX + colQtyW;
+    const colRateW = 26;
+    const colTaxX = colRateX + colRateW;
+    const colTaxW = 24;
+    const colAmtX = colTaxX + colTaxW;
+    const colAmtW = 30;
 
-    // Table Header
-    doc.setFillColor(charcoal[0], charcoal[1], charcoal[2]);
-    doc.rect(margin, yPos, contentWidth, 7, 'F');
+    const drawTableHeader = () => {
+      doc.setFillColor(charcoal[0], charcoal[1], charcoal[2]);
+      doc.rect(margin, yPos, contentWidth, 7, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(255, 255, 255);
+      doc.text('#', colIdxX + 3, yPos + 4.8);
+      doc.text('DESCRIPTION / SCOPE', colDescX + 2, yPos + 4.8);
+      doc.text('QTY', colQtyX + colQtyW / 2, yPos + 4.8, { align: 'center' });
+      doc.text('RATE', colRateX + colRateW - 2, yPos + 4.8, { align: 'right' });
+      doc.text('TAX', colTaxX + 2, yPos + 4.8);
+      doc.text('AMOUNT', colAmtX + colAmtW - 3, yPos + 4.8, { align: 'right' });
+      yPos += 7;
+    };
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(255, 255, 255);
-    doc.text('DESCRIPTION / SCOPE', colDescX + 3, yPos + 4.8);
-    doc.text('QTY', colQtyX + colQtyW / 2, yPos + 4.8, { align: 'center' });
-    doc.text('UNIT PRICE', colUnitPriceX + colUnitPriceW - 3, yPos + 4.8, { align: 'right' });
-    doc.text('TOTAL', colTotalX + colTotalW - 3, yPos + 4.8, { align: 'right' });
+    drawTableHeader();
 
-    yPos += 7;
-
-    // Table Rows
     data.items.forEach((item, index) => {
       const itemQty = Number(item.quantity) || 1;
       const itemUnitPrice = Number(item.unitPrice) || (typeof item.amount === 'number' ? item.amount / itemQty : 0);
-      const itemTotal = typeof item.amount === 'number' && item.quantity === undefined ? item.amount : itemQty * itemUnitPrice;
+      const itemTotal = typeof item.amount === 'number' ? item.amount : itemQty * itemUnitPrice;
       subtotal += itemTotal;
-
-      if (yPos > pageHeight - 65) {
-        doc.addPage();
-        yPos = margin;
-      }
-
-      const isEven = index % 2 === 0;
-      if (isEven) {
-        doc.setFillColor(lightGrayBg[0], lightGrayBg[1], lightGrayBg[2]);
-        doc.rect(margin, yPos, contentWidth, 7.5, 'F');
-      }
-
-      doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
-      doc.setLineWidth(0.2);
-      doc.line(margin, yPos + 7.5, pageWidth - margin, yPos + 7.5);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8.5);
+      const descLines: string[] = doc.splitTextToSize(item.description || 'Service/Item', colDescW - 3);
+
+      doc.setFontSize(7);
+      const taxLabels = (item.taxes || []).flatMap((t) =>
+        doc.splitTextToSize(`${t.name} ${fmtRate(Number(t.rate) || 0)}%`, colTaxW - 3) as string[]
+      );
+
+      const rowH = Math.max(7.5, descLines.length * 4 + 3.5, taxLabels.length * 3.4 + 3.5);
+
+      if (yPos + rowH > pageBottomLimit) {
+        doc.addPage();
+        yPos = margin;
+        drawTableHeader();
+      }
+
+      if (index % 2 === 0) {
+        doc.setFillColor(lightGrayBg[0], lightGrayBg[1], lightGrayBg[2]);
+        doc.rect(margin, yPos, contentWidth, rowH, 'F');
+      }
+      doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
+      doc.setLineWidth(0.2);
+      doc.line(margin, yPos + rowH, pageWidth - margin, yPos + rowH);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+      doc.text(String(index + 1), colIdxX + 3, yPos + 5);
+
       doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+      doc.text(descLines, colDescX + 2, yPos + 5);
 
-      const descText = doc.splitTextToSize(item.description || 'Service/Item', colDescW - 6);
-      doc.text(descText[0], colDescX + 3, yPos + 5);
+      const qtyText = item.unit ? `${fmtQty(itemQty)} ${item.unit}` : fmtQty(itemQty);
+      doc.text(doc.splitTextToSize(qtyText, colQtyW - 2) as string[], colQtyX + colQtyW / 2, yPos + 5, { align: 'center' });
+      doc.text(formatMoney(itemUnitPrice), colRateX + colRateW - 2, yPos + 5, { align: 'right' });
 
-      doc.text(itemQty.toString(), colQtyX + colQtyW / 2, yPos + 5, { align: 'center' });
-      doc.text(formatMoney(itemUnitPrice), colUnitPriceX + colUnitPriceW - 3, yPos + 5, { align: 'right' });
+      doc.setFontSize(7);
+      doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+      if (taxLabels.length > 0) {
+        doc.text(taxLabels, colTaxX + 2, yPos + 4.6);
+      } else {
+        doc.text('—', colTaxX + 2, yPos + 5);
+      }
 
       doc.setFont('helvetica', 'bold');
-      doc.text(formatMoney(itemTotal), colTotalX + colTotalW - 3, yPos + 5, { align: 'right' });
+      doc.setFontSize(8.5);
+      doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+      doc.text(formatMoney(itemTotal), colAmtX + colAmtW - 3, yPos + 5, { align: 'right' });
 
-      yPos += 7.5;
+      yPos += rowH;
     });
   }
 
   yPos += 4;
 
   // 5. Totals & Balance Summary
-  const summaryBoxW = 75;
+  const summaryBoxW = 80;
   const summaryBoxX = pageWidth - margin - summaryBoxW;
 
+  const rawSubtotal = typeof data.subtotal === 'number' && data.subtotal > 0 ? data.subtotal : subtotal;
+  const discountVal = Number(data.discount) || 0;
+  let taxLines = (data.taxLines || []).filter((t) => Number(t.amount) > 0);
+  if (taxLines.length === 0 && Number(data.taxAmount) > 0) {
+    taxLines = [{ name: 'Tax / VAT', rate: Number(data.taxRate) || 0, base: Math.max(0, rawSubtotal - discountVal), amount: Number(data.taxAmount) }];
+  }
+  const taxVal = taxLines.reduce((sum, t) => sum + Number(t.amount), 0);
+  const grandTotal = typeof data.totalInvoiced === 'number' && data.totalInvoiced > 0
+    ? data.totalInvoiced
+    : Math.max(0, rawSubtotal - discountVal + taxVal);
+
+  const summaryRow = (label: string, value: string, opts: { color?: number[]; boldLabel?: boolean } = {}) => {
+    ensureSpace(7);
+    doc.setFont('helvetica', opts.boldLabel ? 'bold' : 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+    const labelLines: string[] = doc.splitTextToSize(label, summaryBoxW - 30);
+    doc.text(labelLines, summaryBoxX, yPos + 4);
+    doc.setFont('helvetica', 'bold');
+    const c = opts.color || charcoal;
+    doc.setTextColor(c[0], c[1], c[2]);
+    doc.text(value, pageWidth - margin, yPos + 4, { align: 'right' });
+    yPos += Math.max(6, labelLines.length * 4 + 2);
+  };
+
+  ensureSpace(40);
+
+  if (discountVal > 0 || taxVal > 0) {
+    summaryRow('Subtotal:', formatMoney(rawSubtotal));
+    if (discountVal > 0) summaryRow('Discount:', `- ${formatMoney(discountVal)}`, { color: crimsonRed });
+    taxLines.forEach((t) => {
+      summaryRow(`${t.name} (${fmtRate(Number(t.rate) || 0)}%):`, `+ ${formatMoney(Number(t.amount))}`);
+    });
+  }
+
   if (isInvoice) {
-    const rawSubtotal = typeof data.subtotal === 'number' && data.subtotal > 0
-      ? data.subtotal
-      : subtotal;
+    const totalPaid = typeof data.amountPaid === 'number' ? data.amountPaid : 0;
+    const balanceDue = typeof data.balanceDue === 'number'
+      ? data.balanceDue
+      : Math.max(0, grandTotal - totalPaid);
 
-    const discountVal = Number(data.discount) || 0;
-    const taxVal = Number(data.taxAmount) || 0;
-
-    const totalInvoiced = typeof data.totalInvoiced === 'number' && data.totalInvoiced > 0 
-      ? data.totalInvoiced 
-      : Math.max(0, rawSubtotal - discountVal + taxVal);
-    const totalPaid = typeof data.amountPaid === 'number' 
-      ? data.amountPaid 
-      : 0;
-    const balanceDue = typeof data.balanceDue === 'number' 
-      ? data.balanceDue 
-      : Math.max(0, totalInvoiced - totalPaid);
-
-    // If discount or tax is present, show breakdown: Subtotal -> Discount -> Tax/VAT -> Total Invoiced
-    if (discountVal > 0 || taxVal > 0) {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8.5);
-      doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
-      doc.text('Subtotal:', summaryBoxX, yPos + 4);
-
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
-      doc.text(formatMoney(rawSubtotal), pageWidth - margin, yPos + 4, { align: 'right' });
-
-      yPos += 6;
-
-      if (discountVal > 0) {
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
-        doc.text('Discount:', summaryBoxX, yPos + 4);
-
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(crimsonRed[0], crimsonRed[1], crimsonRed[2]);
-        doc.text(`- ${formatMoney(discountVal)}`, pageWidth - margin, yPos + 4, { align: 'right' });
-
-        yPos += 6;
-      }
-
-      if (taxVal > 0) {
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
-        const vatLabel = data.taxRate ? `Tax / VAT (${data.taxRate}%):` : 'Tax / VAT:';
-        doc.text(vatLabel, summaryBoxX, yPos + 4);
-
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
-        doc.text(`+ ${formatMoney(taxVal)}`, pageWidth - margin, yPos + 4, { align: 'right' });
-
-        yPos += 6;
-      }
-    }
-
+    ensureSpace(30);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
     doc.text('Total Invoiced:', summaryBoxX, yPos + 4);
-
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
-    doc.text(formatMoney(totalInvoiced), pageWidth - margin, yPos + 4, { align: 'right' });
-
+    doc.text(formatMoney(grandTotal), pageWidth - margin, yPos + 4, { align: 'right' });
     yPos += 7;
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
     doc.text('Payments Logged:', summaryBoxX, yPos + 4);
-
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
     doc.text(formatMoney(totalPaid), pageWidth - margin, yPos + 4, { align: 'right' });
-
     yPos += 7;
 
     // Balance Due Banner Box
-    doc.setFillColor(254, 242, 242); // Light red
+    doc.setFillColor(254, 242, 242);
     doc.roundedRect(summaryBoxX - 2, yPos, summaryBoxW + 2, 8.5, 1.5, 1.5, 'F');
     doc.setDrawColor(crimsonRed[0], crimsonRed[1], crimsonRed[2]);
     doc.setLineWidth(0.4);
     doc.roundedRect(summaryBoxX - 2, yPos, summaryBoxW + 2, 8.5, 1.5, 1.5, 'S');
-
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(crimsonRed[0], crimsonRed[1], crimsonRed[2]);
     doc.text('Outstanding Balance:', summaryBoxX + 2, yPos + 5.8);
     doc.text(formatMoney(Math.max(0, balanceDue)), pageWidth - margin - 2, yPos + 5.8, { align: 'right' });
-
     yPos += 14;
   } else {
-    // Total for Quote (Gold)
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
-    doc.text('Subtotal:', summaryBoxX, yPos + 4);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
-    doc.text(formatMoney(subtotal), pageWidth - margin, yPos + 4, { align: 'right' });
-
-    yPos += 7;
-
-    doc.setFillColor(254, 249, 239); // Light ochre
+    ensureSpace(14);
+    doc.setFillColor(254, 249, 239);
     doc.roundedRect(summaryBoxX - 2, yPos, summaryBoxW + 2, 8.5, 1.5, 1.5, 'F');
     doc.setDrawColor(goldOchre[0], goldOchre[1], goldOchre[2]);
     doc.setLineWidth(0.4);
     doc.roundedRect(summaryBoxX - 2, yPos, summaryBoxW + 2, 8.5, 1.5, 1.5, 'S');
-
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(goldOchre[0], goldOchre[1], goldOchre[2]);
     doc.text('Total Estimate:', summaryBoxX + 2, yPos + 5.8);
-    doc.text(formatMoney(subtotal), pageWidth - margin - 2, yPos + 5.8, { align: 'right' });
-
+    doc.text(formatMoney(grandTotal), pageWidth - margin - 2, yPos + 5.8, { align: 'right' });
     yPos += 14;
   }
 
-  // 6. Notes / Payment Terms Section
-  if (data.notes && data.notes.trim()) {
-    if (yPos > pageHeight - 45) {
-      doc.addPage();
-      yPos = margin;
-    }
-
+  // 6a. Numbered Terms & Conditions
+  const termList = (data.terms || []).map((t) => (t || '').trim()).filter(Boolean);
+  if (termList.length > 0) {
+    ensureSpace(14);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
-    doc.text(isInvoice ? 'PAYMENT INSTRUCTIONS & NOTES:' : 'ESTIMATE NOTES & TERMS:', margin, yPos);
+    doc.text('TERMS & CONDITIONS', margin, yPos);
+    yPos += 4.5;
 
-    yPos += 4;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
-    const splitNotes = doc.splitTextToSize(data.notes.trim(), contentWidth);
-    doc.text(splitNotes, margin, yPos);
-
-    yPos += splitNotes.length * 4 + 4;
+    termList.forEach((term, i) => {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      const lines: string[] = doc.splitTextToSize(term, contentWidth - 7);
+      ensureSpace(lines.length * 4 + 1.5);
+      doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+      doc.text(`${i + 1}.`, margin, yPos);
+      doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+      doc.text(lines, margin + 7, yPos);
+      yPos += lines.length * 4 + 1.5;
+    });
+    yPos += 3;
   }
 
-  // 7. Footer
-  const footerY = pageHeight - margin - 8;
-  doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
-  doc.setLineWidth(0.3);
-  doc.line(margin, footerY - 2, pageWidth - margin, footerY - 2);
-
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7.5);
-  doc.setTextColor(goldOchre[0], goldOchre[1], goldOchre[2]);
-  doc.text('Pamnim Interior Designers — "Shinning outside, beautiful inside"', pageWidth / 2, footerY + 2, { align: 'center' });
-
-  if (!isInvoice) {
+  // 6b. Payment Details block
+  if (data.paymentDetails && data.paymentDetails.trim()) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
+    doc.setFontSize(8.5);
+    const payLines: string[] = doc.splitTextToSize(data.paymentDetails.trim(), contentWidth - 10);
+    const payLineH = (doc.getLineHeightFactor() * 8.5) / doc.internal.scaleFactor;
+    const boxH = payLines.length * payLineH + 12;
+    ensureSpace(Math.min(boxH, 60));
+
+    doc.setFillColor(lightGrayBg[0], lightGrayBg[1], lightGrayBg[2]);
+    doc.roundedRect(margin, yPos, contentWidth, boxH, 2, 2, 'F');
+    doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margin, yPos, contentWidth, boxH, 2, 2, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(goldOchre[0], goldOchre[1], goldOchre[2]);
+    doc.text('PAYMENT DETAILS', margin + 5, yPos + 5.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+    doc.text(payLines, margin + 5, yPos + 10.5);
+    yPos += boxH + 5;
+  }
+
+  // 6c. Additional notes (older documents keep their combined terms/payment text here)
+  if (data.notes && data.notes.trim()) {
+    const hasNewBlocks = termList.length > 0 || !!(data.paymentDetails && data.paymentDetails.trim());
+    const notesHeading = hasNewBlocks
+      ? 'NOTES'
+      : (isInvoice ? 'PAYMENT INSTRUCTIONS & NOTES' : 'ESTIMATE NOTES & TERMS');
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    const splitNotes: string[] = doc.splitTextToSize(data.notes.trim(), contentWidth);
+
+    ensureSpace(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+    doc.text(notesHeading, margin, yPos);
+    yPos += 4;
+
+    doc.setFont('helvetica', 'normal');
     doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
-    doc.text('This quotation is an estimate subject to site inspection, material pricing, and scope adjustments.', pageWidth / 2, footerY + 5.5, { align: 'center' });
+    splitNotes.forEach((line) => {
+      ensureSpace(5);
+      doc.text(line, margin, yPos);
+      yPos += 4;
+    });
+    yPos += 4;
+  }
+
+  // 7. Footer on every page, with page numbers
+  const pageCount = doc.getNumberOfPages();
+  const showEstimateDisclaimer = !isInvoice && termList.length === 0 && !(data.notes && data.notes.trim());
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    const footerY = pageHeight - margin - 8;
+    doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
+    doc.setLineWidth(0.3);
+    doc.line(margin, footerY - 2, pageWidth - margin, footerY - 2);
+
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7.5);
+    doc.setTextColor(goldOchre[0], goldOchre[1], goldOchre[2]);
+    doc.text('Pamnim Interior Designers — "Shinning outside, beautiful inside"', pageWidth / 2, footerY + 2, { align: 'center' });
+
+    if (showEstimateDisclaimer) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+      doc.text('This quotation is an estimate subject to site inspection, material pricing, and scope adjustments.', pageWidth / 2, footerY + 5.5, { align: 'center' });
+    }
+
+    if (pageCount > 1) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+      doc.text(`Page ${p} of ${pageCount}`, pageWidth - margin, footerY + 2, { align: 'right' });
+    }
   }
 
   // 8. Return doc & filename
@@ -541,11 +639,11 @@ export async function shareDocumentPDF(
   const blob = doc.output('blob');
 
   const isInvoice = type === 'invoice';
-  const totalAmount = isInvoice
-    ? (typeof data.totalInvoiced === 'number' && data.totalInvoiced > 0
-        ? data.totalInvoiced
-        : data.items.reduce((s, i) => s + (Number(i.amount) || Number(i.unitPrice) || 0), 0))
-    : data.items.reduce((s, i) => s + (Number(i.amount) || (Number(i.quantity || 1) * Number(i.unitPrice || 0))), 0);
+  const totalAmount = typeof data.totalInvoiced === 'number' && data.totalInvoiced > 0
+    ? data.totalInvoiced
+    : (isInvoice
+        ? data.items.reduce((s, i) => s + (Number(i.amount) || Number(i.unitPrice) || 0), 0)
+        : data.items.reduce((s, i) => s + (Number(i.amount) || (Number(i.quantity || 1) * Number(i.unitPrice || 0))), 0));
 
   const balance = typeof data.balanceDue === 'number'
     ? data.balanceDue

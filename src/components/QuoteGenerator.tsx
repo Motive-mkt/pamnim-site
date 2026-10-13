@@ -13,6 +13,7 @@ import CatalogAutocomplete from './CatalogAutocomplete';
 import SavedQuotesList from './SavedQuotesList';
 import { CatalogItem } from '../types/catalog';
 import { SavedQuote, QuoteStatus } from '../types/documents';
+import { ItemTax } from '../lib/tax';
 
 export interface QuoteLineItem {
   id: string;
@@ -22,6 +23,7 @@ export interface QuoteLineItem {
   quantity: number | '';
   unitPrice: number | ''; // Selling Price charged to client
   purchasePrice?: number; // Internal cost to derive margin
+  taxes?: ItemTax[]; // undefined = follow the current default taxes
 }
 
 export default function QuoteGenerator() {
