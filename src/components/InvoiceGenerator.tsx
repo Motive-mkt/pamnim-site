@@ -1,17 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   collection, query, getDocs, where, onSnapshot, addDoc, doc, updateDoc, orderBy 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../hooks/useAuth';
 import { useCMS } from '../hooks/useCMS';
-import { Plus, Trash2, Download, FileText, Building2, User, Phone, Mail, DollarSign, Calendar, CheckCircle2, Layers, AlertCircle, RefreshCw, Briefcase, CreditCard, Check, ArrowRight, Save, History, X, Share2, Lock, HelpCircle, Bookmark, ListFilter, BookmarkCheck } from 'lucide-react';
-import { generateDocumentPDF, shareDocumentPDF, formatMoney, PDFLineItem } from '../utils/pdfGenerator';
+import { Plus, Trash2, Download, FileText, Building2, User, Phone, Mail, DollarSign, Calendar, CheckCircle2, Layers, AlertCircle, RefreshCw, Briefcase, CreditCard, Check, ArrowRight, Save, History, X, Share2, Lock, HelpCircle, Percent } from 'lucide-react';
+import { generateDocumentPDF, shareDocumentPDF, formatMoney } from '../utils/pdfGenerator';
+import { invoiceToPDFData } from '../utils/documentPdfData';
+import { persistKraPin } from '../utils/kraPinStore';
 import { cn } from '../lib/utils';
 import CatalogManagerModal from './CatalogManagerModal';
 import CatalogAutocomplete from './CatalogAutocomplete';
 import SavedInvoicesList from './SavedInvoicesList';
-import SavedPaymentDetailsModal from './SavedPaymentDetailsModal';
+import TermsEditor from './TermsEditor';
+import ItemTaxPicker from './ItemTaxPicker';
+import TaxSettingsModal from './TaxSettingsModal';
+import PaymentDetailsSection from './PaymentDetailsSection';
+import KraPinInput from './KraPinInput';
+import { ItemTax, computeTotals, lineTaxAmount, resolveTaxes, legacyTaxes } from '../lib/tax';
+import { useDocumentSettings, DEFAULT_INVOICE_TERMS } from '../lib/documentSettings';
 import { subscribeToSavedPaymentDetails, SavedPaymentDetail } from '../services/paymentDetailsService';
 import { CatalogItem } from '../types/catalog';
 import { SavedInvoice, InvoiceStatus, InvoiceMode, RecipientType, InvoiceLineItem, Lead } from '../types/documents';
@@ -26,6 +34,19 @@ function cleanPayload<T extends Record<string, any>>(obj: T): T {
   }
   return result;
 }
+
+const newLineId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+const blankLine = (): InvoiceLineItem => ({
+  id: newLineId(),
+  description: '',
+  unit: 'pcs',
+  quantity: 1,
+  unitPrice: '',
+  amount: 0
+});
+
+const isBlankLine = (i: InvoiceLineItem) => !i.description.trim() && !(Number(i.unitPrice) > 0);
 
 export default function InvoiceGenerator() {
   const { content } = useCMS();
@@ -52,10 +73,11 @@ export default function InvoiceGenerator() {
   const [clientName, setClientName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [clientKraPin, setClientKraPin] = useState('');
 
   // Inline New Lead Quick Creation Modal
   const [showNewLeadModal, setShowNewLeadModal] = useState(false);
-  const [newLeadForm, setNewLeadForm] = useState({ name: '', phone: '', email: '', notes: '' });
+  const [newLeadForm, setNewLeadForm] = useState({ name: '', phone: '', email: '', kraPin: '', notes: '' });
   const [isSavingLead, setIsSavingLead] = useState(false);
 
   // Project Association: Manual choice, never auto-detected
@@ -68,35 +90,32 @@ export default function InvoiceGenerator() {
   const [freeformAmount, setFreeformAmount] = useState<number | ''>('');
 
   // Itemized Line Items State
-  const [items, setItems] = useState<InvoiceLineItem[]>([
-    {
-      id: '1',
-      description: '',
-      unit: 'pcs',
-      quantity: 1,
-      unitPrice: '',
-      amount: 0
-    }
-  ]);
+  const [items, setItems] = useState<InvoiceLineItem[]>(() => [blankLine()]);
 
-  // Adjustments: Discount & Tax
+  // Freeform mode is one lump-sum line, so it carries its own taxes (undefined = follow the defaults)
+  const [freeformTaxes, setFreeformTaxes] = useState<ItemTax[] | undefined>(undefined);
+
+  // Adjustments: Discount (tax is per item now, see tax settings)
   const [discountType, setDiscountType] = useState<'fixed' | 'percentage'>('fixed');
   const [discountValue, setDiscountValue] = useState<number | ''>('');
-  const [taxRate, setTaxRate] = useState<number | ''>(''); // e.g. 16 for 16% VAT
 
-  // Payment Details from Settings
+  // Saved settings: tax types, own KRA PIN, default terms
+  const { settings, loaded: settingsLoaded, save: saveSettings, defaultTaxes } = useDocumentSettings();
+  const [taxModalOpen, setTaxModalOpen] = useState(false);
+
+  // Payment details block, numbered terms, and optional extra notes
   const [paymentMethodSelection, setPaymentMethodSelection] = useState<'bank' | 'mpesa' | 'cash' | 'cheque' | 'all'>('all');
-  const [notes, setNotes] = useState('');
+  const [terms, setTerms] = useState<string[]>(DEFAULT_INVOICE_TERMS);
+  const [paymentDetails, setPaymentDetails] = useState('');
+  const [notes, setNotes] = useState(''); // older invoices keep their combined text here
 
   // Reusable Saved Payment Details Presets
   const [savedPaymentEntries, setSavedPaymentEntries] = useState<SavedPaymentDetail[]>([]);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [paymentModalMode, setPaymentModalMode] = useState<'preserve' | 'manage'>('preserve');
 
   // Catalog State for Inline Picker
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
-  const [activeItemIndexForCatalog, setActiveItemIndexForCatalog] = useState<number | null>(null);
+  const [catalogTargetId, setCatalogTargetId] = useState<string | null>(null); // the row the catalog browser will fill
 
   // UI Status
   const [isGenerating, setIsGenerating] = useState(false);
@@ -111,7 +130,7 @@ export default function InvoiceGenerator() {
   const [isLockedInvoice, setIsLockedInvoice] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
 
-  // Helper to format payment instructions from Settings
+  // Helper to format payment instructions from Settings (the printed block has its own heading)
   const getPaymentInstructions = (method: 'bank' | 'mpesa' | 'cash' | 'cheque' | 'all') => {
     const methods = content?.contact?.paymentDetailsByMethod || {};
     const bankText = methods.bank || 'Bank Transfer: Equity Bank Kenya, Acc Name: Pamnim Interior Designers, Acc No: 0123456789, Branch: Nairobi Main';
@@ -119,19 +138,28 @@ export default function InvoiceGenerator() {
     const cashText = methods.cash || 'Cash payments accepted directly at our Nairobi workshop upon official receipt issue.';
     const chequeText = methods.cheque || 'Cheques payable to: Pamnim Interior Designers (handed over at our Nairobi offices).';
 
-    if (method === 'bank') return `Payment Terms & Instructions:\n${bankText}`;
-    if (method === 'mpesa') return `Payment Terms & Instructions:\n${mpesaText}`;
-    if (method === 'cash') return `Payment Terms & Instructions:\n${cashText}`;
-    if (method === 'cheque') return `Payment Terms & Instructions:\n${chequeText}`;
-
-    // All methods
-    return `Payment Terms: 50% deposit upon contract signing, 40% upon interim milestone, 10% upon final handover.\n\n${[bankText, mpesaText, cashText, chequeText].filter(Boolean).join('\n\n')}`;
+    if (method === 'bank') return bankText;
+    if (method === 'mpesa') return mpesaText;
+    if (method === 'cash') return cashText;
+    if (method === 'cheque') return chequeText;
+    return [bankText, mpesaText, cashText, chequeText].filter(Boolean).join('\n\n');
   };
 
-  // Sync default notes on init or when payment method selection changes
+  // A fresh invoice picks up the saved default terms once; a loaded invoice is never overwritten.
+  const defaultsApplied = useRef(false);
+  const paymentEdited = useRef(false);
+
   useEffect(() => {
-    setNotes(getPaymentInstructions(paymentMethodSelection));
-  }, [paymentMethodSelection, content?.contact?.paymentDetailsByMethod]);
+    if (!settingsLoaded || defaultsApplied.current) return;
+    defaultsApplied.current = true;
+    setTerms([...settings.invoiceTerms]);
+  }, [settingsLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Follow the method pills / site payment settings until the owner edits or picks a preset.
+  useEffect(() => {
+    if (paymentEdited.current) return;
+    setPaymentDetails(getPaymentInstructions(paymentMethodSelection));
+  }, [paymentMethodSelection, content?.contact?.paymentDetailsByMethod]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Subscribe to Reusable Saved Payment Details
   useEffect(() => {
@@ -198,6 +226,7 @@ export default function InvoiceGenerator() {
       setClientName('');
       setClientEmail('');
       setClientPhone('');
+      setClientKraPin('');
       return;
     }
     const found = clientsList.find(c => c.id === clientId || c.uid === clientId);
@@ -205,6 +234,7 @@ export default function InvoiceGenerator() {
       setClientName(found.name || found.displayName || '');
       setClientEmail(found.email || '');
       setClientPhone(found.phone || found.phoneNumber || '');
+      setClientKraPin(found.kraPin || '');
     }
   };
 
@@ -214,6 +244,7 @@ export default function InvoiceGenerator() {
       setClientName('');
       setClientEmail('');
       setClientPhone('');
+      setClientKraPin('');
       return;
     }
     const found = leadsList.find(l => l.id === leadId);
@@ -221,6 +252,7 @@ export default function InvoiceGenerator() {
       setClientName(found.name || '');
       setClientEmail(found.email || '');
       setClientPhone(found.phone || '');
+      setClientKraPin(found.kraPin || '');
     }
   };
 
@@ -237,6 +269,7 @@ export default function InvoiceGenerator() {
         name: newLeadForm.name.trim(),
         phone: newLeadForm.phone.trim() || undefined,
         email: newLeadForm.email.trim() || undefined,
+        kraPin: newLeadForm.kraPin || undefined,
         notes: newLeadForm.notes.trim() || undefined,
         createdAt: new Date().toISOString(),
         createdBy: profile?.name || 'Owner'
@@ -248,8 +281,9 @@ export default function InvoiceGenerator() {
       setClientName(newLeadForm.name.trim());
       setClientEmail(newLeadForm.email.trim());
       setClientPhone(newLeadForm.phone.trim());
+      setClientKraPin(newLeadForm.kraPin);
       setShowNewLeadModal(false);
-      setNewLeadForm({ name: '', phone: '', email: '', notes: '' });
+      setNewLeadForm({ name: '', phone: '', email: '', kraPin: '', notes: '' });
     } catch (err) {
       console.error('Error saving new lead:', err);
       alert('Failed to save manual lead.');
@@ -258,110 +292,109 @@ export default function InvoiceGenerator() {
     }
   };
 
-  // Calculations
-  const itemizedSubtotal = items.reduce((sum, item) => {
-    const qty = Number(item.quantity) || 0;
-    const price = Number(item.unitPrice) || 0;
-    return sum + (qty * price);
-  }, 0);
+  // Calculations. Tax is charged per item; the discount is spread across lines so the tax base shrinks with it.
+  const taxableLines = useMemo(
+    () => builderMode === 'freeform'
+      ? [{ quantity: 1 as number | '', unitPrice: (Number(freeformAmount) || 0) as number | '', taxes: freeformTaxes }]
+      : items,
+    [builderMode, freeformAmount, freeformTaxes, items]
+  );
 
-  const rawSubtotal = builderMode === 'freeform'
-    ? (Number(freeformAmount) || 0)
-    : itemizedSubtotal;
+  const baseSubtotal = useMemo(() => computeTotals(taxableLines, defaultTaxes, 0).subtotal, [taxableLines, defaultTaxes]);
 
   // Discount
   const numericDiscountVal = Number(discountValue) || 0;
   const discountAmount = discountType === 'percentage'
-    ? (rawSubtotal * Math.min(100, Math.max(0, numericDiscountVal))) / 100
-    : Math.min(rawSubtotal, Math.max(0, numericDiscountVal));
+    ? (baseSubtotal * Math.min(100, Math.max(0, numericDiscountVal))) / 100
+    : Math.min(baseSubtotal, Math.max(0, numericDiscountVal));
 
-  const afterDiscount = Math.max(0, rawSubtotal - discountAmount);
-
-  // Tax
-  const numericTaxRate = Number(taxRate) || 0;
-  const taxAmount = (afterDiscount * Math.max(0, numericTaxRate)) / 100;
-
-  // Total Invoiced Amount
-  const totalInvoicedAmount = Math.round((afterDiscount + taxAmount) * 100) / 100;
+  const totals = useMemo(
+    () => computeTotals(taxableLines, defaultTaxes, discountAmount),
+    [taxableLines, defaultTaxes, discountAmount]
+  );
+  const rawSubtotal = totals.subtotal;
+  const taxAmount = totals.taxTotal;
+  const totalInvoicedAmount = totals.total;
 
   // If editing an invoice with payments, lock values
   const currentPaid = editingInvoice ? (Number(editingInvoice.amountPaid) || 0) : 0;
   const calculatedBalanceDue = Math.max(0, totalInvoicedAmount - currentPaid);
 
-  // Line Item Handlers
+  // Line Item Handlers. Every update is functional and keyed by row id, so a row picked from the
+  // catalog or two updates in the same tick can never land on the wrong line.
   const handleAddItem = () => {
     if (isLockedInvoice) return;
-    setItems([
-      ...items,
-      {
-        id: Date.now().toString(),
-        description: '',
-        unit: 'pcs',
-        quantity: 1,
-        unitPrice: '',
-        amount: 0
-      }
-    ]);
+    setItems(prev => [...prev, blankLine()]);
   };
 
   const handleRemoveItem = (id: string) => {
     if (isLockedInvoice) return;
-    if (items.length <= 1) {
-      setItems([{
-        id: Date.now().toString(),
-        description: '',
-        unit: 'pcs',
-        quantity: 1,
-        unitPrice: '',
-        amount: 0
-      }]);
-      return;
-    }
-    setItems(items.filter(i => i.id !== id));
+    setItems(prev => (prev.length <= 1 ? [blankLine()] : prev.filter(i => i.id !== id)));
   };
 
   const handleUpdateItem = (id: string, field: keyof InvoiceLineItem, value: any) => {
     if (isLockedInvoice) return;
-    setItems(items.map(i => {
-      if (i.id === id) {
-        const updated = { ...i, [field]: value };
-        if (field === 'quantity' || field === 'unitPrice') {
-          const qty = Number(field === 'quantity' ? value : updated.quantity) || 0;
-          const price = Number(field === 'unitPrice' ? value : updated.unitPrice) || 0;
-          updated.amount = qty * price;
-        }
-        return updated;
+    setItems(prev => prev.map(i => {
+      if (i.id !== id) return i;
+      const updated = { ...i, [field]: value };
+      if (field === 'quantity' || field === 'unitPrice') {
+        const qty = Number(field === 'quantity' ? value : updated.quantity) || 0;
+        const price = Number(field === 'unitPrice' ? value : updated.unitPrice) || 0;
+        updated.amount = qty * price;
       }
-      return i;
+      return updated;
     }));
   };
 
+  const applyCatalogItem = (targetId: string, catalogItem: CatalogItem) => {
+    if (isLockedInvoice) return;
+    setItems(prev => prev.map(i => {
+      if (i.id !== targetId) return i;
+      const qty = Number(i.quantity) || 1;
+      const price = Number(catalogItem.sellingPrice) || 0;
+      return {
+        ...i,
+        description: catalogItem.description
+          ? `${catalogItem.name} — ${catalogItem.description}`
+          : catalogItem.name,
+        category: catalogItem.category,
+        unit: catalogItem.unit || 'pcs',
+        unitPrice: price,
+        amount: qty * price
+      };
+    }));
+  };
+
+  // Catalog browser: fills the row it was opened from; opened from the top button it fills the
+  // first empty row (or adds one) instead of silently dropping the pick.
   const handleCatalogSelect = (catalogItem: CatalogItem) => {
     if (isLockedInvoice) return;
-    if (activeItemIndexForCatalog !== null && items[activeItemIndexForCatalog]) {
-      const targetId = items[activeItemIndexForCatalog].id;
-      setItems(items.map(i => {
-        if (i.id === targetId) {
-          const qty = Number(i.quantity) || 1;
-          const price = Number(catalogItem.sellingPrice) || 0;
-          return {
-            ...i,
-            description: catalogItem.description 
-              ? `${catalogItem.name} — ${catalogItem.description}`
-              : catalogItem.name,
-            category: catalogItem.category,
-            unit: catalogItem.unit || 'pcs',
-            unitPrice: price,
-            amount: qty * price
-          };
-        }
-        return i;
-      }));
+    if (catalogTargetId) {
+      applyCatalogItem(catalogTargetId, catalogItem);
+    } else {
+      const blank = items.find(isBlankLine);
+      if (blank) {
+        applyCatalogItem(blank.id, catalogItem);
+      } else {
+        const row = blankLine();
+        setItems(prev => [...prev, row]);
+        // The new row exists after this update; fill it in the same functional pass.
+        setItems(prev => prev.map(i => i.id === row.id ? {
+          ...i,
+          description: catalogItem.description ? `${catalogItem.name} — ${catalogItem.description}` : catalogItem.name,
+          category: catalogItem.category,
+          unit: catalogItem.unit || 'pcs',
+          unitPrice: Number(catalogItem.sellingPrice) || 0,
+          amount: (Number(i.quantity) || 1) * (Number(catalogItem.sellingPrice) || 0)
+        } : i));
+      }
     }
-    setActiveItemIndexForCatalog(null);
+    setCatalogTargetId(null);
   };
 
   const handleResetToNew = () => {
+    defaultsApplied.current = true;
+    paymentEdited.current = false;
     setEditingInvoiceId(null);
     setEditingInvoice(null);
     setIsLockedInvoice(false);
@@ -375,46 +408,64 @@ export default function InvoiceGenerator() {
     setClientName('');
     setClientEmail('');
     setClientPhone('');
+    setClientKraPin('');
     setLinkProject(false);
     setSelectedProjectId('');
     setFreeformDescription('Interior Design Planning & Turnkey Spatial Execution');
     setFreeformAmount('');
+    setFreeformTaxes(undefined);
     setDiscountValue('');
-    setTaxRate('');
-    setItems([{ id: '1', description: '', unit: 'pcs', quantity: 1, unitPrice: '', amount: 0 }]);
+    setItems([blankLine()]);
     setPaymentMethodSelection('all');
-    setNotes(getPaymentInstructions('all'));
+    setPaymentDetails(getPaymentInstructions('all'));
+    setTerms([...settings.invoiceTerms]);
+    setNotes('');
     setActiveView('generator');
   };
 
-  const handleLoadInvoice = (inv: SavedInvoice) => {
-    setEditingInvoiceId(inv.id || null);
-    setEditingInvoice(inv);
-    const hasPayments = (Number(inv.amountPaid) || 0) > 0 || !!inv.isLocked;
-    setIsLockedInvoice(hasPayments);
+  // Load a saved invoice into the form (edit) or as the starting point of a new one (duplicate).
+  const applySavedInvoice = (inv: SavedInvoice, asCopy: boolean) => {
+    if (asCopy) {
+      handleResetToNew();
+    } else {
+      setEditingInvoiceId(inv.id || null);
+      setEditingInvoice(inv);
+      const hasPayments = (Number(inv.amountPaid) || 0) > 0 || !!inv.isLocked;
+      setIsLockedInvoice(hasPayments);
+    }
+    defaultsApplied.current = true;
+    paymentEdited.current = true; // never let site settings overwrite a loaded invoice
 
-    setDocNumber(inv.docNumber || `INV-${new Date().getFullYear()}-001`);
-    setDate(inv.date || todayStr);
-    setDueDate(inv.dueDate || defaultDueDate);
+    setDocNumber(asCopy
+      ? `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
+      : (inv.docNumber || `INV-${new Date().getFullYear()}-001`));
+    setDate(asCopy ? todayStr : (inv.date || todayStr));
+    setDueDate(asCopy ? defaultDueDate : (inv.dueDate || defaultDueDate));
+
+    // Older invoices stored one document-level rate and no per-item taxes; map it onto each line.
+    const fallbackTaxes = legacyTaxes(inv.taxRate);
 
     if (inv.invoiceMode === 'freeform') {
       setBuilderMode('freeform');
-      setFreeformAmount(inv.totalInvoiced || inv.subtotal || '');
+      const lump = inv.items?.[0]?.unitPrice;
+      setFreeformAmount(typeof lump === 'number' ? lump : (inv.subtotal || inv.totalInvoiced || ''));
       setFreeformDescription(inv.items?.[0]?.description || 'Interior Spatial Service');
+      setFreeformTaxes(inv.items?.[0]?.taxes ?? fallbackTaxes);
     } else {
       setBuilderMode('itemized');
       if (inv.items && inv.items.length > 0) {
         setItems(inv.items.map(i => ({
-          id: i.id || Math.random().toString(),
+          id: asCopy ? newLineId() : (i.id || newLineId()),
           description: i.description || i.name || '',
           category: i.category,
           unit: i.unit || 'pcs',
           quantity: typeof i.quantity === 'number' ? i.quantity : 1,
           unitPrice: typeof i.unitPrice === 'number' ? i.unitPrice : (Number(i.amount) || 0),
-          amount: Number(i.amount) || ((typeof i.quantity === 'number' ? i.quantity : 1) * (typeof i.unitPrice === 'number' ? i.unitPrice : 0))
+          amount: Number(i.amount) || ((typeof i.quantity === 'number' ? i.quantity : 1) * (typeof i.unitPrice === 'number' ? i.unitPrice : 0)),
+          taxes: i.taxes ?? fallbackTaxes
         })));
       } else {
-        setItems([{ id: '1', description: '', unit: 'pcs', quantity: 1, unitPrice: '', amount: 0 }]);
+        setItems([blankLine()]);
       }
     }
 
@@ -424,55 +475,26 @@ export default function InvoiceGenerator() {
     setClientName(inv.clientName || '');
     setClientEmail(inv.clientEmail || '');
     setClientPhone(inv.clientPhone || '');
+    setClientKraPin(inv.clientKraPin || '');
 
     setLinkProject(!!inv.projectId);
     setSelectedProjectId(inv.projectId || '');
 
     setDiscountType((inv.discountType as any) === 'percentage' ? 'percentage' : 'fixed');
     setDiscountValue(inv.discountValue !== undefined ? inv.discountValue : (inv.discount || ''));
-    setTaxRate(inv.taxRate !== undefined ? inv.taxRate : '');
-    setNotes(inv.notes || getPaymentInstructions('all'));
+
+    // Older invoices keep their combined payment/terms text as notes.
+    setTerms(inv.terms ? [...inv.terms] : []);
+    setPaymentDetails(inv.paymentDetails ?? '');
+    setNotes(inv.notes || '');
 
     setActiveView('generator');
   };
 
-  const handleDuplicateInvoice = (inv: SavedInvoice) => {
-    handleResetToNew();
-    setDocNumber(`INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
-    setDate(todayStr);
-    setDueDate(defaultDueDate);
+  const handleLoadInvoice = (inv: SavedInvoice) => applySavedInvoice(inv, false);
+  const handleDuplicateInvoice = (inv: SavedInvoice) => applySavedInvoice(inv, true);
 
-    if (inv.invoiceMode === 'freeform') {
-      setBuilderMode('freeform');
-      setFreeformAmount(inv.totalInvoiced || inv.subtotal || '');
-      setFreeformDescription(inv.items?.[0]?.description || 'Interior Spatial Service');
-    } else {
-      setBuilderMode('itemized');
-      if (inv.items && inv.items.length > 0) {
-        setItems(inv.items.map(i => ({
-          ...i,
-          id: Math.random().toString()
-        })));
-      }
-    }
-
-    setRecipientType(inv.recipientType || (inv.clientId ? 'client' : inv.leadId ? 'lead' : 'walk_in'));
-    setSelectedClientId(inv.clientId || '');
-    setSelectedLeadId(inv.leadId || '');
-    setClientName(inv.clientName || '');
-    setClientEmail(inv.clientEmail || '');
-    setClientPhone(inv.clientPhone || '');
-    setLinkProject(!!inv.projectId);
-    setSelectedProjectId(inv.projectId || '');
-    setDiscountType((inv.discountType as any) === 'percentage' ? 'percentage' : 'fixed');
-    setDiscountValue(inv.discountValue !== undefined ? inv.discountValue : (inv.discount || ''));
-    setTaxRate(inv.taxRate !== undefined ? inv.taxRate : '');
-    setNotes(inv.notes || getPaymentInstructions('all'));
-
-    setActiveView('generator');
-  };
-
-  // Build clean items for persistence and PDF
+  // Build clean items for persistence and PDF (each carries a snapshot of its own taxes)
   const getCleanLineItems = (): InvoiceLineItem[] => {
     if (builderMode === 'freeform') {
       return [{
@@ -481,21 +503,94 @@ export default function InvoiceGenerator() {
         unit: 'lump sum',
         quantity: 1,
         unitPrice: Number(freeformAmount) || 0,
-        amount: Number(freeformAmount) || 0
+        amount: Number(freeformAmount) || 0,
+        taxes: resolveTaxes({ taxes: freeformTaxes }, defaultTaxes).map(t => ({ id: t.id, name: t.name, rate: t.rate }))
       }];
     }
 
     return items
-      .filter(i => i.description.trim() || Number(i.unitPrice) > 0)
+      .filter(i => !isBlankLine(i))
       .map(i => ({
-        id: i.id || Math.random().toString(),
+        id: i.id || newLineId(),
         description: i.description.trim() || 'Custom Interior Material / Service',
         category: i.category,
         unit: i.unit || 'pcs',
         quantity: Number(i.quantity) || 1,
         unitPrice: Number(i.unitPrice) || 0,
-        amount: (Number(i.quantity) || 1) * (Number(i.unitPrice) || 0)
+        amount: (Number(i.quantity) || 1) * (Number(i.unitPrice) || 0),
+        taxes: resolveTaxes(i, defaultTaxes).map(t => ({ id: t.id, name: t.name, rate: t.rate }))
       }));
+  };
+
+  // The content of the invoice as it is saved AND printed, so the PDF can never differ from the archive.
+  const buildInvoiceFields = (): Record<string, any> => {
+    const cleanItems = getCleanLineItems();
+    const existingPaid = editingInvoice ? (Number(editingInvoice.amountPaid) || 0) : 0;
+    const finalBalanceDue = Math.max(0, totalInvoicedAmount - existingPaid);
+    const finalStatus: InvoiceStatus = existingPaid >= totalInvoicedAmount && totalInvoicedAmount > 0
+      ? 'paid'
+      : existingPaid > 0
+      ? 'partial'
+      : 'sent';
+
+    const selectedProj = linkProject && selectedProjectId
+      ? projectsList.find(p => p.id === selectedProjectId)
+      : null;
+
+    return cleanPayload({
+      docNumber,
+      date,
+      dueDate,
+      invoiceMode: builderMode,
+      recipientType,
+      clientId: recipientType === 'client' && selectedClientId ? selectedClientId : undefined,
+      leadId: recipientType === 'lead' && selectedLeadId ? selectedLeadId : undefined,
+      clientName: clientName.trim(),
+      clientEmail: clientEmail.trim() || undefined,
+      clientPhone: clientPhone.trim() || undefined,
+      clientKraPin: clientKraPin || undefined,
+      ownKraPin: settings.ownKraPin || undefined,
+      projectId: linkProject && selectedProjectId ? selectedProjectId : undefined,
+      projectName: selectedProj ? (selectedProj.name || selectedProj.title || 'Project') : undefined,
+      items: cleanItems,
+      subtotal: rawSubtotal,
+      discount: discountAmount > 0 ? discountAmount : undefined,
+      discountType: discountAmount > 0 ? discountType : undefined,
+      discountValue: discountAmount > 0 && numericDiscountVal > 0 ? numericDiscountVal : undefined,
+      taxAmount: taxAmount > 0 ? taxAmount : undefined,
+      taxSummary: totals.taxLines,
+      totalInvoiced: totalInvoicedAmount,
+      amountPaid: existingPaid,
+      balanceDue: finalBalanceDue,
+      terms: terms.map(t => t.trim()).filter(Boolean),
+      paymentDetails: paymentDetails.trim() || undefined,
+      notes: notes.trim(),
+      status: finalStatus,
+      isLocked: isLockedInvoice,
+      selectedPaymentMethod: paymentMethodSelection
+    });
+  };
+
+  const buildPdfData = () =>
+    invoiceToPDFData(
+      { ...buildInvoiceFields(), createdAt: '', updatedAt: '' } as unknown as SavedInvoice,
+      content.contact
+    );
+
+  // Keep the recipient's KRA PIN on their record so it pre-fills next time (never blocks saving).
+  const rememberKraPin = () => {
+    if (!clientKraPin) return;
+    if (recipientType === 'client' && selectedClientId) {
+      const known = clientsList.find(c => (c.id || c.uid) === selectedClientId);
+      if (known?.kraPin !== clientKraPin) {
+        persistKraPin('client', selectedClientId, clientKraPin).then(ok => {
+          if (ok) setClientsList(list => list.map(c => ((c.id || c.uid) === selectedClientId ? { ...c, kraPin: clientKraPin } : c)));
+        });
+      }
+    } else if (recipientType === 'lead' && selectedLeadId) {
+      const known = leadsList.find(l => l.id === selectedLeadId);
+      if (known?.kraPin !== clientKraPin) persistKraPin('lead', selectedLeadId, clientKraPin);
+    }
   };
 
   // Save to Firestore (Clean payload without undefined fields)
@@ -510,53 +605,13 @@ export default function InvoiceGenerator() {
       return null;
     }
 
-    const cleanItems = getCleanLineItems();
-
-    // Auto-calculate status purely from math:
-    // If new invoice, amountPaid is 0 -> 'sent' (Unpaid)
-    // If existing invoice, compare existing amountPaid to total
-    const existingPaid = editingInvoice ? (Number(editingInvoice.amountPaid) || 0) : 0;
-    const finalBalanceDue = Math.max(0, totalInvoicedAmount - existingPaid);
-    const finalStatus: InvoiceStatus = existingPaid >= totalInvoicedAmount && totalInvoicedAmount > 0
-      ? 'paid'
-      : existingPaid > 0
-      ? 'partial'
-      : 'sent';
-
-    const selectedProj = linkProject && selectedProjectId 
-      ? projectsList.find(p => p.id === selectedProjectId)
-      : null;
-
-    const invoicePayload: Record<string, any> = cleanPayload({
-      docNumber,
-      date,
-      dueDate,
-      invoiceMode: builderMode,
-      recipientType,
-      clientId: recipientType === 'client' && selectedClientId ? selectedClientId : undefined,
-      leadId: recipientType === 'lead' && selectedLeadId ? selectedLeadId : undefined,
-      clientName: clientName.trim(),
-      clientEmail: clientEmail.trim() || undefined,
-      clientPhone: clientPhone.trim() || undefined,
-      projectId: linkProject && selectedProjectId ? selectedProjectId : undefined,
-      projectName: selectedProj ? (selectedProj.name || selectedProj.title || 'Project') : undefined,
-      items: cleanItems,
-      subtotal: rawSubtotal,
-      discount: discountAmount > 0 ? discountAmount : undefined,
-      discountType: discountAmount > 0 ? discountType : undefined,
-      discountValue: discountAmount > 0 && numericDiscountVal > 0 ? numericDiscountVal : undefined,
-      taxRate: numericTaxRate > 0 ? numericTaxRate : undefined,
-      taxAmount: taxAmount > 0 ? taxAmount : undefined,
-      totalInvoiced: totalInvoicedAmount,
-      amountPaid: existingPaid,
-      balanceDue: finalBalanceDue,
-      notes: notes.trim(),
-      status: finalStatus,
-      isLocked: isLockedInvoice,
-      selectedPaymentMethod: paymentMethodSelection,
+    const invoicePayload: Record<string, any> = {
+      ...buildInvoiceFields(),
       updatedAt: new Date().toISOString(),
       createdBy: profile?.name || 'Owner'
-    });
+    };
+
+    rememberKraPin();
 
     if (editingInvoiceId) {
       await updateDoc(doc(db, 'invoices', editingInvoiceId), invoicePayload);
@@ -573,19 +628,7 @@ export default function InvoiceGenerator() {
     }
   };
 
-  // Build PDF line items for jsPDF generator
-  const buildPDFLineItems = (cleanItems: InvoiceLineItem[]): PDFLineItem[] => {
-    return cleanItems.map(i => ({
-      id: i.id,
-      description: i.unit ? `${i.description} (${i.quantity} ${i.unit})` : i.description,
-      quantity: typeof i.quantity === 'number' ? i.quantity : 1,
-      unitPrice: typeof i.unitPrice === 'number' ? i.unitPrice : 0,
-      amount: Number(i.amount) || ((typeof i.quantity === 'number' ? i.quantity : 1) * (typeof i.unitPrice === 'number' ? i.unitPrice : 0))
-    }));
-  };
-
-  // Requirement 5: Replaced separate "Download Invoice" and "Save to Archive" buttons
-  // with a single "Create Invoice" button that saves to archive AND generates download
+  // Single "Create Invoice" button that saves to archive AND generates the download
   const handleGenerate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!clientName.trim()) {
@@ -603,47 +646,8 @@ export default function InvoiceGenerator() {
 
       setCreationStep('generating');
 
-      const cleanItems = getCleanLineItems();
-      const pdfItems = buildPDFLineItems(cleanItems);
-      const existingPaid = editingInvoice ? (Number(editingInvoice.amountPaid) || 0) : 0;
-      const finalBal = Math.max(0, totalInvoicedAmount - existingPaid);
-      const selectedProj = linkProject && selectedProjectId 
-        ? projectsList.find(p => p.id === selectedProjectId)
-        : null;
-
       // 2. Generate and download PDF
-      await generateDocumentPDF('invoice', {
-        docNumber,
-        date,
-        dueDate,
-        invoiceMode: builderMode === 'itemized' ? 'pay_later' : 'walk_in',
-        clientName: clientName.trim(),
-        clientEmail: clientEmail.trim() || undefined,
-        clientPhone: clientPhone.trim() || undefined,
-        projectName: selectedProj ? (selectedProj.name || selectedProj.title) : undefined,
-        items: pdfItems.length > 0 ? pdfItems : [{
-          id: '1',
-          description: 'Custom Spatial Planning Services',
-          quantity: 1,
-          unitPrice: totalInvoicedAmount
-        }],
-        subtotal: rawSubtotal,
-        discount: discountAmount > 0 ? discountAmount : undefined,
-        taxRate: numericTaxRate > 0 ? numericTaxRate : undefined,
-        taxAmount: taxAmount > 0 ? taxAmount : undefined,
-        totalInvoiced: totalInvoicedAmount,
-        amountPaid: existingPaid,
-        balanceDue: finalBal,
-        notes,
-        currencySymbol: 'KES',
-        companyInfo: {
-          name: 'Pamnim Interior Designers',
-          address: content.contact?.address || 'Nairobi, Kenya',
-          phone: content.contact?.phone || '0714 984 268',
-          email: content.contact?.email || 'hinteriors01@gmail.com',
-          tagline: 'Shinning outside, beautiful inside'
-        }
-      });
+      await generateDocumentPDF('invoice', buildPdfData());
 
       setDownloadSuccess(true);
       setTimeout(() => setDownloadSuccess(false), 4000);
@@ -664,48 +668,10 @@ export default function InvoiceGenerator() {
 
     try {
       setIsSharing(true);
-      await saveInvoiceToFirestore();
+      const savedId = await saveInvoiceToFirestore();
+      if (!savedId) return;
 
-      const cleanItems = getCleanLineItems();
-      const pdfItems = buildPDFLineItems(cleanItems);
-      const existingPaid = editingInvoice ? (Number(editingInvoice.amountPaid) || 0) : 0;
-      const finalBal = Math.max(0, totalInvoicedAmount - existingPaid);
-      const selectedProj = linkProject && selectedProjectId 
-        ? projectsList.find(p => p.id === selectedProjectId)
-        : null;
-
-      await shareDocumentPDF('invoice', {
-        docNumber,
-        date,
-        dueDate,
-        invoiceMode: builderMode === 'itemized' ? 'pay_later' : 'walk_in',
-        clientName: clientName.trim(),
-        clientEmail: clientEmail.trim() || undefined,
-        clientPhone: clientPhone.trim() || undefined,
-        projectName: selectedProj ? (selectedProj.name || selectedProj.title) : undefined,
-        items: pdfItems.length > 0 ? pdfItems : [{
-          id: '1',
-          description: 'Custom Spatial Planning Services',
-          quantity: 1,
-          unitPrice: totalInvoicedAmount
-        }],
-        subtotal: rawSubtotal,
-        discount: discountAmount > 0 ? discountAmount : undefined,
-        taxRate: numericTaxRate > 0 ? numericTaxRate : undefined,
-        taxAmount: taxAmount > 0 ? taxAmount : undefined,
-        totalInvoiced: totalInvoicedAmount,
-        amountPaid: existingPaid,
-        balanceDue: finalBal,
-        notes,
-        currencySymbol: 'KES',
-        companyInfo: {
-          name: 'Pamnim Interior Designers',
-          address: content.contact?.address || 'Nairobi, Kenya',
-          phone: content.contact?.phone || '0714 984 268',
-          email: content.contact?.email || 'hinteriors01@gmail.com',
-          tagline: 'Shinning outside, beautiful inside'
-        }
-      });
+      await shareDocumentPDF('invoice', buildPdfData());
     } catch (err) {
       console.error('Invoice share failed:', err);
       alert('Could not share invoice document.');
@@ -1035,6 +1001,14 @@ export default function InvoiceGenerator() {
                   className="w-full px-3.5 py-2.5 bg-cream/30 border border-charcoal/15 rounded-xl text-xs sm:text-sm font-semibold text-charcoal focus:outline-none focus:border-ochre"
                 />
               </div>
+
+              <KraPinInput
+                label="Client KRA PIN"
+                value={clientKraPin}
+                onChange={setClientKraPin}
+                inputClassName="px-3.5 py-2.5 bg-cream/30 border border-charcoal/15 rounded-xl text-xs sm:text-sm font-semibold text-charcoal focus:outline-none focus:border-ochre"
+                labelClassName="text-xs text-charcoal/60 mb-1.5"
+              />
             </div>
 
             {/* Project Association: Manual choice, never auto-detected */}
@@ -1097,14 +1071,27 @@ export default function InvoiceGenerator() {
               </div>
 
               {builderMode === 'itemized' && !isLockedInvoice && (
-                <button
-                  type="button"
-                  onClick={() => setIsCatalogModalOpen(true)}
-                  className="px-3.5 py-1.5 rounded-xl bg-ochre/10 hover:bg-ochre/20 text-ochre text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Catalog Manager</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTaxModalOpen(true)}
+                    className="px-3.5 py-1.5 rounded-xl border border-charcoal/15 hover:bg-cream text-charcoal text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Percent className="w-3.5 h-3.5 text-ochre" />
+                    <span>Tax settings</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCatalogTargetId(null);
+                      setIsCatalogModalOpen(true);
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-ochre/10 hover:bg-ochre/20 text-ochre text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>Catalog Manager</span>
+                  </button>
+                </div>
               )}
             </div>
 
@@ -1145,6 +1132,21 @@ export default function InvoiceGenerator() {
                     Owner manually sets the initial total. Payment status will be auto-calculated against logged payments.
                   </p>
                 </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-charcoal/70 mb-1.5">
+                    Tax on this amount
+                  </label>
+                  <ItemTaxPicker
+                    taxes={resolveTaxes({ taxes: freeformTaxes }, defaultTaxes)}
+                    available={settings.taxTypes.filter(t => t.enabled)}
+                    onChange={setFreeformTaxes}
+                    disabled={isLockedInvoice}
+                  />
+                  <p className="text-[11px] text-charcoal/65 mt-1">
+                    The amount above is before tax; tax is added on top.
+                  </p>
+                </div>
               </div>
             ) : (
               /* ITEMIZED LINE ITEMS BUILDER */
@@ -1180,12 +1182,9 @@ export default function InvoiceGenerator() {
                         <CatalogAutocomplete
                           value={item.description}
                           onChange={(val) => handleUpdateItem(item.id, 'description', val)}
-                          onSelectCatalogItem={(catalogItem) => {
-                            setActiveItemIndexForCatalog(index);
-                            handleCatalogSelect(catalogItem);
-                          }}
+                          onSelectCatalogItem={(catalogItem) => applyCatalogItem(item.id, catalogItem)}
                           onOpenCatalogModal={() => {
-                            setActiveItemIndexForCatalog(index);
+                            setCatalogTargetId(item.id);
                             setIsCatalogModalOpen(true);
                           }}
                           placeholder="Type or pick from catalog (e.g. SPC Flooring, Gypsum Ceiling)..."
@@ -1195,7 +1194,7 @@ export default function InvoiceGenerator() {
                       </div>
 
                       {/* Quantity, Unit, Unit Price, Line Total */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
                         <div>
                           <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
                             Unit
@@ -1248,6 +1247,18 @@ export default function InvoiceGenerator() {
                           <div className="px-3 py-2 bg-cream/60 border border-charcoal/10 rounded-xl text-xs font-bold text-ochre flex items-center">
                             KES {formatMoney((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0))}
                           </div>
+                        </div>
+
+                        <div className="col-span-2 sm:col-span-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/60 mb-1">
+                            Tax
+                          </label>
+                          <ItemTaxPicker
+                            taxes={resolveTaxes(item, defaultTaxes)}
+                            available={settings.taxTypes.filter(t => t.enabled)}
+                            onChange={(next) => handleUpdateItem(item.id, 'taxes', next)}
+                            disabled={isLockedInvoice}
+                          />
                         </div>
                       </div>
                     </div>
@@ -1312,25 +1323,27 @@ export default function InvoiceGenerator() {
                 />
               </div>
 
-              {/* Tax / VAT */}
+              {/* Tax: charged per item (see each line); settings control which taxes exist */}
               <div className="p-3.5 bg-cream/30 rounded-2xl border border-charcoal/10 space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-[11px] font-bold uppercase tracking-wider text-charcoal/70">
-                    VAT / Tax Rate (Optional)
+                    Tax
                   </label>
-                  <span className="text-[11px] font-bold text-charcoal/60">e.g. 16% Kenya VAT</span>
+                  <button
+                    type="button"
+                    onClick={() => setTaxModalOpen(true)}
+                    className="text-[11px] font-bold text-ochre hover:text-ochre-dark inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <Percent className="w-3 h-3" />
+                    <span>Tax settings</span>
+                  </button>
                 </div>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="any"
-                  disabled={isLockedInvoice}
-                  value={taxRate}
-                  onChange={(e) => setTaxRate(e.target.value === '' ? '' : Number(e.target.value))}
-                  placeholder="Enter tax % (e.g. 16 for 16% VAT)"
-                  className="w-full px-3 py-2 bg-white border border-charcoal/15 rounded-xl text-xs font-medium focus:outline-none focus:border-ochre text-charcoal disabled:opacity-60"
-                />
+                <p className="text-xs text-charcoal/70 leading-relaxed">
+                  {taxAmount > 0
+                    ? `Charged per item: ${totals.taxLines.map(t => `${t.name} ${Number.isInteger(t.rate) ? t.rate : t.rate.toFixed(2)}%`).join(', ')}.`
+                    : 'No tax on this invoice.'}{' '}
+                  Change or remove tax on each item above.
+                </p>
               </div>
             </div>
 
@@ -1348,12 +1361,12 @@ export default function InvoiceGenerator() {
                 </div>
               )}
 
-              {taxAmount > 0 && (
-                <div className="flex items-center justify-between text-xs text-amber-300">
-                  <span>VAT ({numericTaxRate}%)</span>
-                  <span className="font-mono">+ KES {formatMoney(taxAmount)}</span>
+              {totals.taxLines.map(t => (
+                <div key={t.key} className="flex items-center justify-between text-xs text-amber-300">
+                  <span>{t.name} ({Number.isInteger(t.rate) ? t.rate : t.rate.toFixed(2)}%)</span>
+                  <span className="font-mono">+ KES {formatMoney(t.amount)}</span>
                 </div>
-              )}
+              ))}
 
               <div className="pt-2 border-t border-white/10 flex items-baseline justify-between">
                 <div>
@@ -1384,93 +1397,47 @@ export default function InvoiceGenerator() {
             </div>
           </div>
 
-          {/* 4. Payment Details & Terms (Preserve & Reusable Presets) */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-charcoal/10 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-charcoal/10 pb-4">
-              <div>
-                <h4 className="text-base font-bold text-charcoal flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-ochre" />
-                  <span>Payment Instructions & Bank/M-Pesa Details</span>
-                </h4>
-                <p className="text-xs text-charcoal/65">
-                  Select a saved preset or type new instructions and click "Preserve Payment Details" to save for future invoices.
-                </p>
-              </div>
-
-              {/* Action Buttons: Preserve & Manage */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPaymentModalMode('preserve');
-                    setIsPaymentModalOpen(true);
-                  }}
-                  className="px-3.5 py-1.5 rounded-xl bg-ochre hover:bg-ochre-dark text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                  title="Save current instructions as a reusable preset"
-                >
-                  <Bookmark className="w-3.5 h-3.5" />
-                  <span>Preserve Payment Details</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPaymentModalMode('manage');
-                    setIsPaymentModalOpen(true);
-                  }}
-                  className="px-3 py-1.5 rounded-xl border border-charcoal/15 bg-cream/50 hover:bg-cream text-charcoal text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-                  title="Manage saved payment details"
-                >
-                  <ListFilter className="w-3.5 h-3.5 text-charcoal/60" />
-                  <span>Manage Saved ({savedPaymentEntries.length})</span>
-                </button>
-              </div>
+          {/* 4. Terms, Payment Details & Notes */}
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-charcoal/10 shadow-sm space-y-6">
+            <div className="space-y-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal/70">
+                Terms & Conditions
+              </label>
+              <TermsEditor
+                terms={terms}
+                onChange={setTerms}
+                docLabel="invoice"
+                savedDefault={settings.invoiceTerms}
+                onSaveDefault={(list) => saveSettings({ invoiceTerms: list })}
+                disabled={isLockedInvoice}
+              />
+              <p className="text-[11px] text-charcoal/65">
+                Printed as a numbered list on the PDF. Changes here only affect this invoice unless you save them as the default for invoices.
+              </p>
             </div>
 
-            {/* Quick Auto-Fill Chips from Saved Payment Entries */}
-            {savedPaymentEntries.length > 0 && (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[11px] text-charcoal/60">
-                  <span className="font-bold uppercase tracking-wider text-[11px]">
-                    Quick Auto-Fill from Saved Presets:
-                  </span>
-                  <span className="text-[11px] text-charcoal/60">Click any preset to fill instructions</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {savedPaymentEntries.map((entry) => (
-                    <button
-                      key={entry.id}
-                      type="button"
-                      onClick={() => setNotes(entry.details)}
-                      className="px-2.5 py-1 rounded-lg text-xs font-semibold border border-charcoal/10 bg-cream/30 hover:bg-ochre/10 hover:border-ochre/40 hover:text-ochre transition-all flex items-center gap-1.5 cursor-pointer text-charcoal"
-                      title={entry.details}
-                    >
-                      <span className={cn(
-                        "w-2 h-2 rounded-full",
-                        entry.method === 'bank' ? 'bg-blue-500' :
-                        entry.method === 'mpesa' ? 'bg-emerald-500' :
-                        entry.method === 'cash' ? 'bg-amber-500' : 'bg-purple-500'
-                      )} />
-                      <span className="font-bold text-[11px]">{entry.title}</span>
-                      <span className="text-[11px] text-charcoal/60 uppercase">({entry.method})</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Method Selector Pills & Textarea */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-charcoal/60">
-                  Invoice Payment Terms & Instructions Note
-                </label>
+            <PaymentDetailsSection
+              title="Payment Details"
+              description="Pick a saved preset or type the details once and preserve them for future documents."
+              textareaLabel="Payment details printed on this invoice"
+              value={paymentDetails}
+              onChange={(v) => {
+                paymentEdited.current = true;
+                setPaymentDetails(v);
+              }}
+              savedEntries={savedPaymentEntries}
+              disabled={isLockedInvoice}
+              methodPills={
                 <div className="flex items-center gap-1 bg-cream/70 p-0.5 rounded-xl border border-charcoal/10 flex-wrap">
                   {(['all', 'bank', 'mpesa', 'cash', 'cheque'] as const).map((m) => (
                     <button
                       key={m}
                       type="button"
-                      onClick={() => setPaymentMethodSelection(m)}
+                      onClick={() => {
+                        paymentEdited.current = false;
+                        setPaymentMethodSelection(m);
+                        setPaymentDetails(getPaymentInstructions(m));
+                      }}
                       className={cn(
                         "px-2 py-0.5 rounded-lg text-[11px] font-bold capitalize transition-all cursor-pointer",
                         paymentMethodSelection === m
@@ -1482,31 +1449,20 @@ export default function InvoiceGenerator() {
                     </button>
                   ))}
                 </div>
-              </div>
+              }
+            />
 
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal/70">
+                Additional notes (optional)
+              </label>
               <textarea
-                rows={4}
+                rows={2}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Enter bank account details, M-Pesa paybill, or payment terms..."
-                className="w-full p-3.5 bg-cream/30 border border-charcoal/15 rounded-2xl text-xs font-mono text-charcoal focus:outline-none focus:border-ochre leading-relaxed"
+                placeholder="Anything else to print on this invoice"
+                className="w-full p-3 bg-cream/30 border border-charcoal/15 rounded-2xl text-xs text-charcoal focus:outline-none focus:border-ochre leading-relaxed"
               />
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-charcoal/65 gap-1">
-                <span>Customize text freely. Click <strong>"Preserve Payment Details"</strong> to save this exact text for future invoices.</span>
-                {notes.trim() && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPaymentModalMode('preserve');
-                      setIsPaymentModalOpen(true);
-                    }}
-                    className="text-ochre hover:text-ochre-dark font-bold text-xs inline-flex items-center gap-1 cursor-pointer self-start sm:self-auto"
-                  >
-                    <Bookmark className="w-3 h-3" />
-                    <span>Preserve This Note</span>
-                  </button>
-                )}
-              </div>
             </div>
           </div>
 
@@ -1617,6 +1573,13 @@ export default function InvoiceGenerator() {
                 />
               </div>
 
+              <KraPinInput
+                label="KRA PIN"
+                value={newLeadForm.kraPin}
+                onChange={(v) => setNewLeadForm({ ...newLeadForm, kraPin: v })}
+                inputClassName="w-full px-3.5 py-2 bg-cream/40 border border-charcoal/15 rounded-xl text-xs font-semibold focus:outline-none focus:border-ochre text-charcoal"
+              />
+
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal/70 mb-1">
                   Notes
@@ -1662,17 +1625,11 @@ export default function InvoiceGenerator() {
         }}
       />
 
-      {/* SAVED PAYMENT DETAILS MODAL */}
-      <SavedPaymentDetailsModal
-        isOpen={isPaymentModalOpen}
-        onClose={() => setIsPaymentModalOpen(false)}
-        savedEntries={savedPaymentEntries}
-        currentInvoiceNotes={notes}
-        onApplyDetails={(detailsText) => {
-          setNotes(detailsText);
-          setIsPaymentModalOpen(false);
-        }}
-        initialMode={paymentModalMode}
+      <TaxSettingsModal
+        isOpen={taxModalOpen}
+        onClose={() => setTaxModalOpen(false)}
+        settings={settings}
+        onSave={saveSettings}
       />
     </div>
   );
