@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   collection, query, getDocs, where, onSnapshot, orderBy, doc, addDoc, updateDoc 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Plus, Trash2, FileSignature, Building2, User, Phone, Mail, DollarSign, Calendar, CheckCircle2, Layers, AlertCircle, TrendingUp, Info, Eye, History, X, Share2 } from 'lucide-react';
-import { generateDocumentPDF, shareDocumentPDF, PDFLineItem, formatMoney } from '../utils/pdfGenerator';
+import { Plus, Trash2, FileSignature, Building2, User, Phone, Mail, DollarSign, Calendar, CheckCircle2, Layers, AlertCircle, TrendingUp, Info, Eye, History, X, Share2, Percent } from 'lucide-react';
+import { generateDocumentPDF, shareDocumentPDF, formatMoney } from '../utils/pdfGenerator';
+import { quoteToPDFData } from '../utils/documentPdfData';
+import { persistKraPin } from '../utils/kraPinStore';
 import { useCMS } from '../hooks/useCMS';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
@@ -13,6 +15,14 @@ import CatalogAutocomplete from './CatalogAutocomplete';
 import SavedQuotesList from './SavedQuotesList';
 import { CatalogItem } from '../types/catalog';
 import { SavedQuote, QuoteStatus } from '../types/documents';
+import { ItemTax, computeTotals, lineTaxAmount, resolveTaxes } from '../lib/tax';
+import { useDocumentSettings, DEFAULT_QUOTE_TERMS } from '../lib/documentSettings';
+import { subscribeToSavedPaymentDetails, SavedPaymentDetail } from '../services/paymentDetailsService';
+import TermsEditor from './TermsEditor';
+import ItemTaxPicker from './ItemTaxPicker';
+import TaxSettingsModal from './TaxSettingsModal';
+import PaymentDetailsSection from './PaymentDetailsSection';
+import KraPinInput from './KraPinInput';
 
 export interface QuoteLineItem {
   id: string;
@@ -22,7 +32,20 @@ export interface QuoteLineItem {
   quantity: number | '';
   unitPrice: number | ''; // Selling Price charged to client
   purchasePrice?: number; // Internal cost to derive margin
+  taxes?: ItemTax[]; // undefined = follow the current default taxes
 }
+
+const newLineId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+const blankLine = (): QuoteLineItem => ({
+  id: newLineId(),
+  description: '',
+  quantity: 1,
+  unitPrice: '',
+  purchasePrice: 0
+});
+
+const isBlankLine = (i: QuoteLineItem) => !i.description.trim() && !(Number(i.unitPrice) > 0);
 
 export default function QuoteGenerator() {
   const { content } = useCMS();
@@ -48,9 +71,14 @@ export default function QuoteGenerator() {
   const [clientName, setClientName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [clientKraPin, setClientKraPin] = useState('');
   const [projectName, setProjectName] = useState('');
 
-  // Quotation Terms & Disclaimer (Powered by CMS Settings with M-Pesa, Bank, Cash details)
+  // Saved settings: tax types, own KRA PIN, default terms and default payment details
+  const { settings, loaded: settingsLoaded, save: saveSettings, defaultTaxes } = useDocumentSettings();
+  const [taxModalOpen, setTaxModalOpen] = useState(false);
+
+  // Payment details: site settings are the fallback when no saved default exists
   const getCompiledPaymentDetails = () => {
     const methods = content?.contact?.paymentDetailsByMethod || {};
     const parts = [methods.bank, methods.mpesa, methods.cash].filter(Boolean);
@@ -58,37 +86,40 @@ export default function QuoteGenerator() {
     return content.contact.paymentDetails || 'Bank / M-Pesa Details: Pamnim Interior Designers, Paybill: 247247, Acc: 0714984268.';
   };
 
-  const [notes, setNotes] = useState(
-    `This quotation is an estimate valid for 30 days and is subject to final site inspection, scope adjustments, and material availability.\nAll prices include spatial design planning, premium materials supply, and professional installation by Pamnim Interior Designers.\n\n${getCompiledPaymentDetails()}`
-  );
+  const [terms, setTerms] = useState<string[]>(DEFAULT_QUOTE_TERMS);
+  const [paymentDetails, setPaymentDetails] = useState<string>(() => getCompiledPaymentDetails());
+  const [notes, setNotes] = useState(''); // optional additional notes (older quotes keep their combined text here)
+  const [savedPaymentEntries, setSavedPaymentEntries] = useState<SavedPaymentDetail[]>([]);
+
+  // A fresh quote picks up the saved defaults once; a loaded/edited quote never gets overwritten.
+  const defaultsApplied = useRef(false);
+  const paymentEdited = useRef(false);
 
   useEffect(() => {
-    const compiled = getCompiledPaymentDetails();
-    if (compiled) {
-      setNotes(prev => {
-        if (!prev || prev.includes('Paybill: 247247, Acc: 0714984268.')) {
-          return `This quotation is an estimate valid for 30 days and is subject to final site inspection, scope adjustments, and material availability.\nAll prices include spatial design planning, premium materials supply, and professional installation by Pamnim Interior Designers.\n\n${compiled}`;
-        }
-        return prev;
-      });
-    }
-  }, [content.contact.paymentDetails, content.contact.paymentDetailsByMethod]);
+    if (!settingsLoaded || defaultsApplied.current) return;
+    defaultsApplied.current = true;
+    setTerms([...settings.quoteTerms]);
+    if (settings.quotePaymentDetails) setPaymentDetails(settings.quotePaymentDetails);
+  }, [settingsLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Site payment settings can arrive after first render; follow them until the owner edits the text.
+  useEffect(() => {
+    if (settings.quotePaymentDetails || paymentEdited.current) return;
+    setPaymentDetails(getCompiledPaymentDetails());
+  }, [content.contact.paymentDetails, content.contact.paymentDetailsByMethod, settings.quotePaymentDetails]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const unsub = subscribeToSavedPaymentDetails((entries) => setSavedPaymentEntries(entries));
+    return () => unsub();
+  }, []);
 
   // Quote Line Items: Blank by default (no placeholder pre-filled mock items)
-  const [items, setItems] = useState<QuoteLineItem[]>([
-    {
-      id: '1',
-      description: '',
-      quantity: 1,
-      unitPrice: '',
-      purchasePrice: 0
-    }
-  ]);
+  const [items, setItems] = useState<QuoteLineItem[]>(() => [blankLine()]);
 
   // Catalog State
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
-  const [activeItemIndexForCatalog, setActiveItemIndexForCatalog] = useState<number | null>(null);
+  const [catalogTargetId, setCatalogTargetId] = useState<string | null>(null); // the row the catalog browser will fill
 
   // UI Status
   const [isGenerating, setIsGenerating] = useState(false);
@@ -134,11 +165,13 @@ export default function QuoteGenerator() {
       setClientName('');
       setClientEmail('');
       setClientPhone('');
+      setClientKraPin('');
     } else if (clientId === '') {
       setIsCustomClient(false);
       setClientName('');
       setClientEmail('');
       setClientPhone('');
+      setClientKraPin('');
     } else {
       setIsCustomClient(false);
       const found = clientsList.find(c => c.id === clientId || c.uid === clientId);
@@ -146,16 +179,14 @@ export default function QuoteGenerator() {
         setClientName(found.name || found.displayName || '');
         setClientEmail(found.email || '');
         setClientPhone(found.phone || found.phoneNumber || '');
+        setClientKraPin(found.kraPin || '');
       }
     }
   };
 
   // Calculations
-  const totalEstimate = items.reduce((sum, item) => {
-    const qty = Number(item.quantity) || 0;
-    const price = Number(item.unitPrice) || 0;
-    return sum + (qty * price);
-  }, 0);
+  const totals = useMemo(() => computeTotals(items, defaultTaxes), [items, defaultTaxes]);
+  const totalEstimate = totals.subtotal; // before tax; the internal margin is worked out on this
 
   // Internal Margin Derivations (Owner-only preview)
   const totalEstimatedCost = items.reduce((sum, item) => {
@@ -169,73 +200,56 @@ export default function QuoteGenerator() {
     ? ((estimatedProfit / totalEstimate) * 100).toFixed(1)
     : '0.0';
 
-  // Item Handlers
+  // Item Handlers. Every update is functional and keyed by row id, so two updates in the same
+  // tick (typing + picking a suggestion) or a row picked from the catalog can never land on the wrong line.
   const handleAddItem = () => {
-    setItems([
-      ...items,
-      {
-        id: Date.now().toString(),
-        description: '',
-        quantity: 1,
-        unitPrice: '',
-        purchasePrice: 0
-      }
-    ]);
+    setItems(prev => [...prev, blankLine()]);
   };
 
   const handleRemoveItem = (id: string) => {
-    if (items.length <= 1) {
-      setItems([{
-        id: Date.now().toString(),
-        description: '',
-        quantity: 1,
-        unitPrice: '',
-        purchasePrice: 0
-      }]);
-      return;
-    }
-    setItems(items.filter((item) => item.id !== id));
+    setItems(prev => (prev.length <= 1 ? [blankLine()] : prev.filter(item => item.id !== id)));
   };
 
   const handleUpdateItem = (id: string, field: keyof QuoteLineItem, value: any) => {
-    setItems(
-      items.map((item) => {
-        if (item.id === id) {
-          return { ...item, [field]: value };
-        }
-        return item;
-      })
-    );
-  };
-
-  const handleCatalogSelect = (catalogItem: CatalogItem) => {
-    if (activeItemIndexForCatalog !== null && items[activeItemIndexForCatalog]) {
-      const targetId = items[activeItemIndexForCatalog].id;
-      handleLineItemCatalogSelect(targetId, catalogItem);
-    }
-    setActiveItemIndexForCatalog(null);
+    setItems(prev => prev.map(item => (item.id === id ? { ...item, [field]: value } : item)));
   };
 
   const handleLineItemCatalogSelect = (itemId: string, catalogItem: CatalogItem) => {
-    setItems(items.map(item => {
-      if (item.id === itemId) {
-        return {
-          ...item,
-          description: catalogItem.description 
-            ? `${catalogItem.name} — ${catalogItem.description}`
-            : catalogItem.name,
-          category: catalogItem.category,
-          unit: catalogItem.unit,
-          unitPrice: catalogItem.sellingPrice,
-          purchasePrice: catalogItem.purchasePrice || 0,
-          quantity: item.quantity || 1
-        };
-      }
-      return item;
+    setItems(prev => prev.map(item => {
+      if (item.id !== itemId) return item;
+      return {
+        ...item,
+        description: catalogItem.description
+          ? `${catalogItem.name} — ${catalogItem.description}`
+          : catalogItem.name,
+        category: catalogItem.category,
+        unit: catalogItem.unit,
+        unitPrice: catalogItem.sellingPrice,
+        purchasePrice: catalogItem.purchasePrice || 0,
+        quantity: item.quantity || 1
+      };
     }));
   };
 
-  const handleCreateNew = () => {
+  // Catalog browser: fills the row it was opened from, never a guessed one.
+  const handleCatalogSelect = (catalogItem: CatalogItem) => {
+    if (catalogTargetId) handleLineItemCatalogSelect(catalogTargetId, catalogItem);
+    setCatalogTargetId(null);
+  };
+
+  const openCatalogForNewLine = () => {
+    const blank = items.find(isBlankLine);
+    if (blank) {
+      setCatalogTargetId(blank.id);
+    } else {
+      const row = blankLine();
+      setItems(prev => [...prev, row]);
+      setCatalogTargetId(row.id);
+    }
+    setIsCatalogOpen(true);
+  };
+
+  const resetForNewQuote = () => {
     setEditingQuoteId(null);
     setDocNumber(`QT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
     setDate(todayStr);
@@ -245,47 +259,115 @@ export default function QuoteGenerator() {
     setClientName('');
     setClientEmail('');
     setClientPhone('');
+    setClientKraPin('');
     setProjectName('');
-    setItems([{ id: '1', description: '', quantity: 1, unitPrice: '', purchasePrice: 0 }]);
+    setItems([blankLine()]);
+    setTerms([...settings.quoteTerms]);
+    paymentEdited.current = false;
+    setPaymentDetails(settings.quotePaymentDetails || getCompiledPaymentDetails());
+    setNotes('');
+  };
+
+  const handleCreateNew = () => {
+    defaultsApplied.current = true;
+    resetForNewQuote();
     setActiveView('generator');
   };
 
-  const handleLoadQuote = (qt: SavedQuote) => {
-    setEditingQuoteId(qt.id || null);
-    setDocNumber(qt.docNumber || `QT-${new Date().getFullYear()}-001`);
-    setDate(qt.date || todayStr);
-    setValidUntil(qt.validUntil || validUntilDefault);
+  // Load a saved quote into the form. For an edit it keeps its identity; for "make another" it gets a new number.
+  const applySavedQuote = (qt: SavedQuote, asCopy: boolean) => {
+    defaultsApplied.current = true;
+    paymentEdited.current = true; // never let site settings overwrite a loaded quote
+    setEditingQuoteId(asCopy ? null : (qt.id || null));
+    setDocNumber(asCopy
+      ? `QT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
+      : (qt.docNumber || `QT-${new Date().getFullYear()}-001`));
+    setDate(asCopy ? todayStr : (qt.date || todayStr));
+    setValidUntil(asCopy ? validUntilDefault : (qt.validUntil || validUntilDefault));
     setSelectedClientId(qt.clientId || '');
     setIsCustomClient(!qt.clientId);
     setClientName(qt.clientName || '');
     setClientEmail(qt.clientEmail || '');
     setClientPhone(qt.clientPhone || '');
+    setClientKraPin(qt.clientKraPin || '');
     setProjectName(qt.projectName || '');
-    setNotes(qt.notes || getCompiledPaymentDetails());
+
+    // Older quotes keep their combined terms/payment text as notes; their items never had tax, so they keep none.
+    setTerms(qt.terms ? [...qt.terms] : []);
+    setPaymentDetails(qt.paymentDetails ?? '');
+    setNotes(qt.notes || '');
+
     if (qt.items && qt.items.length > 0) {
-      setItems(qt.items);
+      setItems(qt.items.map(i => ({
+        ...i,
+        id: asCopy ? newLineId() : (i.id || newLineId()),
+        taxes: i.taxes ?? []
+      })));
     } else {
-      setItems([{ id: '1', description: '', quantity: 1, unitPrice: '', purchasePrice: 0 }]);
+      setItems([blankLine()]);
     }
     setActiveView('generator');
   };
 
-  const handleDuplicateQuote = (qt: SavedQuote) => {
-    setEditingQuoteId(null);
-    setDocNumber(`QT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
-    setDate(todayStr);
-    setValidUntil(validUntilDefault);
-    setSelectedClientId(qt.clientId || '');
-    setIsCustomClient(!qt.clientId);
-    setClientName(qt.clientName || '');
-    setClientEmail(qt.clientEmail || '');
-    setClientPhone(qt.clientPhone || '');
-    setProjectName(qt.projectName || '');
-    setNotes(qt.notes || getCompiledPaymentDetails());
-    if (qt.items && qt.items.length > 0) {
-      setItems(qt.items.map(i => ({ ...i, id: Math.random().toString() })));
-    }
-    setActiveView('generator');
+  const handleLoadQuote = (qt: SavedQuote) => applySavedQuote(qt, false);
+  const handleDuplicateQuote = (qt: SavedQuote) => applySavedQuote(qt, true);
+
+  // The content of the quote as it is saved AND printed, so the PDF can never differ from the archive.
+  const buildQuoteFields = () => {
+    const activeItems = items.filter(i => !isBlankLine(i));
+    const cleanedItems = activeItems.map(i => {
+      const itemObj: Record<string, any> = {
+        id: i.id || newLineId(),
+        description: i.description || '',
+        quantity: i.quantity === '' ? 0 : Number(i.quantity) || 0,
+        unitPrice: i.unitPrice === '' ? 0 : Number(i.unitPrice) || 0,
+        taxes: resolveTaxes(i, defaultTaxes).map(t => ({ id: t.id, name: t.name, rate: t.rate }))
+      };
+      if (i.category && i.category.trim()) itemObj.category = i.category.trim();
+      if (i.unit && i.unit.trim()) itemObj.unit = i.unit.trim();
+      if (typeof i.purchasePrice === 'number') itemObj.purchasePrice = i.purchasePrice;
+      return itemObj;
+    });
+
+    const fields: Record<string, any> = {
+      docNumber,
+      date,
+      validUntil,
+      clientName: clientName.trim(),
+      items: cleanedItems,
+      subtotal: totals.subtotal,
+      taxTotal: totals.taxTotal,
+      taxSummary: totals.taxLines,
+      total: totals.total,
+      terms: terms.map(t => t.trim()).filter(Boolean),
+      notes: notes.trim()
+    };
+    if (paymentDetails.trim()) fields.paymentDetails = paymentDetails.trim();
+    if (settings.ownKraPin) fields.ownKraPin = settings.ownKraPin;
+    if (clientKraPin) fields.clientKraPin = clientKraPin;
+    if (selectedClientId && selectedClientId.trim() && selectedClientId !== 'NEW_CLIENT') fields.clientId = selectedClientId.trim();
+    if (clientEmail && clientEmail.trim()) fields.clientEmail = clientEmail.trim();
+    if (clientPhone && clientPhone.trim()) fields.clientPhone = clientPhone.trim();
+    if (projectName && projectName.trim()) fields.projectName = projectName.trim();
+    return fields;
+  };
+
+  const buildPdfData = () =>
+    quoteToPDFData(
+      { ...buildQuoteFields(), status: 'sent', createdAt: '', updatedAt: '' } as unknown as SavedQuote,
+      content.contact
+    );
+
+  // Keep a registered client's KRA PIN on their profile so it pre-fills next time (never blocks saving).
+  const rememberClientKraPin = () => {
+    if (!selectedClientId || selectedClientId === 'NEW_CLIENT' || !clientKraPin) return;
+    const known = clientsList.find(c => (c.id || c.uid) === selectedClientId);
+    if (known && known.kraPin === clientKraPin) return;
+    persistKraPin('client', selectedClientId, clientKraPin).then(ok => {
+      if (ok) {
+        setClientsList(list => list.map(c => ((c.id || c.uid) === selectedClientId ? { ...c, kraPin: clientKraPin } : c)));
+      }
+    });
   };
 
   const saveQuoteToFirestore = async (customStatus?: QuoteStatus): Promise<string | null> => {
@@ -297,39 +379,19 @@ export default function QuoteGenerator() {
     try {
       setIsSavingDraft(true);
 
-      const cleanedItems = items.map(i => {
-        const itemObj: Record<string, any> = {
-          id: i.id || Math.random().toString(),
-          description: i.description || '',
-          quantity: i.quantity === '' ? 0 : Number(i.quantity) || 0,
-          unitPrice: i.unitPrice === '' ? 0 : Number(i.unitPrice) || 0
-        };
-        if (i.category && i.category.trim()) itemObj.category = i.category.trim();
-        if (i.unit && i.unit.trim()) itemObj.unit = i.unit.trim();
-        if (typeof i.purchasePrice === 'number') itemObj.purchasePrice = i.purchasePrice;
-        return itemObj;
-      });
-
       const quoteData: Record<string, any> = {
-        docNumber,
-        date,
-        validUntil,
-        clientName: clientName.trim(),
-        items: cleanedItems,
-        subtotal: totalEstimate,
-        notes,
+        ...buildQuoteFields(),
         status: customStatus || 'sent',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         createdBy: profile?.name || 'Owner'
       };
 
-      if (selectedClientId && selectedClientId.trim()) quoteData.clientId = selectedClientId.trim();
-      if (clientEmail && clientEmail.trim()) quoteData.clientEmail = clientEmail.trim();
-      if (clientPhone && clientPhone.trim()) quoteData.clientPhone = clientPhone.trim();
-      if (projectName && projectName.trim()) quoteData.projectName = projectName.trim();
+      rememberClientKraPin();
 
       if (editingQuoteId) {
+        // An edit keeps its original creation date.
+        delete quoteData.createdAt;
         await updateDoc(doc(db, 'quotes', editingQuoteId), {
           ...quoteData,
           updatedAt: new Date().toISOString()
@@ -365,44 +427,12 @@ export default function QuoteGenerator() {
       setIsGenerating(true);
       setQuoteCreationStep('saving');
 
-      // Auto-save to quotes collection
-      await saveQuoteToFirestore();
+      // Auto-save to quotes collection; stop if it could not be saved
+      const savedId = await saveQuoteToFirestore();
+      if (!savedId) return;
 
       setQuoteCreationStep('generating');
-
-      const pdfItems: PDFLineItem[] = items
-        .filter(i => i.description.trim() || Number(i.unitPrice) > 0)
-        .map(i => ({
-          id: i.id,
-          description: i.description || 'Estimated Service Item',
-          quantity: Number(i.quantity) || 1,
-          unitPrice: Number(i.unitPrice) || 0
-        }));
-
-      await generateDocumentPDF('quote', {
-        docNumber,
-        date,
-        validUntil,
-        clientName: clientName.trim(),
-        clientEmail: clientEmail.trim() || undefined,
-        clientPhone: clientPhone.trim() || undefined,
-        projectName: projectName.trim() || undefined,
-        items: pdfItems.length > 0 ? pdfItems : [{
-          id: '1',
-          description: 'Consultation & Spatial Planning Estimate',
-          quantity: 1,
-          unitPrice: 0
-        }],
-        notes,
-        currencySymbol: 'KES',
-        companyInfo: {
-          name: 'Pamnim Interior Designers',
-          address: content.contact?.address || 'Nairobi, Kenya',
-          phone: content.contact?.phone || '0714 984 268',
-          email: content.contact?.email || 'hinteriors01@gmail.com',
-          tagline: 'Shinning outside, beautiful inside'
-        }
-      });
+      await generateDocumentPDF('quote', buildPdfData());
 
       setDownloadSuccess(true);
       setTimeout(() => setDownloadSuccess(false), 4000);
@@ -424,42 +454,10 @@ export default function QuoteGenerator() {
     try {
       setIsSharing(true);
 
-      // Auto-save to quotes collection
-      await saveQuoteToFirestore();
+      const savedId = await saveQuoteToFirestore();
+      if (!savedId) return;
 
-      const pdfItems: PDFLineItem[] = items
-        .filter(i => i.description.trim() || Number(i.unitPrice) > 0)
-        .map(i => ({
-          id: i.id,
-          description: i.description || 'Estimated Service Item',
-          quantity: Number(i.quantity) || 1,
-          unitPrice: Number(i.unitPrice) || 0
-        }));
-
-      await shareDocumentPDF('quote', {
-        docNumber,
-        date,
-        validUntil,
-        clientName: clientName.trim(),
-        clientEmail: clientEmail.trim() || undefined,
-        clientPhone: clientPhone.trim() || undefined,
-        projectName: projectName.trim() || undefined,
-        items: pdfItems.length > 0 ? pdfItems : [{
-          id: '1',
-          description: 'Consultation & Spatial Planning Estimate',
-          quantity: 1,
-          unitPrice: 0
-        }],
-        notes,
-        currencySymbol: 'KES',
-        companyInfo: {
-          name: 'Pamnim Interior Designers',
-          address: content.contact?.address || 'Nairobi, Kenya',
-          phone: content.contact?.phone || '0714 984 268',
-          email: content.contact?.email || 'hinteriors01@gmail.com',
-          tagline: 'Shinning outside, beautiful inside'
-        }
-      });
+      await shareDocumentPDF('quote', buildPdfData());
     } catch (err) {
       console.error('Quote sharing failed:', err);
       alert('Failed to share PDF quotation. Please try again.');
@@ -556,7 +554,7 @@ export default function QuoteGenerator() {
           onCreateNew={handleCreateNew}
         />
       ) : (
-      <form onSubmit={handleGenerate} className="space-y-8">
+      <div className="space-y-8">
         {/* Document Meta & Client Selectors */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 sm:p-6 bg-cream/40 rounded-2xl border border-charcoal/5">
           {/* Left: Document Info */}
@@ -672,6 +670,13 @@ export default function QuoteGenerator() {
                 />
               </div>
             </div>
+
+            <KraPinInput
+              label="Client KRA PIN"
+              value={clientKraPin}
+              onChange={setClientKraPin}
+              inputClassName="bg-white border-charcoal/10 rounded-xl p-2.5 text-xs"
+            />
           </div>
         </div>
 
@@ -691,10 +696,15 @@ export default function QuoteGenerator() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setActiveItemIndexForCatalog(items.length - 1);
-                  setIsCatalogOpen(true);
-                }}
+                onClick={() => setTaxModalOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-charcoal/15 text-charcoal hover:bg-cream text-xs font-bold transition-all cursor-pointer"
+              >
+                <Percent className="w-3.5 h-3.5 text-ochre" />
+                <span>Tax settings</span>
+              </button>
+              <button
+                type="button"
+                onClick={openCatalogForNewLine}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-ochre/10 text-ochre hover:bg-ochre hover:text-white text-xs font-bold transition-all cursor-pointer"
               >
                 <Layers className="w-3.5 h-3.5" />
@@ -720,12 +730,15 @@ export default function QuoteGenerator() {
                     <th className="p-3.5 pl-4">Description / Scope</th>
                     <th className="p-3.5 w-28 text-center">Quantity</th>
                     <th className="p-3.5 w-44 text-right">Unit Price (KES)</th>
-                    <th className="p-3.5 w-44 text-right">Total (KES)</th>
+                    <th className="p-3.5 w-52">Tax</th>
+                    <th className="p-3.5 w-44 text-right">Amount (KES)</th>
                     <th className="p-3.5 w-12 text-center"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-charcoal/5 text-xs">
-                  {items.map((item, index) => {
+                  {items.map((item) => {
+                    const rowTaxes = resolveTaxes(item, defaultTaxes);
+                    const rowTax = lineTaxAmount(item, defaultTaxes, totals.subtotal > 0 ? totals.discount / totals.subtotal : 0);
                     const rowTotal = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
                     const rowCost = (Number(item.quantity) || 0) * (Number(item.purchasePrice) || 0);
                     const rowProfit = rowTotal - rowCost;
@@ -742,7 +755,7 @@ export default function QuoteGenerator() {
                               catalogItems={catalogItems}
                               placeholder="e.g. Smart Space Planning & 3D Photorealistic Previews"
                               onOpenCatalogModal={() => {
-                                setActiveItemIndexForCatalog(index);
+                                setCatalogTargetId(item.id);
                                 setIsCatalogOpen(true);
                               }}
                             />
@@ -779,7 +792,19 @@ export default function QuoteGenerator() {
                           />
                         </td>
 
-                        {/* Row Total */}
+                        {/* Per-item tax */}
+                        <td className="p-3 align-middle">
+                          <ItemTaxPicker
+                            taxes={rowTaxes}
+                            available={settings.taxTypes.filter(t => t.enabled)}
+                            onChange={(next) => handleUpdateItem(item.id, 'taxes', next)}
+                          />
+                          {rowTax > 0 && (
+                            <span className="block mt-1 text-[11px] text-charcoal/60 font-mono">+ KES {formatMoney(rowTax)}</span>
+                          )}
+                        </td>
+
+                        {/* Row amount (before tax) */}
                         <td className="p-3 text-right font-mono font-bold text-charcoal">
                           KES {formatMoney(rowTotal)}
                         </td>
@@ -804,34 +829,51 @@ export default function QuoteGenerator() {
           </div>
         </div>
 
-        {/* Terms & Internal Margin Summary */}
+        {/* Terms & Totals */}
         <div className="flex flex-col md:flex-row items-start justify-between gap-6 p-6 bg-cream/30 rounded-2xl border border-charcoal/10">
-          {/* Quotation Terms & Disclaimer (Kept as editable default) */}
-          <div className="w-full md:w-1/2 space-y-2">
+          {/* Numbered terms & conditions (this quote's own copy; the default is saved separately for quotes) */}
+          <div className="w-full md:flex-1 space-y-2">
             <label className="block text-xs font-bold uppercase tracking-wider text-charcoal/70">
-              Quotation Terms & Disclaimer
+              Terms & Conditions
             </label>
-            <textarea
-              rows={4}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full p-3 bg-white border border-charcoal/10 rounded-xl text-xs text-charcoal/80 focus:outline-none focus:border-ochre leading-relaxed font-sans"
+            <TermsEditor
+              terms={terms}
+              onChange={setTerms}
+              docLabel="quote"
+              savedDefault={settings.quoteTerms}
+              onSaveDefault={(list) => saveSettings({ quoteTerms: list })}
             />
             <p className="text-[11px] text-charcoal/65">
-              This text appears on the client-facing PDF quote.
+              Printed as a numbered list on the client-facing PDF. Changes here only affect this quote unless you save them as the default.
             </p>
           </div>
 
-          {/* Estimate Total & Internal Margin derivations */}
+          {/* Totals & Internal Margin derivations */}
           <div className="w-full md:w-80 space-y-4 bg-white p-5 rounded-2xl border border-charcoal/10 shadow-sm shrink-0">
             {/* Client-Facing Quote Total */}
-            <div className="p-4 bg-ochre/10 rounded-xl border border-ochre/20">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-ochre-dark block">
-                Total Quotation Estimate
-              </span>
-              <span className="font-mono font-black text-xl text-charcoal mt-1 block">
-                KES {formatMoney(totalEstimate)}
-              </span>
+            <div className="p-4 bg-ochre/10 rounded-xl border border-ochre/20 space-y-2">
+              {(totals.taxTotal > 0 || totals.discount > 0) && (
+                <div className="space-y-1 text-xs text-charcoal/70 pb-2 border-b border-ochre/20">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span className="font-mono">KES {formatMoney(totals.subtotal)}</span>
+                  </div>
+                  {totals.taxLines.map(t => (
+                    <div key={t.key} className="flex justify-between">
+                      <span>{t.name} ({Number.isInteger(t.rate) ? t.rate : t.rate.toFixed(2)}%)</span>
+                      <span className="font-mono">+ KES {formatMoney(t.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-ochre-dark block">
+                  {totals.taxTotal > 0 ? 'Total Quotation Estimate (incl. tax)' : 'Total Quotation Estimate'}
+                </span>
+                <span className="font-mono font-black text-xl text-charcoal mt-1 block">
+                  KES {formatMoney(totals.total)}
+                </span>
+              </div>
             </div>
 
             {/* Internal Margin Derived Preview (Owner Only - Not shown on client PDF) */}
@@ -852,7 +894,7 @@ export default function QuoteGenerator() {
                     <span className="font-mono">+KES {formatMoney(estimatedProfit)}</span>
                   </div>
                   <div className="flex justify-between text-[11px] text-emerald-600 font-semibold">
-                    <span>Profit Margin:</span>
+                    <span>Profit Margin (before tax):</span>
                     <span>{marginPercentage}%</span>
                   </div>
                 </div>
@@ -863,6 +905,37 @@ export default function QuoteGenerator() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Payment details: saved presets, same as invoices */}
+        <div className="p-6 bg-white rounded-2xl border border-charcoal/10 shadow-sm">
+          <PaymentDetailsSection
+            title="Payment Details"
+            description="Pick a saved preset or type the details once and preserve them for future quotes."
+            textareaLabel="Payment details printed on this quote"
+            value={paymentDetails}
+            onChange={(v) => {
+              paymentEdited.current = true;
+              setPaymentDetails(v);
+            }}
+            savedEntries={savedPaymentEntries}
+            onSaveAsDefault={(v) => saveSettings({ quotePaymentDetails: v })}
+            defaultLabel="Use as default for new quotes"
+          />
+        </div>
+
+        {/* Optional extra notes */}
+        <div className="space-y-1.5">
+          <label className="block text-xs font-bold uppercase tracking-wider text-charcoal/70">
+            Additional notes (optional)
+          </label>
+          <textarea
+            rows={2}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Anything else the client should know about this quote"
+            className="w-full p-3 bg-white border border-charcoal/10 rounded-xl text-xs text-charcoal/80 focus:outline-none focus:border-ochre leading-relaxed font-sans"
+          />
         </div>
 
         {/* Action Controls */}
@@ -887,7 +960,8 @@ export default function QuoteGenerator() {
           </button>
 
           <button
-            type="submit"
+            type="button"
+            onClick={() => handleGenerate()}
             disabled={isGenerating || isSavingDraft || !clientName.trim()}
             className="w-full sm:w-auto flex items-center justify-center gap-2 bg-ochre hover:bg-ochre-dark text-white text-sm font-bold px-8 py-3 rounded-xl transition-all shadow-lg disabled:opacity-40 cursor-pointer"
           >
@@ -908,7 +982,7 @@ export default function QuoteGenerator() {
             )}
           </button>
         </div>
-      </form>
+      </div>
       )}
 
       {/* Catalog Manager Modal */}
@@ -916,9 +990,19 @@ export default function QuoteGenerator() {
         isOpen={isCatalogOpen}
         onClose={() => {
           setIsCatalogOpen(false);
-          setActiveItemIndexForCatalog(null);
+          setCatalogTargetId(null);
         }}
-        onSelectItem={handleCatalogSelect}
+        onSelectItem={(catItem) => {
+          handleCatalogSelect(catItem);
+          setIsCatalogOpen(false);
+        }}
+      />
+
+      <TaxSettingsModal
+        isOpen={taxModalOpen}
+        onClose={() => setTaxModalOpen(false)}
+        settings={settings}
+        onSave={saveSettings}
       />
     </div>
   );

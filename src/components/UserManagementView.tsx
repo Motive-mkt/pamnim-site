@@ -6,6 +6,7 @@ import { Users, UserPlus, CheckCircle2, Copy, Shield, Phone, Mail, ExternalLink,
 import DeleteClientModal from './DeleteClientModal';
 import { WorkerSkill } from '../types/hrms';
 import { createNotification } from '../services/notificationService';
+import KraPinInput from './KraPinInput';
 
 const SKILLS_LIST: WorkerSkill[] = [
   'Carpenter',
@@ -48,7 +49,8 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
     username: '',
     email: '',
     phone: '',
-    address: ''
+    address: '',
+    kraPin: ''
   });
   const [createdClientResult, setCreatedClientResult] = useState<{ client: any; link: string } | null>(null);
   const [copiedClientId, setCopiedClientId] = useState<string | null>(null);
@@ -161,6 +163,7 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
         email: cleanEmail,
         phone: newClientForm.phone.trim(),
         address: newClientForm.address.trim(),
+        ...(newClientForm.kraPin ? { kraPin: newClientForm.kraPin } : {}),
         role: 'client',
         status: 'invited', // Immediately exists so owner can send quotes/invoices before project starts!
         createdBy: profile?.uid || 'admin',
@@ -198,7 +201,8 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
         username: '',
         email: '',
         phone: '',
-        address: ''
+        address: '',
+        kraPin: ''
       });
 
       setToast({ type: 'success', text: `Client account created for ${clientData.name}!` });
@@ -1143,6 +1147,14 @@ export default function UserManagementView({ onRefreshData }: UserManagementView
                       className="w-full px-4 py-2.5 rounded-xl border border-charcoal/15 bg-white text-xs sm:text-sm font-medium text-charcoal focus:border-ochre focus:outline-none"
                     />
                   </div>
+
+                  <KraPinInput
+                    label="KRA PIN (Optional)"
+                    value={newClientForm.kraPin}
+                    onChange={(v) => setNewClientForm(prev => ({ ...prev, kraPin: v }))}
+                    inputClassName="px-4 py-2.5 rounded-xl border border-charcoal/15 bg-white text-xs sm:text-sm font-medium text-charcoal focus:border-ochre focus:outline-none"
+                    labelClassName="text-xs text-charcoal/70 mb-1"
+                  />
                 </div>
 
                 <p className="text-[11px] text-charcoal/65 leading-relaxed bg-cream/40 p-3 rounded-xl border border-charcoal/10">

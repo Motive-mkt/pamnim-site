@@ -38,6 +38,16 @@ export const PROJECT_SCOPE_OPTIONS = [
   'Commercial / Office Space'
 ] as const;
 
+export const BUDGET_RANGES = [
+  'Under KES 500,000',
+  'KES 500,000 – 1,000,000',
+  'KES 1,000,000 – 2,500,000',
+  'KES 2,500,000 – 5,000,000',
+  'Above KES 5,000,000'
+] as const;
+
+const EXTRA_DETAILS_MAX = 1000;
+
 export const DESIRED_TIMELINES = ['ASAP', 'Within 1 month', '1–3 months', '3–6 months', 'Just exploring'] as const;
 
 export interface LeadQualifyingFormProps {
@@ -68,6 +78,8 @@ export default function LeadQualifyingForm({
   const [locationAddress, setLocationAddress] = useState('');
   const [propertyStatus, setPropertyStatus] = useState<string>(PROPERTY_STATUS_OPTIONS[0].value);
   const [projectScope, setProjectScope] = useState<string>('');
+  const [extraDetails, setExtraDetails] = useState('');
+  const [budgetRange, setBudgetRange] = useState('');
 
   // UI state
   const [submitting, setSubmitting] = useState(false);
@@ -88,6 +100,8 @@ export default function LeadQualifyingForm({
     setLocationAddress('');
     setPropertyStatus(PROPERTY_STATUS_OPTIONS[0].value);
     setProjectScope('');
+    setExtraDetails('');
+    setBudgetRange('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,6 +132,8 @@ export default function LeadQualifyingForm({
     const statusObj = PROPERTY_STATUS_OPTIONS.find((o) => o.value === propertyStatus) || PROPERTY_STATUS_OPTIONS[0];
     const hasActiveProject = statusObj.priority !== 'low';
 
+    const details = extraDetails.trim();
+
     setSubmitting(true);
 
     try {
@@ -138,9 +154,11 @@ export default function LeadQualifyingForm({
         requestType: hasActiveProject ? 'project_request' : 'general_request',
         source,
         status: 'new',
-        message: `[LEAD INTAKE REQUEST]\nProject Scope: ${projectScope}\nProperty Location / Estate: ${locationAddress.trim()}\nSpace Status: ${propertyStatus} (${statusObj.priority.toUpperCase()} PRIORITY)\nPhone / WhatsApp: ${phone.trim()}\nEmail: ${email.trim() || 'Not provided'}`,
+        message: `[LEAD INTAKE REQUEST]\nProject Scope: ${projectScope}\nProperty Location / Estate: ${locationAddress.trim()}\nSpace Status: ${propertyStatus} (${statusObj.priority.toUpperCase()} PRIORITY)\nPhone / WhatsApp: ${phone.trim()}\nEmail: ${email.trim() || 'Not provided'}${budgetRange ? `\nBudget Range: ${budgetRange}` : ''}${details ? `\nExtra Details: ${details}` : ''}`,
         createdAt: new Date().toISOString()
       };
+      if (budgetRange) payload.budgetRange = budgetRange;
+      if (details) payload.extraDetails = details;
 
       await addDoc(collection(db, 'inquiries'), payload);
 
@@ -357,6 +375,40 @@ export default function LeadQualifyingForm({
             })}
           </div>
         </fieldset>
+
+        <div>
+          <label htmlFor={id('details')} className="field-label">
+            Anything else we should know? <span className="font-normal text-charcoal/60">(optional)</span>
+          </label>
+          <textarea
+            id={id('details')}
+            rows={3}
+            maxLength={EXTRA_DETAILS_MAX}
+            placeholder="Rooms involved, style you like, deadlines, access to the site…"
+            value={extraDetails}
+            onChange={(e) => setExtraDetails(e.target.value)}
+            className="field"
+          />
+        </div>
+
+        <div>
+          <label htmlFor={id('budget')} className="field-label">
+            Budget range <span className="font-normal text-charcoal/60">(optional)</span>
+          </label>
+          <select
+            id={id('budget')}
+            value={budgetRange}
+            onChange={(e) => setBudgetRange(e.target.value)}
+            className="field"
+          >
+            <option value="">Prefer to discuss</option>
+            {BUDGET_RANGES.map((range) => (
+              <option key={range} value={range}>
+                {range}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div>
           <label htmlFor={id('scope')} className="field-label">
