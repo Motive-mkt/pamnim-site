@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ModalPortal from './ModalPortal';
 import { X, Plus, Trash2, CheckCircle2, CreditCard, Building2, Smartphone, Banknote, FileSignature, Check, AlertCircle, Bookmark } from 'lucide-react';
 import { 
   SavedPaymentDetail, PaymentMethodType, savePaymentDetailEntry, deletePaymentDetailEntry 
@@ -105,6 +106,7 @@ export default function SavedPaymentDetailsModal({
   };
 
   return (
+    <ModalPortal>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-charcoal/50 overflow-y-auto animate-fade-in">
       <div className="bg-white rounded-3xl w-full max-w-2xl p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto flex flex-col space-y-6">
         
@@ -343,5 +345,6 @@ export default function SavedPaymentDetailsModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

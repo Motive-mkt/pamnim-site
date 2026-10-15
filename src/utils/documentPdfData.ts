@@ -1,4 +1,4 @@
-import { SavedInvoice, SavedQuote } from '../types/documents';
+import { CreditNote, SavedInvoice, SavedQuote } from '../types/documents';
 import { PDFDocumentData, PDFLineItem } from './pdfGenerator';
 import { ItemTax, TaxLineTotal, computeTotals, legacyTaxes } from '../lib/tax';
 
@@ -78,6 +78,7 @@ export function quoteToPDFData(qt: SavedQuote, contact?: CompanyContact): PDFDoc
 
   return {
     docNumber: qt.docNumber,
+    title: qt.title,
     date: qt.date,
     validUntil: qt.validUntil,
     clientName: qt.clientName || 'Valued Client',
@@ -150,9 +151,35 @@ export function invoiceToPDFData(inv: SavedInvoice, contact?: CompanyContact): P
     totalInvoiced: inv.totalInvoiced,
     amountPaid: paid,
     balanceDue: balance,
+    creditedAmount: Number(inv.creditedAmount) || undefined,
     terms: inv.terms,
     paymentDetails: inv.paymentDetails,
     notes: inv.notes,
+    currencySymbol: 'KES',
+    companyInfo: companyInfo(contact)
+  };
+}
+
+// A credit note prints like the invoice it credits, with only the credited lines.
+export function creditNoteToPDFData(inv: SavedInvoice, cn: CreditNote, contact?: CompanyContact): PDFDocumentData {
+  return {
+    docNumber: cn.number,
+    date: cn.date,
+    creditNoteFor: inv.docNumber,
+    clientName: inv.clientName || 'Valued Client',
+    clientEmail: inv.clientEmail,
+    clientPhone: inv.clientPhone,
+    clientAddress: inv.clientAddress,
+    clientKraPin: inv.clientKraPin,
+    ownKraPin: inv.ownKraPin,
+    projectName: inv.projectName,
+    items: toPdfItems(cn.items, undefined),
+    subtotal: cn.subtotal,
+    discount: cn.discount,
+    taxLines: summarise(cn.taxSummary),
+    taxAmount: cn.taxTotal,
+    totalInvoiced: cn.total,
+    notes: cn.reason,
     currencySymbol: 'KES',
     companyInfo: companyInfo(contact)
   };

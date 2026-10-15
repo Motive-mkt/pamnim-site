@@ -18,8 +18,11 @@ import ItemTaxPicker from './ItemTaxPicker';
 import TaxSettingsModal from './TaxSettingsModal';
 import PaymentDetailsSection from './PaymentDetailsSection';
 import KraPinInput from './KraPinInput';
-import { ItemTax, computeTotals, lineTaxAmount, resolveTaxes, legacyTaxes } from '../lib/tax';
+import { ItemTax, computeTotals, lineTaxAmount, resolveTaxes, legacyTaxes, vatSwitchTaxes, vatState, withVat, savedDocHasVat } from '../lib/tax';
+import VatSwitch from './VatSwitch';
 import { useDocumentSettings, DEFAULT_INVOICE_TERMS } from '../lib/documentSettings';
+import { createNumberedDoc, useNextDocNumber } from '../lib/docNumbers';
+import { invoiceBalance, invoiceStatusFor } from '../lib/credit';
 import { subscribeToSavedPaymentDetails, SavedPaymentDetail } from '../services/paymentDetailsService';
 import { CatalogItem } from '../types/catalog';
 import { SavedInvoice, InvoiceStatus, InvoiceMode, RecipientType, InvoiceLineItem, Lead } from '../types/documents';
@@ -37,13 +40,14 @@ function cleanPayload<T extends Record<string, any>>(obj: T): T {
 
 const newLineId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-const blankLine = (): InvoiceLineItem => ({
+const blankLine = (taxes?: ItemTax[]): InvoiceLineItem => ({
   id: newLineId(),
   description: '',
   unit: 'pcs',
   quantity: 1,
   unitPrice: '',
-  amount: 0
+  amount: 0,
+  ...(taxes ? { taxes } : {})
 });
 
 const isBlankLine = (i: InvoiceLineItem) => !i.description.trim() && !(Number(i.unitPrice) > 0);
@@ -52,12 +56,18 @@ export default function InvoiceGenerator() {
   const { content } = useCMS();
   const { profile } = useAuth();
 
-  const defaultInvoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  // Invoice numbers are sequential and assigned when the invoice is first saved
+  const nextInvoiceNumber = useNextDocNumber('invoice');
   const todayStr = new Date().toISOString().split('T')[0];
   const defaultDueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   // Document Metadata
-  const [docNumber, setDocNumber] = useState(defaultInvoiceNumber);
+  const [docNumber, setDocNumber] = useState(''); // '' until the first save assigns the number
+  const docNumberRef = useRef('');
+  const updateDocNumber = (n: string) => {
+    docNumberRef.current = n;
+    setDocNumber(n);
+  };
   const [date, setDate] = useState(todayStr);
   const [dueDate, setDueDate] = useState(defaultDueDate);
 
@@ -102,6 +112,7 @@ export default function InvoiceGenerator() {
   // Saved settings: tax types, own KRA PIN, default terms
   const { settings, loaded: settingsLoaded, save: saveSettings, defaultTaxes } = useDocumentSettings();
   const [taxModalOpen, setTaxModalOpen] = useState(false);
+  const [vatOn, setVatOn] = useState(true); // global VAT switch; new lines follow it
 
   // Payment details block, numbered terms, and optional extra notes
   const [paymentMethodSelection, setPaymentMethodSelection] = useState<'bank' | 'mpesa' | 'cash' | 'cheque' | 'all'>('all');
@@ -318,18 +329,31 @@ export default function InvoiceGenerator() {
 
   // If editing an invoice with payments, lock values
   const currentPaid = editingInvoice ? (Number(editingInvoice.amountPaid) || 0) : 0;
-  const calculatedBalanceDue = Math.max(0, totalInvoicedAmount - currentPaid);
+  const currentCredited = editingInvoice ? (Number(editingInvoice.creditedAmount) || 0) : 0;
+  const calculatedBalanceDue = invoiceBalance(totalInvoicedAmount, currentPaid, currentCredited);
 
   // Line Item Handlers. Every update is functional and keyed by row id, so a row picked from the
   // catalog or two updates in the same tick can never land on the wrong line.
+  const vatTaxes = useMemo(() => vatSwitchTaxes(settings.taxTypes, defaultTaxes), [settings.taxTypes, defaultTaxes]);
+  const vatNow = vatState(taxableLines, defaultTaxes, vatTaxes);
+  // A line added while the switch is off starts without VAT; otherwise it follows the defaults.
+  const newLineTaxes = (): ItemTax[] | undefined => (vatOn ? undefined : withVat(defaultTaxes, vatTaxes, false));
+
+  const setAllVat = (on: boolean) => {
+    if (isLockedInvoice) return;
+    setVatOn(on);
+    setItems(prev => prev.map(i => ({ ...i, taxes: withVat(resolveTaxes(i, defaultTaxes), vatTaxes, on) })));
+    setFreeformTaxes(prev => withVat(resolveTaxes({ taxes: prev }, defaultTaxes), vatTaxes, on));
+  };
+
   const handleAddItem = () => {
     if (isLockedInvoice) return;
-    setItems(prev => [...prev, blankLine()]);
+    setItems(prev => [...prev, blankLine(newLineTaxes())]);
   };
 
   const handleRemoveItem = (id: string) => {
     if (isLockedInvoice) return;
-    setItems(prev => (prev.length <= 1 ? [blankLine()] : prev.filter(i => i.id !== id)));
+    setItems(prev => (prev.length <= 1 ? [blankLine(newLineTaxes())] : prev.filter(i => i.id !== id)));
   };
 
   const handleUpdateItem = (id: string, field: keyof InvoiceLineItem, value: any) => {
@@ -376,7 +400,7 @@ export default function InvoiceGenerator() {
       if (blank) {
         applyCatalogItem(blank.id, catalogItem);
       } else {
-        const row = blankLine();
+        const row = blankLine(newLineTaxes());
         setItems(prev => [...prev, row]);
         // The new row exists after this update; fill it in the same functional pass.
         setItems(prev => prev.map(i => i.id === row.id ? {
@@ -398,7 +422,7 @@ export default function InvoiceGenerator() {
     setEditingInvoiceId(null);
     setEditingInvoice(null);
     setIsLockedInvoice(false);
-    setDocNumber(`INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
+    updateDocNumber('');
     setDate(todayStr);
     setDueDate(defaultDueDate);
     setBuilderMode('itemized');
@@ -414,6 +438,7 @@ export default function InvoiceGenerator() {
     setFreeformDescription('Interior Design Planning & Turnkey Spatial Execution');
     setFreeformAmount('');
     setFreeformTaxes(undefined);
+    setVatOn(true);
     setDiscountValue('');
     setItems([blankLine()]);
     setPaymentMethodSelection('all');
@@ -436,14 +461,13 @@ export default function InvoiceGenerator() {
     defaultsApplied.current = true;
     paymentEdited.current = true; // never let site settings overwrite a loaded invoice
 
-    setDocNumber(asCopy
-      ? `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
-      : (inv.docNumber || `INV-${new Date().getFullYear()}-001`));
+    updateDocNumber(asCopy ? '' : (inv.docNumber || ''));
     setDate(asCopy ? todayStr : (inv.date || todayStr));
     setDueDate(asCopy ? defaultDueDate : (inv.dueDate || defaultDueDate));
 
     // Older invoices stored one document-level rate and no per-item taxes; map it onto each line.
     const fallbackTaxes = legacyTaxes(inv.taxRate);
+    setVatOn(savedDocHasVat((inv.items || []).map(i => ({ taxes: i.taxes ?? fallbackTaxes }))));
 
     if (inv.invoiceMode === 'freeform') {
       setBuilderMode('freeform');
@@ -523,22 +547,19 @@ export default function InvoiceGenerator() {
   };
 
   // The content of the invoice as it is saved AND printed, so the PDF can never differ from the archive.
-  const buildInvoiceFields = (): Record<string, any> => {
+  const buildInvoiceFields = (numberOverride?: string): Record<string, any> => {
     const cleanItems = getCleanLineItems();
     const existingPaid = editingInvoice ? (Number(editingInvoice.amountPaid) || 0) : 0;
-    const finalBalanceDue = Math.max(0, totalInvoicedAmount - existingPaid);
-    const finalStatus: InvoiceStatus = existingPaid >= totalInvoicedAmount && totalInvoicedAmount > 0
-      ? 'paid'
-      : existingPaid > 0
-      ? 'partial'
-      : 'sent';
+    const existingCredited = editingInvoice ? (Number(editingInvoice.creditedAmount) || 0) : 0;
+    const finalBalanceDue = invoiceBalance(totalInvoicedAmount, existingPaid, existingCredited);
+    const finalStatus: InvoiceStatus = invoiceStatusFor(totalInvoicedAmount, existingPaid, existingCredited);
 
     const selectedProj = linkProject && selectedProjectId
       ? projectsList.find(p => p.id === selectedProjectId)
       : null;
 
     return cleanPayload({
-      docNumber,
+      docNumber: numberOverride ?? docNumberRef.current,
       date,
       dueDate,
       invoiceMode: builderMode,
@@ -605,27 +626,31 @@ export default function InvoiceGenerator() {
       return null;
     }
 
-    const invoicePayload: Record<string, any> = {
-      ...buildInvoiceFields(),
-      updatedAt: new Date().toISOString(),
-      createdBy: profile?.name || 'Owner'
-    };
-
     rememberKraPin();
 
     if (editingInvoiceId) {
-      await updateDoc(doc(db, 'invoices', editingInvoiceId), invoicePayload);
-      setSaveSuccessMessage(`Invoice ${docNumber} updated in archive!`);
+      await updateDoc(doc(db, 'invoices', editingInvoiceId), {
+        ...buildInvoiceFields(),
+        updatedAt: new Date().toISOString(),
+        createdBy: profile?.name || 'Owner'
+      });
+      setSaveSuccessMessage(`Invoice ${docNumberRef.current} updated in archive!`);
       setTimeout(() => setSaveSuccessMessage(null), 4000);
       return editingInvoiceId;
-    } else {
-      invoicePayload.createdAt = new Date().toISOString();
-      const docRef = await addDoc(collection(db, 'invoices'), invoicePayload);
-      setEditingInvoiceId(docRef.id);
-      setSaveSuccessMessage(`Invoice ${docNumber} created and saved to archive!`);
-      setTimeout(() => setSaveSuccessMessage(null), 4000);
-      return docRef.id;
     }
+
+    // New invoice: the next sequential number is assigned in the same transaction as the save.
+    const created = await createNumberedDoc('invoice', collection(db, 'invoices'), (n) => ({
+      ...buildInvoiceFields(n),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: profile?.name || 'Owner'
+    }));
+    updateDocNumber(created.docNumber);
+    setEditingInvoiceId(created.id);
+    setSaveSuccessMessage(`Invoice ${created.docNumber} created and saved to archive!`);
+    setTimeout(() => setSaveSuccessMessage(null), 4000);
+    return created.id;
   };
 
   // Single "Create Invoice" button that saves to archive AND generates the download
@@ -813,9 +838,10 @@ export default function InvoiceGenerator() {
                 </label>
                 <input
                   type="text"
+                  readOnly
                   value={docNumber}
-                  onChange={(e) => setDocNumber(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-cream/30 border border-charcoal/15 rounded-xl text-xs font-bold text-charcoal focus:outline-none focus:border-ochre font-mono"
+                  placeholder={nextInvoiceNumber ? `Assigned on save (next: ${nextInvoiceNumber})` : 'Assigned on save'}
+                  className="w-full px-3.5 py-2.5 bg-cream/40 border border-charcoal/15 rounded-xl text-xs font-bold text-charcoal focus:outline-none font-mono cursor-default"
                 />
               </div>
 
@@ -1338,6 +1364,7 @@ export default function InvoiceGenerator() {
                     <span>Tax settings</span>
                   </button>
                 </div>
+                <VatSwitch state={vatNow} onChange={setAllVat} disabled={isLockedInvoice} />
                 <p className="text-xs text-charcoal/70 leading-relaxed">
                   {taxAmount > 0
                     ? `Charged per item: ${totals.taxLines.map(t => `${t.name} ${Number.isInteger(t.rate) ? t.rate : t.rate.toFixed(2)}%`).join(', ')}.`

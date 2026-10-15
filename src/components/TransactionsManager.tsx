@@ -5,6 +5,7 @@ import { useCMS } from '../hooks/useCMS';
 import { PaymentReceipt, SavedInvoice, SavedQuote } from '../types/documents';
 import { WorkerPayment } from '../types/hrms';
 import { generatePaymentReceiptPDF, generateDocumentPDF, formatMoney } from '../utils/pdfGenerator';
+import { invoiceToPDFData, quoteToPDFData } from '../utils/documentPdfData';
 import { 
   Receipt, Search, Filter, Download, ArrowUpDown, Calendar, 
   CreditCard, DollarSign, Wallet, Building2, User, RefreshCw, FileText, 
@@ -12,6 +13,7 @@ import {
   FileSignature, Layers, Clock
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import AccountantReport from './AccountantReport';
 
 export type TransactionType = 'client_payment' | 'worker_payout' | 'project_expense' | 'invoice' | 'quote';
 export type TransactionDirection = 'inflow' | 'outflow';
@@ -50,6 +52,7 @@ export default function TransactionsManager() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [docFilter, setDocFilter] = useState<DocumentFilterType>('all');
+  const [showAccountantReport, setShowAccountantReport] = useState(false);
   const [selectedType, setSelectedType] = useState<'all' | TransactionType>('all');
   const [selectedDirection, setSelectedDirection] = useState<'all' | TransactionDirection>('all');
   const [selectedMethod, setSelectedMethod] = useState<string>('all');
@@ -501,37 +504,7 @@ export default function TransactionsManager() {
   const handleDownloadInvoicePDF = async (inv: SavedInvoice) => {
     try {
       setDownloadingId(inv.id || inv.docNumber);
-      const invoiceData = {
-        docNumber: inv.docNumber,
-        date: inv.date,
-        dueDate: inv.dueDate,
-        clientName: inv.clientName || 'Client',
-        clientEmail: inv.clientEmail,
-        clientPhone: inv.clientPhone,
-        clientAddress: inv.clientAddress,
-        projectName: inv.projectName,
-        items: (inv.items || []).map((i: any) => ({
-          id: i.id || Math.random().toString(),
-          description: i.unit ? `${i.description || i.name} (${i.quantity} ${i.unit})` : (i.description || i.name || 'Item'),
-          quantity: Number(i.quantity) || 1,
-          unitPrice: Number(i.unitPrice) || 0,
-          amount: Number(i.amount) || ((Number(i.quantity) || 1) * (Number(i.unitPrice) || 0))
-        })),
-        subtotal: inv.subtotal || inv.totalInvoiced || 0,
-        discount: inv.discount,
-        taxAmount: inv.taxAmount,
-        total: inv.totalInvoiced || 0,
-        amountPaid: inv.amountPaid || 0,
-        balanceDue: inv.balanceDue ?? ((inv.totalInvoiced || 0) - (inv.amountPaid || 0)),
-        notes: inv.notes || '',
-        status: inv.status,
-        companyInfo: {
-          name: 'Pamnim Interior Designers',
-          address: content.contact?.address || 'Nairobi, Kenya',
-          phone: content.contact?.phone || '+254 714 984 268',
-          email: content.contact?.email || 'hinteriors01@gmail.com'
-        }
-      };
+      const invoiceData = invoiceToPDFData(inv, content.contact);
       await generateDocumentPDF('invoice', invoiceData);
     } catch (err) {
       console.error('Failed to generate invoice PDF:', err);
@@ -544,33 +517,7 @@ export default function TransactionsManager() {
   const handleDownloadQuotePDF = async (qt: SavedQuote) => {
     try {
       setDownloadingId(qt.id || qt.docNumber);
-      const quoteData = {
-        docNumber: qt.docNumber,
-        date: qt.date,
-        validUntil: qt.validUntil,
-        clientName: qt.clientName || 'Client',
-        clientEmail: qt.clientEmail,
-        clientPhone: qt.clientPhone,
-        clientAddress: qt.clientAddress,
-        projectName: qt.projectName,
-        items: (qt.items || []).map((i: any) => ({
-          id: i.id || Math.random().toString(),
-          description: i.unit ? `${i.description || i.name} (${i.quantity} ${i.unit})` : (i.description || i.name || 'Item'),
-          quantity: Number(i.quantity) || 1,
-          unitPrice: Number(i.unitPrice) || 0,
-          amount: Number(i.amount) || ((Number(i.quantity) || 1) * (Number(i.unitPrice) || 0))
-        })),
-        subtotal: qt.subtotal || 0,
-        total: qt.subtotal || 0,
-        notes: qt.notes || '',
-        status: qt.status,
-        companyInfo: {
-          name: 'Pamnim Interior Designers',
-          address: content.contact?.address || 'Nairobi, Kenya',
-          phone: content.contact?.phone || '+254 714 984 268',
-          email: content.contact?.email || 'hinteriors01@gmail.com'
-        }
-      };
+      const quoteData = quoteToPDFData(qt, content.contact);
       await generateDocumentPDF('quote', quoteData);
     } catch (err) {
       console.error('Failed to generate quote PDF:', err);
@@ -652,6 +599,14 @@ export default function TransactionsManager() {
             <span className="hidden sm:inline">Refresh</span>
           </button>
 
+          <button
+            type="button"
+            onClick={() => setShowAccountantReport(true)}
+            className="px-4 py-2.5 rounded-xl border border-ochre/40 bg-ochre/10 text-ochre-dark hover:bg-ochre hover:text-white transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>VAT & accountant report</span>
+          </button>
           <button
             onClick={handleExportCSV}
             className="px-4 py-2.5 rounded-xl bg-charcoal text-white hover:bg-ochre transition-all text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
@@ -1306,6 +1261,7 @@ export default function TransactionsManager() {
           </div>
         )}
       </div>
+      {showAccountantReport && <AccountantReport onClose={() => setShowAccountantReport(false)} />}
     </div>
   );
 }

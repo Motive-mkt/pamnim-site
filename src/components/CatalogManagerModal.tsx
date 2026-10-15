@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ModalPortal from './ModalPortal';
 import { 
   collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy 
 } from 'firebase/firestore';
@@ -205,6 +206,7 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
   });
 
   return (
+    <ModalPortal>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 sm:p-6 overflow-y-auto">
       <div className="bg-white w-full max-w-4xl rounded-3xl border border-charcoal/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
@@ -535,5 +537,6 @@ export default function CatalogManagerModal({ isOpen, onClose, onSelectItem, ini
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

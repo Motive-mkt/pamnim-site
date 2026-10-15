@@ -133,3 +133,36 @@ export function normalizeKraPin(value: string): string {
 export function isValidKraPin(value: string): boolean {
   return /^[A-Z]\d{9}[A-Z]$/.test(value || '');
 }
+
+// ---- Global VAT switch ------------------------------------------------
+
+// The taxes the one-click "VAT on all items" switch controls: the default taxes, or if the owner
+// removed every default, the first tax type that is switched on.
+export function vatSwitchTaxes(types: TaxType[], defaults: ItemTax[]): ItemTax[] {
+  if (defaults.length > 0) return defaults;
+  const first = types.find(t => t.enabled);
+  return first ? [toItemTax(first)] : [];
+}
+
+export type VatState = 'on' | 'off' | 'mixed';
+
+export function vatState(lines: { taxes?: ItemTax[] }[], defaults: ItemTax[], vat: ItemTax[]): VatState {
+  if (lines.length === 0 || vat.length === 0) return 'off';
+  const withVat = lines.filter(l => {
+    const taxes = resolveTaxes(l, defaults);
+    return vat.every(v => taxes.some(t => t.id === v.id));
+  }).length;
+  if (withVat === lines.length) return 'on';
+  return withVat === 0 ? 'off' : 'mixed';
+}
+
+// Turn the VAT taxes on or off for one line, leaving any other tax it carries untouched.
+export function withVat(taxes: ItemTax[], vat: ItemTax[], on: boolean): ItemTax[] {
+  const rest = taxes.filter(t => !vat.some(v => v.id === t.id));
+  return on ? [...vat, ...rest] : rest;
+}
+
+// A saved document counts as "VAT on" if any of its lines carries a tax named VAT.
+export function savedDocHasVat(lines: { taxes?: ItemTax[] }[]): boolean {
+  return lines.length === 0 || lines.some(l => (l.taxes || []).some(t => /vat/i.test(t.name) && Number(t.rate) > 0));
+}

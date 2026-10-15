@@ -46,6 +46,22 @@ export interface PaymentReceipt {
   createdAt: string;
 }
 
+// A credit note reduces what a client owes on an invoice (return, discount after the fact, error).
+// It is stored on the invoice itself, so no extra Firestore collection or rule is needed.
+export interface CreditNote {
+  number: string;
+  date: string;
+  reason: string;
+  items: InvoiceLineItem[];
+  subtotal: number; // before discount and tax
+  discount?: number;
+  taxSummary: TaxLineTotal[];
+  taxTotal: number;
+  total: number; // credited amount, tax included
+  createdAt: string;
+  createdBy?: string;
+}
+
 export interface SavedInvoice {
   id?: string;
   docNumber: string;
@@ -74,6 +90,8 @@ export interface SavedInvoice {
   terms?: string[];
   paymentDetails?: string;
   totalInvoiced: number;
+  creditedAmount?: number; // sum of credit notes (the original total never changes)
+  creditNotes?: CreditNote[];
   amountPaid: number;
   balanceDue: number;
   notes: string;
@@ -90,6 +108,7 @@ export interface SavedInvoice {
 export interface SavedQuote {
   id?: string;
   docNumber: string;
+  title?: string; // custom heading printed at the top of the PDF (default QUOTATION)
   date: string;
   validUntil: string;
   clientId?: string;

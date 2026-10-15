@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import ModalPortal from './ModalPortal';
 import { X, Plus, Trash2, Percent, CheckCircle2 } from 'lucide-react';
 import { DocumentSettings } from '../lib/documentSettings';
 import { TaxType } from '../lib/tax';
@@ -93,6 +94,7 @@ export default function TaxSettingsModal({ isOpen, onClose, settings, onSave }: 
   };
 
   return (
+    <ModalPortal>
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-charcoal/50 overflow-y-auto animate-fade-in">
       <div className="bg-white rounded-3xl w-full max-w-2xl p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto space-y-6">
         <div className="flex items-start justify-between border-b border-charcoal/10 pb-4">
@@ -250,5 +252,6 @@ export default function TaxSettingsModal({ isOpen, onClose, settings, onSave }: 
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
