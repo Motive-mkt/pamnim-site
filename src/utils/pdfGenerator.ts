@@ -32,6 +32,9 @@ export interface PDFDocumentData {
   clientAddress?: string;
   clientKraPin?: string;
   ownKraPin?: string; // the business's own KRA PIN, printed in the header
+  title?: string; // quotes: the heading printed in bold at the very top of the page (default QUOTATION)
+  creditNoteFor?: string; // set on a credit note: the number of the invoice it credits
+  creditedAmount?: number; // on an invoice: total of credit notes issued against it
   projectName?: string;
   items: PDFLineItem[];
   taxLines?: PDFTaxLine[]; // one entry per tax type, already totalled
@@ -97,8 +100,25 @@ export async function buildDocumentPDF(
   const borderGray = [225, 222, 215]; // #E1DED7
   const mutedText = [120, 115, 110]; // #78736E
 
-  // 1. Header: Logo (Top-Left)
+  // 0. Quotes: the document title sits at the very top of the page, above the logo
   let yPos = margin;
+  if (type === 'quote') {
+    const quoteTitle = (data.title || '').trim() || 'QUOTATION';
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
+    const titleLines: string[] = doc.splitTextToSize(quoteTitle, contentWidth).slice(0, 2);
+    titleLines.forEach((line, i) => {
+      doc.text(line, pageWidth / 2, yPos + 7 + i * 9, { align: 'center' });
+    });
+    yPos += titleLines.length * 9 + 4;
+    doc.setDrawColor(goldOchre[0], goldOchre[1], goldOchre[2]);
+    doc.setLineWidth(0.8);
+    doc.line(pageWidth / 2 - 15, yPos - 2, pageWidth / 2 + 15, yPos - 2);
+    yPos += 5;
+  }
+
+  // 1. Header: Logo (Top-Left)
   let logoLoaded = false;
 
   try {
@@ -172,32 +192,42 @@ export async function buildDocumentPDF(
 
   // 2. Document Title & Metadata
   const isInvoice = type === 'invoice';
-  const docTitle = isInvoice ? 'INVOICE' : 'QUOTATION';
+  const isCreditNote = isInvoice && !!data.creditNoteFor; // laid out like an invoice, but a credit
+  const docTitle = isCreditNote ? 'CREDIT NOTE' : isInvoice ? 'INVOICE' : 'QUOTATION';
   const titleColor = isInvoice ? crimsonRed : goldOchre;
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(20);
-  doc.setTextColor(titleColor[0], titleColor[1], titleColor[2]);
-  doc.text(docTitle, margin, yPos + 5);
+  // Quotes already carry their title at the top of the page; invoices and credit notes keep it here.
+  const metaX = isInvoice ? pageWidth - margin : margin;
+  const metaAlign: 'left' | 'right' = isInvoice ? 'right' : 'left';
+  if (isInvoice) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(titleColor[0], titleColor[1], titleColor[2]);
+    doc.text(docTitle, margin, yPos + 5);
+  }
 
   // Meta details (Right side of title)
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
-  doc.text(`${isInvoice ? 'Invoice No:' : 'Quote No:'} ${data.docNumber}`, pageWidth - margin, yPos + 1, { align: 'right' });
+  doc.text(`${isCreditNote ? 'Credit Note No:' : isInvoice ? 'Invoice No:' : 'Quote No:'} ${data.docNumber}`, metaX, yPos + 1, { align: metaAlign });
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
-  doc.text(`Date: ${data.date}`, pageWidth - margin, yPos + 5.5, { align: 'right' });
+  doc.text(`Date: ${data.date}`, metaX, yPos + 5.5, { align: metaAlign });
 
-  if (isInvoice && data.dueDate) {
+  if (isCreditNote) {
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(crimsonRed[0], crimsonRed[1], crimsonRed[2]);
-    doc.text(`Due Date: ${data.dueDate}`, pageWidth - margin, yPos + 10, { align: 'right' });
+    doc.text(`Against Invoice: ${data.creditNoteFor}`, metaX, yPos + 10, { align: metaAlign });
+  } else if (isInvoice && data.dueDate) {
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(crimsonRed[0], crimsonRed[1], crimsonRed[2]);
+    doc.text(`Due Date: ${data.dueDate}`, metaX, yPos + 10, { align: metaAlign });
   } else if (!isInvoice && data.validUntil) {
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(goldOchre[0], goldOchre[1], goldOchre[2]);
-    doc.text(`Valid Until: ${data.validUntil}`, pageWidth - margin, yPos + 10, { align: 'right' });
+    doc.text(`Valid Until: ${data.validUntil}`, metaX, yPos + 10, { align: metaAlign });
   }
 
   yPos += 15;
@@ -222,7 +252,7 @@ export async function buildDocumentPDF(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(goldOchre[0], goldOchre[1], goldOchre[2]);
-  doc.text(isInvoice ? 'BILL TO:' : 'PREPARED FOR:', margin + 5, cardY + 5.5);
+  doc.text(isCreditNote ? 'CREDITED TO:' : isInvoice ? 'BILL TO:' : 'PREPARED FOR:', margin + 5, cardY + 5.5);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
@@ -453,7 +483,21 @@ export async function buildDocumentPDF(
     });
   }
 
-  if (isInvoice) {
+  if (isCreditNote) {
+    // A credit note ends with the amount credited, not a payment balance.
+    ensureSpace(14);
+    doc.setFillColor(254, 242, 242);
+    doc.roundedRect(summaryBoxX - 2, yPos, summaryBoxW + 2, 8.5, 1.5, 1.5, 'F');
+    doc.setDrawColor(crimsonRed[0], crimsonRed[1], crimsonRed[2]);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(summaryBoxX - 2, yPos, summaryBoxW + 2, 8.5, 1.5, 1.5, 'S');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(crimsonRed[0], crimsonRed[1], crimsonRed[2]);
+    doc.text('Total Credit:', summaryBoxX + 2, yPos + 5.8);
+    doc.text(formatMoney(grandTotal), pageWidth - margin - 2, yPos + 5.8, { align: 'right' });
+    yPos += 14;
+  } else if (isInvoice) {
     const totalPaid = typeof data.amountPaid === 'number' ? data.amountPaid : 0;
     const balanceDue = typeof data.balanceDue === 'number'
       ? data.balanceDue
@@ -468,6 +512,16 @@ export async function buildDocumentPDF(
     doc.setTextColor(charcoal[0], charcoal[1], charcoal[2]);
     doc.text(formatMoney(grandTotal), pageWidth - margin, yPos + 4, { align: 'right' });
     yPos += 7;
+
+    if (Number(data.creditedAmount) > 0) {
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
+      doc.text('Credit Notes:', summaryBoxX, yPos + 4);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(crimsonRed[0], crimsonRed[1], crimsonRed[2]);
+      doc.text(`- ${formatMoney(Number(data.creditedAmount))}`, pageWidth - margin, yPos + 4, { align: 'right' });
+      yPos += 7;
+    }
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(mutedText[0], mutedText[1], mutedText[2]);
@@ -560,7 +614,7 @@ export async function buildDocumentPDF(
     const hasNewBlocks = termList.length > 0 || !!(data.paymentDetails && data.paymentDetails.trim());
     const notesHeading = hasNewBlocks
       ? 'NOTES'
-      : (isInvoice ? 'PAYMENT INSTRUCTIONS & NOTES' : 'ESTIMATE NOTES & TERMS');
+      : (isCreditNote ? 'REASON FOR CREDIT' : isInvoice ? 'PAYMENT INSTRUCTIONS & NOTES' : 'ESTIMATE NOTES & TERMS');
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
@@ -616,7 +670,9 @@ export async function buildDocumentPDF(
   // 8. Return doc & filename
   const sanitizedClient = (data.clientName || 'Client').replace(/[^a-zA-Z0-9_-]/g, '_');
   const sanitizedDoc = (data.docNumber || 'Doc').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const filename = isInvoice
+  const filename = isCreditNote
+    ? `CreditNote_${sanitizedDoc}_${sanitizedClient}.pdf`
+    : isInvoice
     ? `Invoice_${sanitizedDoc}_${sanitizedClient}.pdf`
     : `Quote_${sanitizedDoc}_${sanitizedClient}.pdf`;
 

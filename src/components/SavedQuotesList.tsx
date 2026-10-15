@@ -7,6 +7,7 @@ import {
   Clock, AlertCircle, RefreshCw, Plus, Filter, Calendar
 } from 'lucide-react';
 import { generateDocumentPDF, formatMoney } from '../utils/pdfGenerator';
+import { quoteToPDFData } from '../utils/documentPdfData';
 import { useCMS } from '../hooks/useCMS';
 import { cn } from '../lib/utils';
 
@@ -71,45 +72,7 @@ export default function SavedQuotesList({
     if (!qt.id) return;
     setDownloadingId(qt.id);
     try {
-      const pdfItems = (qt.items || [])
-        .filter(i => i.description?.trim() || Number(i.quantity) > 0)
-        .map(i => {
-          const qty = Number(i.quantity) || 1;
-          const uPrice = Number(i.unitPrice) || 0;
-          return {
-            id: i.id,
-            description: i.description,
-            quantity: qty,
-            unitPrice: uPrice,
-            amount: qty * uPrice
-          };
-        });
-
-      await generateDocumentPDF('quote', {
-        docNumber: qt.docNumber,
-        date: qt.date,
-        validUntil: qt.validUntil,
-        clientName: qt.clientName,
-        clientEmail: qt.clientEmail,
-        clientPhone: qt.clientPhone,
-        projectName: qt.projectName,
-        items: pdfItems.length > 0 ? pdfItems : [{
-          id: '1',
-          description: 'Design Services Scope',
-          quantity: 1,
-          unitPrice: qt.subtotal || 0,
-          amount: qt.subtotal || 0
-        }],
-        notes: qt.notes,
-        currencySymbol: 'KES',
-        companyInfo: {
-          name: 'Pamnim Interior Designers',
-          address: content.contact?.address || 'Nairobi, Kenya',
-          phone: content.contact?.phone || '0714 984 268',
-          email: content.contact?.email || 'hinteriors01@gmail.com',
-          tagline: 'Shinning outside, beautiful inside'
-        }
-      });
+      await generateDocumentPDF('quote', quoteToPDFData(qt, content.contact));
     } catch (err) {
       console.error('PDF download error:', err);
       alert('Failed to generate PDF.');

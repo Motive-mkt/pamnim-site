@@ -15,8 +15,10 @@ import CatalogAutocomplete from './CatalogAutocomplete';
 import SavedQuotesList from './SavedQuotesList';
 import { CatalogItem } from '../types/catalog';
 import { SavedQuote, QuoteStatus } from '../types/documents';
-import { ItemTax, computeTotals, lineTaxAmount, resolveTaxes } from '../lib/tax';
+import { ItemTax, computeTotals, lineTaxAmount, resolveTaxes, vatSwitchTaxes, vatState, withVat, savedDocHasVat } from '../lib/tax';
+import VatSwitch from './VatSwitch';
 import { useDocumentSettings, DEFAULT_QUOTE_TERMS } from '../lib/documentSettings';
+import { createNumberedDoc, useNextDocNumber } from '../lib/docNumbers';
 import { subscribeToSavedPaymentDetails, SavedPaymentDetail } from '../services/paymentDetailsService';
 import TermsEditor from './TermsEditor';
 import ItemTaxPicker from './ItemTaxPicker';
@@ -37,12 +39,13 @@ export interface QuoteLineItem {
 
 const newLineId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-const blankLine = (): QuoteLineItem => ({
+const blankLine = (taxes?: ItemTax[]): QuoteLineItem => ({
   id: newLineId(),
   description: '',
   quantity: 1,
   unitPrice: '',
-  purchasePrice: 0
+  purchasePrice: 0,
+  ...(taxes ? { taxes } : {})
 });
 
 const isBlankLine = (i: QuoteLineItem) => !i.description.trim() && !(Number(i.unitPrice) > 0);
@@ -51,8 +54,8 @@ export default function QuoteGenerator() {
   const { content } = useCMS();
   const { profile } = useAuth();
 
-  // Initial auto-generated Quote ID and dates
-  const defaultQuoteNumber = `QT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  // Quote numbers are sequential and assigned when the quote is first saved
+  const nextQuoteNumber = useNextDocNumber('quote');
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
 
@@ -60,7 +63,13 @@ export default function QuoteGenerator() {
   const validUntilDefault = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   // Document Metadata
-  const [docNumber, setDocNumber] = useState(defaultQuoteNumber);
+  const [docNumber, setDocNumber] = useState(''); // '' until the first save assigns the number
+  const docNumberRef = useRef('');
+  const updateDocNumber = (n: string) => {
+    docNumberRef.current = n;
+    setDocNumber(n);
+  };
+  const [quoteTitle, setQuoteTitle] = useState('QUOTATION'); // heading printed in bold at the top of the PDF
   const [date, setDate] = useState(todayStr);
   const [validUntil, setValidUntil] = useState(validUntilDefault);
 
@@ -77,6 +86,7 @@ export default function QuoteGenerator() {
   // Saved settings: tax types, own KRA PIN, default terms and default payment details
   const { settings, loaded: settingsLoaded, save: saveSettings, defaultTaxes } = useDocumentSettings();
   const [taxModalOpen, setTaxModalOpen] = useState(false);
+  const [vatOn, setVatOn] = useState(true); // global VAT switch; new lines follow it
 
   // Payment details: site settings are the fallback when no saved default exists
   const getCompiledPaymentDetails = () => {
@@ -202,12 +212,22 @@ export default function QuoteGenerator() {
 
   // Item Handlers. Every update is functional and keyed by row id, so two updates in the same
   // tick (typing + picking a suggestion) or a row picked from the catalog can never land on the wrong line.
+  const vatTaxes = useMemo(() => vatSwitchTaxes(settings.taxTypes, defaultTaxes), [settings.taxTypes, defaultTaxes]);
+  const vatNow = vatState(items, defaultTaxes, vatTaxes);
+  // A line added while the switch is off starts without VAT; otherwise it follows the defaults.
+  const newLineTaxes = (): ItemTax[] | undefined => (vatOn ? undefined : withVat(defaultTaxes, vatTaxes, false));
+
+  const setAllVat = (on: boolean) => {
+    setVatOn(on);
+    setItems(prev => prev.map(i => ({ ...i, taxes: withVat(resolveTaxes(i, defaultTaxes), vatTaxes, on) })));
+  };
+
   const handleAddItem = () => {
-    setItems(prev => [...prev, blankLine()]);
+    setItems(prev => [...prev, blankLine(newLineTaxes())]);
   };
 
   const handleRemoveItem = (id: string) => {
-    setItems(prev => (prev.length <= 1 ? [blankLine()] : prev.filter(item => item.id !== id)));
+    setItems(prev => (prev.length <= 1 ? [blankLine(newLineTaxes())] : prev.filter(item => item.id !== id)));
   };
 
   const handleUpdateItem = (id: string, field: keyof QuoteLineItem, value: any) => {
@@ -242,7 +262,7 @@ export default function QuoteGenerator() {
     if (blank) {
       setCatalogTargetId(blank.id);
     } else {
-      const row = blankLine();
+      const row = blankLine(newLineTaxes());
       setItems(prev => [...prev, row]);
       setCatalogTargetId(row.id);
     }
@@ -251,7 +271,8 @@ export default function QuoteGenerator() {
 
   const resetForNewQuote = () => {
     setEditingQuoteId(null);
-    setDocNumber(`QT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
+    updateDocNumber('');
+    setQuoteTitle('QUOTATION');
     setDate(todayStr);
     setValidUntil(validUntilDefault);
     setSelectedClientId('');
@@ -261,6 +282,7 @@ export default function QuoteGenerator() {
     setClientPhone('');
     setClientKraPin('');
     setProjectName('');
+    setVatOn(true);
     setItems([blankLine()]);
     setTerms([...settings.quoteTerms]);
     paymentEdited.current = false;
@@ -279,9 +301,8 @@ export default function QuoteGenerator() {
     defaultsApplied.current = true;
     paymentEdited.current = true; // never let site settings overwrite a loaded quote
     setEditingQuoteId(asCopy ? null : (qt.id || null));
-    setDocNumber(asCopy
-      ? `QT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
-      : (qt.docNumber || `QT-${new Date().getFullYear()}-001`));
+    updateDocNumber(asCopy ? '' : (qt.docNumber || ''));
+    setQuoteTitle(qt.title || 'QUOTATION');
     setDate(asCopy ? todayStr : (qt.date || todayStr));
     setValidUntil(asCopy ? validUntilDefault : (qt.validUntil || validUntilDefault));
     setSelectedClientId(qt.clientId || '');
@@ -303,8 +324,10 @@ export default function QuoteGenerator() {
         id: asCopy ? newLineId() : (i.id || newLineId()),
         taxes: i.taxes ?? []
       })));
+      setVatOn(savedDocHasVat(qt.items.map(i => ({ taxes: i.taxes ?? [] }))));
     } else {
       setItems([blankLine()]);
+      setVatOn(true);
     }
     setActiveView('generator');
   };
@@ -313,7 +336,7 @@ export default function QuoteGenerator() {
   const handleDuplicateQuote = (qt: SavedQuote) => applySavedQuote(qt, true);
 
   // The content of the quote as it is saved AND printed, so the PDF can never differ from the archive.
-  const buildQuoteFields = () => {
+  const buildQuoteFields = (numberOverride?: string) => {
     const activeItems = items.filter(i => !isBlankLine(i));
     const cleanedItems = activeItems.map(i => {
       const itemObj: Record<string, any> = {
@@ -330,7 +353,8 @@ export default function QuoteGenerator() {
     });
 
     const fields: Record<string, any> = {
-      docNumber,
+      docNumber: numberOverride ?? docNumberRef.current,
+      title: quoteTitle.trim() || 'QUOTATION',
       date,
       validUntil,
       clientName: clientName.trim(),
@@ -379,8 +403,7 @@ export default function QuoteGenerator() {
     try {
       setIsSavingDraft(true);
 
-      const quoteData: Record<string, any> = {
-        ...buildQuoteFields(),
+      const meta = {
         status: customStatus || 'sent',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -390,21 +413,27 @@ export default function QuoteGenerator() {
       rememberClientKraPin();
 
       if (editingQuoteId) {
-        // An edit keeps its original creation date.
-        delete quoteData.createdAt;
+        // An edit keeps its original creation date and number.
+        const { createdAt: _keep, ...editMeta } = meta;
         await updateDoc(doc(db, 'quotes', editingQuoteId), {
-          ...quoteData,
+          ...buildQuoteFields(),
+          ...editMeta,
           updatedAt: new Date().toISOString()
         });
-        setSaveSuccessMessage(`Quotation ${docNumber} updated in archive!`);
+        setSaveSuccessMessage(`Quotation ${docNumberRef.current} updated in archive!`);
         setTimeout(() => setSaveSuccessMessage(null), 4000);
         return editingQuoteId;
       } else {
-        const docRef = await addDoc(collection(db, 'quotes'), quoteData);
-        setEditingQuoteId(docRef.id);
-        setSaveSuccessMessage(`Quotation ${docNumber} saved to archive!`);
+        // New quote: the next sequential number is assigned in the same transaction as the save.
+        const created = await createNumberedDoc('quote', collection(db, 'quotes'), (n) => ({
+          ...buildQuoteFields(n),
+          ...meta
+        }));
+        updateDocNumber(created.docNumber);
+        setEditingQuoteId(created.id);
+        setSaveSuccessMessage(`Quotation ${created.docNumber} saved to archive!`);
         setTimeout(() => setSaveSuccessMessage(null), 4000);
-        return docRef.id;
+        return created.id;
       }
     } catch (err: any) {
       console.error('Error saving quotation to Firestore:', err);
@@ -565,12 +594,25 @@ export default function QuoteGenerator() {
             </h3>
 
             <div>
+              <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Quote title (printed at the top)</label>
+              <input
+                type="text"
+                value={quoteTitle}
+                maxLength={80}
+                onChange={(e) => setQuoteTitle(e.target.value)}
+                placeholder="QUOTATION"
+                className="w-full p-2.5 bg-white border border-charcoal/10 rounded-xl text-xs font-bold focus:outline-none focus:border-ochre"
+              />
+            </div>
+
+            <div>
               <label className="block text-[11px] font-bold uppercase text-charcoal/60 mb-1">Quote Number</label>
               <input
                 type="text"
+                readOnly
                 value={docNumber}
-                onChange={(e) => setDocNumber(e.target.value)}
-                className="w-full p-2.5 bg-white border border-charcoal/10 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-ochre"
+                placeholder={nextQuoteNumber ? `Assigned on save (next: ${nextQuoteNumber})` : 'Assigned on save'}
+                className="w-full p-2.5 bg-cream/40 border border-charcoal/10 rounded-xl text-xs font-mono font-bold text-charcoal focus:outline-none cursor-default"
               />
             </div>
 
@@ -693,7 +735,8 @@ export default function QuoteGenerator() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <VatSwitch state={vatNow} onChange={setAllVat} />
               <button
                 type="button"
                 onClick={() => setTaxModalOpen(true)}

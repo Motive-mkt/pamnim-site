@@ -3,13 +3,18 @@ import {
   collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, addDoc, getDocs 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { SavedInvoice, InvoiceStatus, PaymentReceipt } from '../types/documents';
+import { SavedInvoice, InvoiceStatus, PaymentReceipt, CreditNote } from '../types/documents';
 import { 
   FileText, Search, Download, Edit2, Copy, Trash2, CheckCircle2, 
   Clock, AlertCircle, RefreshCw, Plus, ExternalLink, Filter, Calendar,
-  CreditCard, Receipt, DollarSign, X, Check, Share2, Printer, Lock
+  CreditCard, Receipt, DollarSign, X, Check, Share2, Printer, Lock, FileMinus
 } from 'lucide-react';
 import { generateDocumentPDF, shareDocumentPDF, generatePaymentReceiptPDF, formatMoney } from '../utils/pdfGenerator';
+import { invoiceToPDFData, creditNoteToPDFData } from '../utils/documentPdfData';
+import CreditNoteModal from './CreditNoteModal';
+import { creditableRemaining } from '../lib/creditNotes';
+import { createNumberedDoc } from '../lib/docNumbers';
+import { invoiceBalance, invoiceStatusFor } from '../lib/credit';
 import { useCMS } from '../hooks/useCMS';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
@@ -47,6 +52,8 @@ export default function SavedInvoicesList({
   const [printingId, setPrintingId] = useState<string | null>(null);
   const [invoiceToDelete, setInvoiceToDelete] = useState<SavedInvoice | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [creditInvoice, setCreditInvoice] = useState<SavedInvoice | null>(null);
+  const [creditToast, setCreditToast] = useState<string | null>(null);
 
   // Payment Recording Modal State
   const [paymentInvoice, setPaymentInvoice] = useState<SavedInvoice | null>(null);
@@ -83,61 +90,19 @@ export default function SavedInvoicesList({
   }, []);
 
   // Compute calculated status: purely from sum of payments vs balance
-  const computeCalculatedStatus = (inv: SavedInvoice): InvoiceStatus => {
-    const total = Number(inv.totalInvoiced) || 0;
-    const paid = Number(inv.amountPaid) || 0;
-    if (paid >= total && total > 0) return 'paid';
-    if (paid > 0 && paid < total) return 'partial';
-    return 'sent'; // Unpaid
+  const computeCalculatedStatus = (inv: SavedInvoice): InvoiceStatus =>
+    invoiceStatusFor(Number(inv.totalInvoiced) || 0, Number(inv.amountPaid) || 0, Number(inv.creditedAmount) || 0);
+
+  const downloadCreditNote = async (inv: SavedInvoice, cn: CreditNote) => {
+    try {
+      await generateDocumentPDF('invoice', creditNoteToPDFData(inv, cn, content.contact));
+    } catch (err) {
+      console.error('Credit note PDF error:', err);
+      alert('Could not generate the credit note PDF. It is saved on the invoice; try the download chip again.');
+    }
   };
 
-  const buildPDFData = (inv: SavedInvoice) => {
-    const pdfItems = (inv.items || [])
-      .filter(i => (i.description || i.name)?.trim() || Number(i.unitPrice || i.amount) > 0)
-      .map(i => ({
-        id: i.id,
-        description: i.description || i.name || 'Custom Spatial Item',
-        quantity: typeof i.quantity === 'number' ? i.quantity : 1,
-        unitPrice: typeof i.unitPrice === 'number' ? i.unitPrice : (Number(i.amount) || 0),
-        amount: Number(i.amount) || ((typeof i.quantity === 'number' ? i.quantity : 1) * (typeof i.unitPrice === 'number' ? i.unitPrice : 0)),
-        paymentType: i.paymentType,
-        refCode: i.refCode || '—',
-        date: i.date || inv.date
-      }));
-
-    return {
-      docNumber: inv.docNumber,
-      date: inv.date,
-      dueDate: inv.dueDate,
-      invoiceMode: inv.invoiceMode === 'itemized' ? 'pay_later' as const : 'walk_in' as const,
-      clientName: inv.clientName || 'Valued Client',
-      clientEmail: inv.clientEmail,
-      clientPhone: inv.clientPhone,
-      projectName: inv.projectName,
-      items: pdfItems.length > 0 ? pdfItems : [{
-        id: '1',
-        description: 'Interior Design & Spatial Services',
-        quantity: 1,
-        unitPrice: inv.totalInvoiced || 0
-      }],
-      subtotal: inv.subtotal,
-      discount: inv.discount,
-      taxRate: inv.taxRate,
-      taxAmount: inv.taxAmount,
-      totalInvoiced: inv.totalInvoiced,
-      amountPaid: inv.amountPaid || 0,
-      balanceDue: inv.balanceDue !== undefined ? inv.balanceDue : Math.max(0, (inv.totalInvoiced || 0) - (inv.amountPaid || 0)),
-      notes: inv.notes,
-      currencySymbol: 'KES',
-      companyInfo: {
-        name: 'Pamnim Interior Designers',
-        address: content.contact?.address || 'Nairobi, Kenya',
-        phone: content.contact?.phone || '0714 984 268',
-        email: content.contact?.email || 'hinteriors01@gmail.com',
-        tagline: 'Shinning outside, beautiful inside'
-      }
-    };
-  };
+  const buildPDFData = (inv: SavedInvoice) => invoiceToPDFData(inv, content.contact);
 
   const handleDownloadPDF = async (inv: SavedInvoice) => {
     if (!inv.id) return;
@@ -242,16 +207,16 @@ export default function SavedInvoicesList({
 
     setIsSubmittingPayment(true);
     try {
-      const receiptNumber = `REC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      let receiptNumber = ''; // assigned (sequentially) when the receipt is saved below
       const prevPaid = Number(paymentInvoice.amountPaid) || 0;
       const totalInv = Number(paymentInvoice.totalInvoiced) || 0;
       const newPaid = prevPaid + numericAmount;
-      const newBalance = Math.max(0, totalInv - newPaid);
+      const credited = Number(paymentInvoice.creditedAmount) || 0;
+      const newBalance = invoiceBalance(totalInv, newPaid, credited);
       const newStatus: InvoiceStatus = newBalance <= 0 ? 'paid' : 'partial';
 
       // 1. Write receipt record to invoices/{inv.id}/paymentReceipts subcollection
       const receiptData: Record<string, any> = cleanPayload({
-        receiptNumber,
         invoiceId: paymentInvoice.id,
         invoiceNumber: paymentInvoice.docNumber,
         clientName: paymentInvoice.clientName || 'Client',
@@ -271,7 +236,12 @@ export default function SavedInvoicesList({
         clientPhone: paymentInvoice.clientPhone || undefined
       });
 
-      await addDoc(collection(db, 'invoices', paymentInvoice.id, 'paymentReceipts'), receiptData);
+      const createdReceipt = await createNumberedDoc(
+        'receipt',
+        collection(db, 'invoices', paymentInvoice.id, 'paymentReceipts'),
+        (n) => ({ ...receiptData, receiptNumber: n })
+      );
+      receiptNumber = createdReceipt.docNumber;
 
       // 2. If invoice is linked to a project, sync to projects/{projectId}/payments
       if (paymentInvoice.projectId) {
@@ -527,8 +497,10 @@ export default function SavedInvoicesList({
             const calculatedStatus = computeCalculatedStatus(inv);
             const total = Number(inv.totalInvoiced) || 0;
             const paid = Number(inv.amountPaid) || 0;
-            const balance = Math.max(0, total - paid);
+            const credited = Number(inv.creditedAmount) || 0;
+            const balance = invoiceBalance(total, paid, credited);
             const hasPayments = paid > 0 || inv.isLocked;
+            const canCredit = !!inv.id && creditableRemaining(inv) > 0;
 
             return (
               <div
@@ -547,9 +519,10 @@ export default function SavedInvoicesList({
                       "px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border",
                       calculatedStatus === 'paid' && "bg-emerald-50 text-emerald-700 border-emerald-200",
                       calculatedStatus === 'partial' && "bg-blue-50 text-blue-700 border-blue-200",
-                      calculatedStatus === 'sent' && "bg-amber-50 text-amber-800 border-amber-200"
+                      calculatedStatus === 'sent' && "bg-amber-50 text-amber-800 border-amber-200",
+                      calculatedStatus === 'cancelled' && "bg-red-50 text-red-700 border-red-200"
                     )}>
-                      {calculatedStatus === 'paid' ? 'Paid in Full' : calculatedStatus === 'partial' ? 'Partial Payment' : 'Unpaid'}
+                      {calculatedStatus === 'paid' ? 'Paid in Full' : calculatedStatus === 'partial' ? 'Partial Payment' : calculatedStatus === 'cancelled' ? 'Fully Credited' : 'Unpaid'}
                     </span>
 
                     {hasPayments && (
@@ -579,6 +552,24 @@ export default function SavedInvoicesList({
                       <span className="text-charcoal/60">Due: {inv.dueDate}</span>
                     )}
                   </div>
+
+                  {(inv.creditNotes || []).length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                      {(inv.creditNotes || []).map(cn => (
+                        <button
+                          key={cn.number}
+                          type="button"
+                          onClick={() => downloadCreditNote(inv, cn)}
+                          title={`${cn.reason} — click to download`}
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full hover:bg-red-100 cursor-pointer"
+                        >
+                          <FileMinus className="w-3 h-3" />
+                          <span className="font-mono">{cn.number}</span>
+                          <span>− KES {formatMoney(cn.total)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Center: Financials */}
@@ -631,6 +622,18 @@ export default function SavedInvoicesList({
                   >
                     <Receipt className="w-4 h-4 text-charcoal/60" />
                   </button>
+
+                  {/* Credit Note Button */}
+                  {canCredit && (
+                    <button
+                      type="button"
+                      onClick={() => setCreditInvoice(inv)}
+                      className="p-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                      title="Issue credit note"
+                    >
+                      <FileMinus className="w-4 h-4" />
+                    </button>
+                  )}
 
                   {/* Edit Button */}
                   <button
@@ -698,6 +701,28 @@ export default function SavedInvoicesList({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* CREDIT NOTE MODAL */}
+      {creditInvoice && (
+        <CreditNoteModal
+          invoice={creditInvoice}
+          createdBy={profile?.name || 'Owner'}
+          onClose={() => setCreditInvoice(null)}
+          onIssued={async (cn) => {
+            const inv = creditInvoice;
+            setCreditInvoice(null);
+            setCreditToast(`Credit note ${cn.number} issued for KES ${formatMoney(cn.total)}.`);
+            setTimeout(() => setCreditToast(null), 5000);
+            await downloadCreditNote(inv, cn);
+          }}
+        />
+      )}
+
+      {creditToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-charcoal text-white text-xs font-bold shadow-xl" role="status">
+          {creditToast}
         </div>
       )}
 
