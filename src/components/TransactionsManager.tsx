@@ -5,6 +5,7 @@ import { useCMS } from '../hooks/useCMS';
 import { PaymentReceipt, SavedInvoice, SavedQuote } from '../types/documents';
 import { WorkerPayment } from '../types/hrms';
 import { generatePaymentReceiptPDF, generateDocumentPDF, formatMoney } from '../utils/pdfGenerator';
+import { todayISO } from '../utils/hrmsUtils';
 import { invoiceToPDFData, quoteToPDFData } from '../utils/documentPdfData';
 import { 
   Receipt, Search, Filter, Download, ArrowUpDown, Calendar, 
@@ -341,7 +342,7 @@ export default function TransactionsManager() {
   // Filter transactions
   const filteredTransactions = useMemo(() => {
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = todayISO(now); // Nairobi date; toISOString() is UTC and lags 3h behind
     const thisMonthStr = todayStr.slice(0, 7); // YYYY-MM
     const thisYearStr = todayStr.slice(0, 4);
 
@@ -429,6 +430,11 @@ export default function TransactionsManager() {
           acceptedQuotesValue += t.amount;
         }
       }
+
+      // Invoices and quotes are documents, not cash. They are tagged direction 'inflow' for
+      // display, but adding their face value into inflow counted every quote as money received
+      // and counted an invoice again on top of the receipts for its payments.
+      if (t.docType === 'invoice' || t.docType === 'quote') return;
 
       if (t.direction === 'inflow') {
         inflow += t.amount;

@@ -135,6 +135,15 @@ export function getAllHolidays(
 }
 
 /**
+ * Returns a YYYY-MM-DD date in Africa/Nairobi time (UTC+3).
+ * `new Date().toISOString()` is UTC, which reports the previous day between
+ * 00:00 and 03:00 Nairobi time, so never use it for business dates.
+ */
+export function todayISO(date: Date = new Date()): string {
+  return date.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+}
+
+/**
  * Returns ISO week string identifier, e.g. "2026-W38"
  */
 export function getWeekId(dateInput: string | Date): string {

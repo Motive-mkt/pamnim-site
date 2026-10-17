@@ -501,9 +501,12 @@ export default function OwnerDashboard() {
         return d >= lastMonthStart && d < thisMonthStart;
       }
       if (inquiryDatePreset === 'custom') {
-        if (inquiryCustomStart && d < new Date(inquiryCustomStart)) return false;
+        // new Date('YYYY-MM-DD') is UTC midnight (03:00 in Nairobi), which dropped the first
+        // three hours of the start day and leaked three hours of the day after the end date.
+        // Parse as local midnight instead.
+        if (inquiryCustomStart && d < new Date(`${inquiryCustomStart}T00:00:00`)) return false;
         if (inquiryCustomEnd) {
-          const endOfDay = new Date(new Date(inquiryCustomEnd).getTime() + 24 * 60 * 60 * 1000 - 1);
+          const endOfDay = new Date(`${inquiryCustomEnd}T23:59:59.999`);
           if (d > endOfDay) return false;
         }
         return true;

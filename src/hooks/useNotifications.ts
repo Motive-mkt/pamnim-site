@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '../lib/firebase';
 import { 
-  collection, query, onSnapshot, orderBy, limit 
+  collection, query, onSnapshot, orderBy, limit, where
 } from 'firebase/firestore';
 import { useAuth } from './useAuth';
 import { 
@@ -40,9 +40,14 @@ export function useNotifications() {
 
     const attachListener = (useOrder: boolean) => {
       try {
-        const q = useOrder 
-          ? query(notifsRef, orderBy('createdAt', 'desc'), limit(100))
-          : notifsRef;
+        // Non-staff (clients, site workers) only ever need notifications addressed to them.
+        // Reading the whole collection let any signed-in user download every notification,
+        // including owner alerts with client names and message text.
+        const q = !isStaff
+          ? query(notifsRef, where('userId', '==', profile.uid))
+          : useOrder
+            ? query(notifsRef, orderBy('createdAt', 'desc'), limit(100))
+            : notifsRef;
 
         return onSnapshot(q, (snapshot) => {
           const items = snapshot.docs.map(docSnap => ({

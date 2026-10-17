@@ -4,7 +4,7 @@ import { collection, addDoc, getDocs, query, where, doc, updateDoc, writeBatch }
 import { useAuth } from '../../hooks/useAuth';
 import { Worker, WorkerSkill, AttendanceRecord, AttendanceStatus } from '../../types/hrms';
 import { formatMoney } from '../../utils/pdfGenerator';
-import { getWeekId, getDayMultiplier } from '../../utils/hrmsUtils';
+import { getWeekId, getDayMultiplier, todayISO } from '../../utils/hrmsUtils';
 import { Zap, CheckCircle2, XCircle, AlertCircle, Clock, Calendar, Filter, RefreshCw, ChevronDown, HardHat, Check, X, ShieldCheck, ArrowRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -26,9 +26,7 @@ interface WorkerDailyEntry {
 
 export default function DailyPayRun({ workers, projects, onComplete }: DailyPayRunProps) {
   const { profile } = useAuth();
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
+  const [selectedDate, setSelectedDate] = useState<string>(todayISO());
   const [skillFilter, setSkillFilter] = useState<string>('all');
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [entries, setEntries] = useState<Record<string, WorkerDailyEntry>>({});
@@ -42,6 +40,24 @@ export default function DailyPayRun({ workers, projects, onComplete }: DailyPayR
     return workers.filter(w => w.status === 'active');
   }, [workers]);
 
+  // Attendance rows are saved with workerId = worker.userId || worker.id, plus workerDocId.
+  // Looking records up by the worker doc id alone missed every worker that has a login,
+  // so a second save created a duplicate row and doubled that day's wage.
+  const findExisting = (
+    map: Record<string, AttendanceRecord>,
+    worker: Worker
+  ): AttendanceRecord | undefined => {
+    const wId = worker.id || '';
+    return map[wId] || (worker.userId ? map[worker.userId] : undefined);
+  };
+
+  // Stable signature so a background refresh of the workers list (new array, same data)
+  // doesn't re-run the loader and wipe unsaved status changes.
+  const workersKey = useMemo(
+    () => activeWorkers.map(w => `${w.id}:${w.dailyRate}:${w.assignedProjectId || ''}:${w.name}`).join('|'),
+    [activeWorkers]
+  );
+
   // Load existing records for the selected date to allow review & backfilling
   useEffect(() => {
     async function loadDateAttendance() {
@@ -54,6 +70,8 @@ export default function DailyPayRun({ workers, projects, onComplete }: DailyPayR
         snap.forEach(docSnap => {
           const data = { id: docSnap.id, ...docSnap.data() } as AttendanceRecord;
           map[data.workerId] = data;
+          const docId = (data as any).workerDocId;
+          if (docId) map[docId] = data;
         });
         setExistingRecordsMap(map);
 
@@ -61,7 +79,7 @@ export default function DailyPayRun({ workers, projects, onComplete }: DailyPayR
         const initialMap: Record<string, WorkerDailyEntry> = {};
         activeWorkers.forEach(worker => {
           const wId = worker.id || '';
-          const existing = map[wId];
+          const existing = findExisting(map, worker);
           initialMap[wId] = {
             workerId: wId,
             workerName: worker.name,
@@ -81,7 +99,8 @@ export default function DailyPayRun({ workers, projects, onComplete }: DailyPayR
     }
 
     loadDateAttendance();
-  }, [selectedDate, activeWorkers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, workersKey]);
 
   // Filtered workers list
   const filteredWorkers = useMemo(() => {
@@ -134,13 +153,13 @@ export default function DailyPayRun({ workers, projects, onComplete }: DailyPayR
   };
 
   const handleBulkAction = (action: 'all_present' | 'all_absent' | 'all_holiday') => {
+    const nextStatus: AttendanceStatus =
+      action === 'all_present' ? 'present_full' : action === 'all_absent' ? 'absent' : 'holiday';
     const updated = { ...entries };
     filteredWorkers.forEach(w => {
       const wId = w.id || '';
       if (updated[wId]) {
-        if (action === 'all_present') updated[wId].status = 'present_full';
-        else if (action === 'all_absent') updated[wId].status = 'absent';
-        else if (action === 'all_holiday') updated[wId].status = 'holiday';
+        updated[wId] = { ...updated[wId], status: nextStatus };
       }
     });
     setEntries(updated);
@@ -160,7 +179,7 @@ export default function DailyPayRun({ workers, projects, onComplete }: DailyPayR
 
         const dayMultiplier = getDayMultiplier(entry.status);
         const wageDue = Math.round(entry.dailyRate * dayMultiplier);
-        const existing = existingRecordsMap[wId];
+        const existing = findExisting(existingRecordsMap, worker);
         const workerEffectiveId = worker.userId || worker.id || wId;
 
         const recordPayload = {

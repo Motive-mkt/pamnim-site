@@ -147,7 +147,7 @@ export default function WorkerDashboard() {
   // Calculations for current week
   const currentWeekMetrics = useMemo(() => {
     const weekAttendance = attendanceRecords.filter(r => r.weekId === currentWeekId);
-    const daysWorked = weekAttendance.reduce((acc, r) => acc + (r.dayMultiplier || 1.0), 0);
+    const daysWorked = weekAttendance.reduce((acc, r) => acc + (r.dayMultiplier ?? 1.0), 0);
     const accruedEarnings = weekAttendance.reduce((acc, r) => acc + (r.wageDue || 0), 0);
 
     const weekExtras = extraRequests.filter(e => 
@@ -157,7 +157,7 @@ export default function WorkerDashboard() {
     const approvedExtrasTotal = weekExtras.reduce((acc, e) => acc + (e.approvedAmount || e.amount), 0);
 
     const weekAdvances = payments.filter(p => 
-      p.type === 'extra' && 
+      (p.type === 'extra' || p.type === 'advance') &&
       (p.weekId === currentWeekId || weekDates.some(wd => wd.date === p.date))
     );
     const advancesTotal = weekAdvances.reduce((acc, p) => acc + p.amount, 0);
@@ -822,9 +822,11 @@ export default function WorkerDashboard() {
                         <span className="font-bold text-sm text-charcoal">{formatMoney(pay.amount)}</span>
                         <span className={cn(
                           "px-2 py-0.5 rounded-full text-[11px] font-bold",
-                          pay.type === 'settlement' ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                          (pay.type === 'extra' || pay.type === 'advance') ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
                         )}>
-                          {pay.type === 'settlement' ? 'Weekly Settlement' : 'Advance Payout'}
+                          {(pay.type === 'extra' || pay.type === 'advance')
+                            ? 'Advance Payout'
+                            : pay.type === 'wage' ? 'Wage Payout' : 'Weekly Settlement'}
                         </span>
                       </div>
                       <div className="text-[11px] text-charcoal/65 mt-1 space-x-2">

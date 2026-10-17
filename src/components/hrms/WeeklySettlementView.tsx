@@ -6,13 +6,20 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { Worker, AttendanceRecord, WorkerPayment, ExtraRequest } from '../../types/hrms';
 import { formatMoney } from '../../utils/pdfGenerator';
-import { getWeekId, getWeekDates, formatWeekRange } from '../../utils/hrmsUtils';
+import { getWeekId, getWeekDates, formatWeekRange, todayISO } from '../../utils/hrmsUtils';
 import { 
   DollarSign, CheckCircle2, AlertCircle, Download, Plus, 
   Search, Filter, ChevronLeft, ChevronRight, CreditCard, 
   HardHat, RefreshCw, X, Check, ArrowDownLeft, ArrowUpRight
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+
+// 'extra' / 'advance' = money handed over mid-week (deducted from the week's wage).
+// Everything else ('settlement', 'wage' from the HRMS payout form or batch settle, or legacy
+// untyped rows) is a wage payout that reduces what is still owed. Previously only
+// type 'settlement' counted, so a Settle All batch or a manual payout left the balance
+// unchanged and the worker could be paid again.
+const isAdvancePayment = (p: { type?: string }) => p.type === 'extra' || p.type === 'advance';
 
 interface WeeklySettlementViewProps {
   workers: Worker[];
@@ -35,7 +42,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
   const [advanceWorkerId, setAdvanceWorkerId] = useState('');
   const [advanceAmount, setAdvanceAmount] = useState<number | ''>('');
   const [advanceNotes, setAdvanceNotes] = useState('');
-  const [advanceDate, setAdvanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [advanceDate, setAdvanceDate] = useState(todayISO());
   const [submittingAdvance, setSubmittingAdvance] = useState(false);
 
   // Settle Worker Modal
@@ -150,13 +157,14 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
 
       // Days worked & Accrued wage
       const workerAttendance = attendanceRecords.filter(r => isRecordForWorker(r.workerId, (r as any).workerDocId));
-      const daysCount = workerAttendance.reduce((acc, r) => acc + (r.dayMultiplier || 1.0), 0);
+      // `|| 1.0` turned an absent day (multiplier 0) into a full day in the days count
+      const daysCount = workerAttendance.reduce((acc, r) => acc + (r.dayMultiplier ?? 1.0), 0);
       const accruedWage = workerAttendance.reduce((acc, r) => acc + (r.wageDue || 0), 0);
 
       // Advances in this week
       const workerAdvances = payments.filter(p => 
-        isRecordForWorker(p.workerId, (p as any).workerDocId) && 
-        p.type === 'extra' && 
+        isRecordForWorker(p.workerId, (p as any).workerDocId) &&
+        isAdvancePayment(p) &&
         (p.weekId === weekId || (!p.weekId && weekDates.some(wd => wd.date === p.date)))
       );
       const totalAdvances = workerAdvances.reduce((acc, p) => acc + p.amount, 0);
@@ -170,8 +178,8 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
 
       // Settlements already paid for this week
       const workerSettlements = payments.filter(p => 
-        isRecordForWorker(p.workerId, (p as any).workerDocId) && 
-        p.type === 'settlement' && 
+        isRecordForWorker(p.workerId, (p as any).workerDocId) &&
+        !isAdvancePayment(p) &&
         (p.weekId === weekId || (!p.weekId && weekDates.some(wd => wd.date === p.date)))
       );
       const totalSettled = workerSettlements.reduce((acc, p) => acc + p.amount, 0);
@@ -255,7 +263,7 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
         amount: settleWorker.netDue,
         paymentMethod: settleMethod,
         type: 'settlement',
-        date: new Date().toISOString().split('T')[0],
+        date: todayISO(),
         weekId,
         notes: `Weekly settlement for ${weekRangeLabel}`,
         recordedBy: profile?.name || 'Owner',
@@ -280,9 +288,10 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
   // Export CSV
   const handleExportCSV = () => {
     const headers = ['Worker Name', 'Trade', 'Days Worked', 'Daily Rate (KES)', 'Accrued Wage (KES)', 'Approved Extras (KES)', 'Advances Deducted (KES)', 'Net Paid/Due (KES)', 'Status'];
+    const csvText = (v: string | number | undefined) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const rows = workerLedgers.map(l => [
-      `"${l.worker.name}"`,
-      `"${l.worker.skill}"`,
+      csvText(l.worker.name),
+      csvText(l.worker.skill),
       l.daysCount,
       l.worker.dailyRate,
       l.accruedWage,
@@ -292,14 +301,17 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
       l.isFullySettled ? 'Settled' : 'Pending Settlement'
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    // A data: URI built with encodeURI cuts the file off at the first '#' in a name or note.
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.setAttribute('href', url);
     link.setAttribute('download', `Pamnim_HRMS_Settlement_${weekId}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // Available Trades from active workers
@@ -346,8 +358,8 @@ export default function WeeklySettlementView({ workers, projects }: WeeklySettle
           projectName: projects.find(p => p.id === l.worker.assignedProjectId)?.name || '',
           amount: l.netDue,
           paymentMethod: settleAllMethod,
-          type: 'wage',
-          date: new Date().toISOString().split('T')[0],
+          type: 'settlement',
+          date: todayISO(),
           weekId: weekId,
           notes: `Batch weekly settlement for ${weekId} (${selectedTradeFilter === 'all' ? 'All Trades' : selectedTradeFilter})`,
           recordedBy: profile?.name || 'Owner',

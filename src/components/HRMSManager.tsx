@@ -4,8 +4,9 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../hooks/useAuth';
-import { Worker, WorkLog, WorkerPayment, WorkerSkill, WorkDuration, WorkerPayoutProfile } from '../types/hrms';
+import { Worker, WorkLog, WorkerPayment, WorkerSkill, WorkDuration, WorkerPayoutProfile, AttendanceRecord } from '../types/hrms';
 import { formatMoney } from '../utils/pdfGenerator';
+import { todayISO } from '../utils/hrmsUtils';
 import { 
   Users, UserCheck, HardHat, Calendar, DollarSign, Plus, Search, 
   Filter, Trash2, Edit2, CheckCircle2, AlertCircle, Clock, 
@@ -49,6 +50,7 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [workLogs, setWorkLogs] = useState<WorkLog[]>([]);
   const [payments, setPayments] = useState<WorkerPayment[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -117,7 +119,7 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
   }>({
     workerId: '',
     projectId: '',
-    date: new Date().toISOString().split('T')[0],
+    date: todayISO(),
     duration: 'full_day',
     tasksDone: ''
   });
@@ -137,7 +139,7 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
     amount: '',
     paymentMethod: 'M-Pesa',
     referenceCode: '',
-    date: new Date().toISOString().split('T')[0],
+    date: todayISO(),
     notes: ''
   });
 
@@ -153,12 +155,39 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
     type: 'wage' | 'extra';
   }>({
     amount: '',
-    date: new Date().toISOString().split('T')[0],
+    date: todayISO(),
     paymentMethod: 'M-Pesa',
     referenceCode: '',
     notes: '',
     type: 'wage'
   });
+
+  // A record belongs to a worker if it carries the worker's doc id OR their login uid.
+  // Pay Run / settlement rows are written with workerId = userId || id (plus workerDocId),
+  // manual payouts and legacy work logs with the doc id, so matching on w.id alone dropped
+  // every payment made to a worker who has a login (balance overstated) and every day
+  // logged through the Daily Pay Run (wages owed understated).
+  const belongsToWorker = (w: Worker, recordWorkerId?: string, recordDocId?: string) =>
+    !!w.id && (
+      recordWorkerId === w.id ||
+      recordDocId === w.id ||
+      (!!w.userId && recordWorkerId === w.userId)
+    );
+
+  const workerEarned = (w: Worker) => {
+    const fromLogs = workLogs
+      .filter(l => belongsToWorker(w, l.workerId))
+      .reduce((s, l) => s + (Number(l.wageDue) || 0), 0);
+    const fromAttendance = attendance
+      .filter(r => belongsToWorker(w, r.workerId, (r as any).workerDocId))
+      .reduce((s, r) => s + (Number(r.wageDue) || 0), 0);
+    return fromLogs + fromAttendance;
+  };
+
+  const workerPaid = (w: Worker) =>
+    payments
+      .filter(p => belongsToWorker(w, p.workerId, (p as any).workerDocId))
+      .reduce((s, p) => s + (Number(p.amount) || 0), 0);
 
   // Real-time subscribers
   useEffect(() => {
@@ -191,6 +220,15 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
       (err) => console.error('Error fetching payments:', err)
     );
 
+    // 3b. Daily Pay Run attendance (source of truth for wages earned)
+    const unsubAttendance = onSnapshot(
+      collection(db, 'attendanceRecords'),
+      (snap) => {
+        setAttendance(snap.docs.map(d => ({ id: d.id, ...d.data() } as AttendanceRecord)));
+      },
+      (err) => console.error('Error fetching attendance records:', err)
+    );
+
     // 4. Projects (for linking)
     const unsubProjects = onSnapshot(
       query(collection(db, 'projects'), orderBy('createdAt', 'desc')),
@@ -220,6 +258,7 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
       unsubWorkers();
       unsubLogs();
       unsubPayments();
+      unsubAttendance();
       unsubProjects();
       unsubLeaveBadge();
       unsubExtraBadge();
@@ -386,7 +425,7 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
     setLogForm({
       workerId: workers[0]?.id || '',
       projectId: projects[0]?.id || '',
-      date: new Date().toISOString().split('T')[0],
+      date: todayISO(),
       duration: 'full_day',
       tasksDone: ''
     });
@@ -444,9 +483,7 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
     // Compute unpaid wage for this worker
     let suggestedAmount: number | '' = '';
     if (defaultWorker?.id) {
-      const earned = workLogs.filter(l => l.workerId === defaultWorker.id).reduce((s, l) => s + l.wageDue, 0);
-      const paid = payments.filter(p => p.workerId === defaultWorker.id).reduce((s, p) => s + p.amount, 0);
-      const bal = earned - paid;
+      const bal = workerEarned(defaultWorker) - workerPaid(defaultWorker);
       if (bal > 0) suggestedAmount = bal;
     }
 
@@ -456,7 +493,7 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
       amount: suggestedAmount,
       paymentMethod: 'M-Pesa',
       referenceCode: '',
-      date: new Date().toISOString().split('T')[0],
+      date: todayISO(),
       notes: ''
     });
     setShowPaymentModal(true);
@@ -526,15 +563,20 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
   // Calculations for summary & cards
   const totalActiveWorkers = workers.filter(w => w.status === 'active').length;
   
-  const currentMonthStr = new Date().toISOString().slice(0, 7); // YYYY-MM
-  const logsThisMonth = workLogs.filter(l => l.date.startsWith(currentMonthStr));
-  const daysLoggedThisMonth = logsThisMonth.length;
-  const wagesAccruedThisMonth = logsThisMonth.reduce((sum, l) => sum + (Number(l.wageDue) || 0), 0);
+  const currentMonthStr = todayISO().slice(0, 7); // YYYY-MM, Nairobi time
+  const logsThisMonth = workLogs.filter(l => (l.date || '').startsWith(currentMonthStr));
+  const attendanceThisMonth = attendance.filter(r => (r.date || '').startsWith(currentMonthStr));
+  const daysLoggedThisMonth = logsThisMonth.length + attendanceThisMonth.filter(r => (r.dayMultiplier ?? 1) > 0).length;
+  const wagesAccruedThisMonth =
+    logsThisMonth.reduce((sum, l) => sum + (Number(l.wageDue) || 0), 0) +
+    attendanceThisMonth.reduce((sum, r) => sum + (Number(r.wageDue) || 0), 0);
   const wagesPaidThisMonth = payments
-    .filter(p => p.date.startsWith(currentMonthStr))
+    .filter(p => (p.date || '').startsWith(currentMonthStr))
     .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-  const totalAllTimeWagesEarned = workLogs.reduce((sum, l) => sum + (Number(l.wageDue) || 0), 0);
+  const totalAllTimeWagesEarned =
+    workLogs.reduce((sum, l) => sum + (Number(l.wageDue) || 0), 0) +
+    attendance.reduce((sum, r) => sum + (Number(r.wageDue) || 0), 0);
   const totalAllTimeWagesPaid = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   const totalOutstandingWages = Math.max(0, totalAllTimeWagesEarned - totalAllTimeWagesPaid);
 
@@ -877,8 +919,8 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
             <div className="space-y-2.5">
               {filteredWorkers.map(w => {
                 // Compute worker financial summary
-                const earned = workLogs.filter(l => l.workerId === w.id).reduce((s, l) => s + (l.wageDue || 0), 0);
-                const paid = payments.filter(p => p.workerId === w.id).reduce((s, p) => s + (p.amount || 0), 0);
+                const earned = workerEarned(w);
+                const paid = workerPaid(w);
                 const balance = Math.max(0, earned - paid);
 
                 return (
@@ -1519,9 +1561,7 @@ export default function HRMSManager({ initialTab = 'payrun', initialOpenModal }:
                     const w = workers.find(x => x.id === wid);
                     let sug: number | '' = '';
                     if (w?.id) {
-                      const earned = workLogs.filter(l => l.workerId === w.id).reduce((s, l) => s + l.wageDue, 0);
-                      const paid = payments.filter(p => p.workerId === w.id).reduce((s, p) => s + p.amount, 0);
-                      const bal = earned - paid;
+                      const bal = workerEarned(w) - workerPaid(w);
                       if (bal > 0) sug = bal;
                     }
                     setPaymentForm({
