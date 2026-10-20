@@ -25,8 +25,15 @@
       t.src=v;s=b.getElementsByTagName(e)[0];
       s.parentNode.insertBefore(t,s)}(window, document,'script',
       'https://connect.facebook.net/en_US/fbevents.js');
+      // SPA page views are sent by <PixelTracker /> (src/components/PixelTracker.tsx) so that
+      // staff, login and client-portal routes are never tracked. Turn off Meta's automatic
+      // history-change PageView so route changes are not counted twice.
+      fbq.disablePushState = true;
       fbq('init', '26632441953100460');
-      fbq('track', 'PageView');
+      // First load: public pages only. Keep this list in sync with src/lib/metaPixel.ts.
+      if (!/^\/(admin|dashboard|login|signup|signup-worker|client-setup|activate|client-portal|tracker|reviews?)(\/|$)/.test(location.pathname)) {
+        fbq('track', 'PageView');
+      }
     </script>
     <!-- End Meta Pixel Code -->
   </head>

@@ -1,5 +1,6 @@
 import React, { useId, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
+import { trackLead } from '../lib/metaPixel';
 import { ArrowRight, Check, MessageSquare, CheckCircle2, Clock, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { collection, addDoc } from 'firebase/firestore';
@@ -146,9 +147,7 @@ export default function Services() {
         createdAt: new Date().toISOString()
       });
 
-      if (typeof (window as any).fbq === 'function') {
-        (window as any).fbq('track', 'Lead', { content_name: 'Services Quote Form' });
-      }
+      trackLead({ contentName: selectedService.title, source: 'services_quote_form' });
 
       setIsSubmitted(true);
 

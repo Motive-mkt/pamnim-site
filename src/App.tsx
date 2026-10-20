@@ -6,6 +6,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop';
+import PixelTracker from './components/PixelTracker';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import SignupPage from './pages/SignupPage';
@@ -103,6 +104,7 @@ export default function App() {
   return (
     <Router>
       <ScrollToTop />
+      <PixelTracker />
       <AppContent />
     </Router>
   );

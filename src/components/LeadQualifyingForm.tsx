@@ -5,6 +5,7 @@ import { useCMS } from '../hooks/useCMS';
 import { CheckCircle2, MessageSquare, AlertCircle, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { createNotification } from '../services/notificationService';
+import { trackLead } from '../lib/metaPixel';
 import OfferCountdown from './ui/OfferCountdown';
 
 export type LeadTag = 'high-value' | 'project' | 'incomplete' | 'general';
@@ -172,20 +173,14 @@ export default function LeadQualifyingForm({
         type: 'inquiry'
       }).catch(() => {});
 
-      // Meta Pixel lead event
-      if (typeof (window as any).fbq === 'function') {
-        try {
-          (window as any).fbq('track', 'Lead', {
-            content_name: projectScope,
-            lead_tag: statusObj.leadTag,
-            status: propertyStatus,
-            location: locationAddress.trim(),
-            source
-          });
-        } catch {
-          // tracking must never block the form
-        }
-      }
+      // Meta Pixel: Lead for every submission, plus QualifiedLead for high-priority ones.
+      // The typed address is intentionally not sent to Meta.
+      trackLead({
+        contentName: projectScope,
+        leadTag: statusObj.leadTag,
+        priority: statusObj.priority,
+        source
+      });
 
       setSubmitted(true);
     } catch (err: any) {
