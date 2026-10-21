@@ -179,7 +179,8 @@ export default function LeadQualifyingForm({
         contentName: projectScope,
         leadTag: statusObj.leadTag,
         priority: statusObj.priority,
-        source
+        source,
+        user: { phone: phone.trim(), email: email.trim(), name: name.trim() }
       });
 
       setSubmitted(true);

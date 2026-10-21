@@ -147,7 +147,11 @@ export default function Services() {
         createdAt: new Date().toISOString()
       });
 
-      trackLead({ contentName: selectedService.title, source: 'services_quote_form' });
+      trackLead({
+        contentName: selectedService.title,
+        source: 'services_quote_form',
+        user: { phone: leadPhone, email: leadEmail, name: leadName }
+      });
 
       setIsSubmitted(true);
 
